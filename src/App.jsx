@@ -34,8 +34,8 @@ import Carreras from "./components/tabs/Carreras";
 import Fondos from "./components/tabs/Fondos";
 import PanelPrincipal from "./components/tabs/PanelPrincipal";
 
-const HABILITAR_CAJA_CHICA = false;
-const HABILITAR_FONDOS = false;
+const HABILITAR_CAJA_CHICA = true;
+const HABILITAR_FONDOS = true;
 const API = API_BASE;
 
 const TabContainer = ({ options, activeSubTab, onChange, children }) => (

@@ -75,6 +75,15 @@ const Fondos = ({ user }) => {
         localStorage.getItem("usuario")
     );
 
+    const traducirTipo = (tipo) => {
+        switch (tipo) {
+            case 'ADELANTO': return 'Anticipo';
+            case 'REEMBOLSO': return 'Reembolso';
+            case 'VIATICOS': return 'Viáticos';
+            default: return tipo;
+        }
+    };
+
     // =========================
     // CARGAR SOLICITUDES
     // =========================
@@ -457,12 +466,10 @@ const Fondos = ({ user }) => {
             fecha: reg.fecha || "",
             firma_digital: reg.firma_digital || "",
             // NORMALIZAR TIPO
-            tipo:
-                reg.tipo === "Adelanto"
-                    ? "ADELANTO"
-                    : reg.tipo === "Reembolso"
-                        ? "REEMBOLSO"
-                        : reg.tipo || "ADELANTO"
+            tipo: reg.tipo === "Adelanto" ? "ADELANTO" :
+                reg.tipo === "Reembolso" ? "REEMBOLSO" :
+                    reg.tipo === "Viaticos" ? "VIATICOS" :
+                        reg.tipo || "ADELANTO"
         });
         setShowModal(true);
     };
@@ -526,15 +533,11 @@ const Fondos = ({ user }) => {
             // =========================================
 
             let tipoNormalizado = "ADELANTO";
-
-            if (
-                editingReq.tipo === "REEMBOLSO" ||
-                editingReq.tipo === "Reembolso"
-            ) {
-
+            if (editingReq.tipo === "REEMBOLSO" || editingReq.tipo === "Reembolso") {
                 tipoNormalizado = "REEMBOLSO";
+            } else if (editingReq.tipo === "VIATICOS" || editingReq.tipo === "Viaticos") {
+                tipoNormalizado = "VIATICOS";
             }
-
             // =========================================
             // ACTUALIZAR
             // =========================================
@@ -1109,57 +1112,57 @@ const Fondos = ({ user }) => {
     const rendicionCuadrada =
         diferencia === 0;
 
-    const pasosFlujo =
-        viewingReq?.tipo === "REEMBOLSO"
-            ? [
-                {
-                    key: "PENDIENTE",
-                    title: "Solicitud Registrada",
-                    desc: "Solicitud creada por el departamento solicitante."
-                },
-                {
-                    key: "APROBADO",
-                    title: "Aprobación Administrativa",
-                    desc: "ADMINISTRACION validó la solicitud."
-                },
-                {
-                    key: "EN_RENDICION",
-                    title: "Rendición Enviada",
-                    desc: "El solicitante adjuntó los comprobantes."
-                },
-                {
-                    key: "CERRADO",
-                    title: "Reembolso Finalizado",
-                    desc: "TESORERIA realizó el reembolso."
-                }
-            ]
-            : [
-                {
-                    key: "PENDIENTE",
-                    title: "Solicitud Registrada",
-                    desc: "Solicitud creada por el departamento solicitante."
-                },
-                {
-                    key: "APROBADO",
-                    title: "Aprobación Administrativa",
-                    desc: "ADMINISTRACION validó y aprobó la solicitud."
-                },
-                {
-                    key: "PAGADO",
-                    title: "Pago Tesorería",
-                    desc: "TESORERIA realizó el desembolso."
-                },
-                {
-                    key: "EN_RENDICION",
-                    title: "En Rendición",
-                    desc: "Pendiente de sustento documentario."
-                },
-                {
-                    key: "CERRADO",
-                    title: "Proceso Cerrado",
-                    desc: "Solicitud finalizada correctamente."
-                }
-            ];
+    const esReembolsoOViaticos = viewingReq?.tipo === "REEMBOLSO" || viewingReq?.tipo === "VIATICOS";
+    const pasosFlujo = esReembolsoOViaticos
+        ? [
+            {
+                key: "PENDIENTE",
+                title: "Solicitud Registrada",
+                desc: "Solicitud creada por el departamento solicitante."
+            },
+            {
+                key: "APROBADO",
+                title: "Aprobación Administrativa",
+                desc: "ADMINISTRACION validó la solicitud."
+            },
+            {
+                key: "EN_RENDICION",
+                title: "Rendición Enviada",
+                desc: "El solicitante adjuntó los comprobantes."
+            },
+            {
+                key: "CERRADO",
+                title: "Reembolso Finalizado",
+                desc: "TESORERIA realizó el reembolso."
+            }
+        ]
+        : [
+            {
+                key: "PENDIENTE",
+                title: "Solicitud Registrada",
+                desc: "Solicitud creada por el departamento solicitante."
+            },
+            {
+                key: "APROBADO",
+                title: "Aprobación Administrativa",
+                desc: "ADMINISTRACION validó y aprobó la solicitud."
+            },
+            {
+                key: "PAGADO",
+                title: "Pago Tesorería",
+                desc: "TESORERIA realizó el desembolso."
+            },
+            {
+                key: "EN_RENDICION",
+                title: "En Rendición",
+                desc: "Pendiente de sustento documentario."
+            },
+            {
+                key: "CERRADO",
+                title: "Proceso Cerrado",
+                desc: "Solicitud finalizada correctamente."
+            }
+        ];
 
     return (
         <div className="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased flex flex-col justify-between">
@@ -1304,8 +1307,9 @@ const Fondos = ({ user }) => {
                                     className="h-12 px-4 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-4 focus:ring-[#800000]/10 focus:border-[#800000]"
                                 >
                                     <option value="todos">Todos los Tipos</option>
-                                    <option value="ADELANTO">Adelanto</option>
+                                    <option value="ADELANTO">Anticipo</option>
                                     <option value="REEMBOLSO">Reembolso</option>
+                                    <option value="VIATICOS">Viáticos</option>
                                 </select>
 
                                 <select
@@ -1421,7 +1425,7 @@ const Fondos = ({ user }) => {
                                                 <td className="px-6 py-5">
                                                     <div className="max-w-[280px]">
                                                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-slate-100 text-slate-700 mb-2">
-                                                            {reg.tipo}
+                                                            {traducirTipo(reg.tipo)}
                                                         </span>
                                                         <p className="text-sm text-slate-600 font-medium leading-relaxed">
                                                             {reg.concepto}
@@ -1579,11 +1583,8 @@ const Fondos = ({ user }) => {
 
                                         {/* TIPO */}
                                         <div>
-
                                             <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">
-
                                                 Tipo
-
                                             </label>
 
                                             <select
@@ -1596,15 +1597,9 @@ const Fondos = ({ user }) => {
                                                 }
                                                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
                                             >
-
-                                                <option value="ADELANTO">
-                                                    Adelanto
-                                                </option>
-
-                                                <option value="REEMBOLSO">
-                                                    Reembolso
-                                                </option>
-
+                                                <option value="ADELANTO">Anticipo</option>
+                                                <option value="REEMBOLSO">Reembolso</option>
+                                                <option value="VIATICOS">Viáticos</option>
                                             </select>
                                         </div>
 
@@ -1828,11 +1823,11 @@ const Fondos = ({ user }) => {
 
                                     {/* Badges de Tipo y Categoría */}
                                     <div className="mt-4 flex flex-wrap items-center gap-2">
-                                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider border ${viewingReq.tipo === "ADELANTO"
-                                            ? "bg-blue-500/20 text-blue-100 border-blue-400/20"
-                                            : "bg-amber-500/20 text-amber-100 border-amber-400/20"
+                                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider border ${viewingReq.tipo === "ADELANTO" ? "bg-blue-500/20 text-blue-100 border-blue-400/20" :
+                                            viewingReq.tipo === "REEMBOLSO" ? "bg-amber-500/20 text-amber-100 border-amber-400/20" :
+                                                "bg-purple-500/20 text-purple-100 border-purple-400/20"
                                             }`}>
-                                            {viewingReq.tipo}
+                                            {traducirTipo(viewingReq.tipo)}
                                         </span>
 
                                         <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-red-100">
@@ -2174,34 +2169,22 @@ const Fondos = ({ user }) => {
 
                                             {/* RENDICION ADELANTO */}
 
-                                            {Number(currentUserId) ===
-                                                Number(viewingReq?.solicitante_id)
-                                                &&
-                                                viewingReq?.tipo === "ADELANTO"
-                                                &&
+                                            {Number(currentUserId) === Number(viewingReq?.solicitante_id)
+                                                && viewingReq?.tipo === "ADELANTO" &&
                                                 viewingReq?.estado === "PAGADO" && (
 
-                                                    <button
-                                                        onClick={() =>
-                                                            setShowRendicionModal(true)
-                                                        }
+                                                    <button onClick={() => setShowRendicionModal(true)}
                                                         className="rounded-2xl bg-slate-800 text-white px-5 py-3 text-xs font-black uppercase tracking-wide"
                                                     >
                                                         Subir Rendición
                                                     </button>
                                                 )}
 
-                                            {Number(currentUserId) ===
-                                                Number(viewingReq?.solicitante_id)
-                                                &&
-                                                viewingReq?.tipo === "REEMBOLSO"
-                                                &&
-                                                viewingReq?.estado === "APROBADO" && (
+                                            {(viewingReq?.tipo === "REEMBOLSO" || viewingReq?.tipo === "VIATICOS")
+                                                && Number(currentUserId) === Number(viewingReq?.solicitante_id)
+                                                && viewingReq?.estado === "APROBADO" && (
 
-                                                    <button
-                                                        onClick={() =>
-                                                            setShowRendicionModal(true)
-                                                        }
+                                                    <button onClick={() => setShowRendicionModal(true)}
                                                         className="rounded-2xl bg-indigo-700 text-white px-5 py-3 text-xs font-black uppercase tracking-wide"
                                                     >
                                                         Subir Sustento

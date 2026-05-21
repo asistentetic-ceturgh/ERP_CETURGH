@@ -35,7 +35,7 @@ try {
     $empresa_id   = intval($data["empresa_id"] ?? 0);
     $sede_id      = intval($data["sede_id"] ?? 0);
     $grupo_id     = intval($data["grupo_id"] ?? 0);
-    $modo_igv     = $data["modo_igv"] ?? "incluido";   // ← recibido desde Tesorería
+    $modo_igv     = $data["modo_igv"] ?? "incluido";   // recibido desde Tesorería
     $items        = $data["items"] ?? [];
 
     if (!$proveedor_id || !$empresa_id || !$grupo_id || empty($items)) {
@@ -166,7 +166,7 @@ try {
     }
 
     /* =========================
-       INSERTAR ORDEN (con modo_igv, subtotal, igv)
+       INSERTAR ORDEN (sin firma_solicitante)
     ========================= */
     $stmtOrden = $conn->prepare("
         INSERT INTO ordenes_compra

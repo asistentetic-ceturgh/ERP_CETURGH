@@ -47,6 +47,7 @@ const OrdenCompra = ({ orden, onClose }) => {
                         tesoreria: o.firmas?.tesoreria || null,
                         administracion: o.firmas?.administracion || null
                     },
+                    firmas_solicitantes: o.firmas_solicitantes || [],
                     proveedor: {
                         nombre: o.proveedor?.nombre || "",
                         ruc: o.proveedor?.ruc || "",
@@ -262,24 +263,6 @@ const OrdenCompra = ({ orden, onClose }) => {
                         </div>
                     </section>
 
-                    {/* Configuración IGV */}
-                    <section className="space-y-4">
-                        <div className="flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
-                            <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Configuración IGV</h3>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Tipo de cálculo</label>
-                            <select
-                                value={ordenData.modo_igv || "incluido"}
-                                onChange={(e) => setOrdenData({ ...ordenData, modo_igv: e.target.value })}
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-200 outline-none"
-                            >
-                                <option value="incluido">Total incluye IGV</option>
-                                <option value="agregado">IGV se agrega al subtotal</option>
-                            </select>
-                        </div>
-                    </section>
-
                     {/* Proveedor */}
                     <section className="space-y-4">
                         <div className="flex items-center gap-2 border-l-4 border-[#D4AF37] pl-3">
@@ -445,7 +428,7 @@ const OrdenCompra = ({ orden, onClose }) => {
                             <tbody className="divide-y divide-slate-200">
                                 {ordenData.items.map((item, idx) => (
                                     <tr key={item.id}>
-                                        <td className="px-3 py-3 text-center text-[10px] font-bold text-slate-400">{idx+1}</td>
+                                        <td className="px-3 py-3 text-center text-[10px] font-bold text-slate-400">{idx + 1}</td>
                                         <td className="px-4 py-3">
                                             <p className="text-[11px] font-bold text-slate-800 uppercase">{item.descripcion}</p>
                                             <div className="flex gap-4 mt-1.5 text-[8px] text-slate-400 font-bold uppercase">
@@ -464,23 +447,47 @@ const OrdenCompra = ({ orden, onClose }) => {
 
                     {/* Observaciones y Totales */}
                     <div className="mt-6 grid grid-cols-12 gap-6 items-start">
+                        {/* FIRMAS MÚLTIPLES */}
                         <div className="col-span-7 space-y-6">
                             <div className="border border-slate-300 p-4 bg-slate-50/50 rounded-sm">
                                 <p className="text-[9px] font-black text-slate-800 uppercase mb-1.5">Observaciones y Condiciones</p>
                                 <p className="text-[10px] text-slate-600 whitespace-pre-wrap">{ordenData.condiciones || "Sin observaciones."}</p>
                             </div>
-                            <div className="grid grid-cols-2 gap-8 pt-4">
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+                                {ordenData.firmas_solicitantes && ordenData.firmas_solicitantes.map((sol, idx) => (
+                                    <div key={idx} className="text-center">
+                                        <div className="h-[60px] flex items-end justify-center mb-1.5">
+                                            {sol.firma && (
+                                                <img src={API + sol.firma} className="max-h-[100px] object-contain mix-blend-multiply" />
+                                            )}
+                                        </div>
+                                        <div className="border-t border-slate-400 w-full mb-1"></div>
+                                        <p className="text-[10px] font-black">{sol.nombre}</p>
+                                        <p className="text-[8px] font-bold text-slate-400">
+                                            {sol.departamento} <br /> (S/ {sol.monto.toFixed(2)})
+                                        </p>
+                                    </div>
+                                ))}
+
+                                {/* Firma de Tesorería */}
                                 <div className="text-center">
                                     <div className="h-[60px] flex items-end justify-center mb-1.5">
-                                        {ordenData?.firmas?.tesoreria?.firma && <img src={API + ordenData.firmas.tesoreria.firma} className="max-h-[100px] object-contain mix-blend-multiply" />}
+                                        {ordenData?.firmas?.tesoreria?.firma && (
+                                            <img src={API + ordenData.firmas.tesoreria.firma} className="max-h-[100px] object-contain mix-blend-multiply" />
+                                        )}
                                     </div>
                                     <div className="border-t border-slate-400 w-full mb-1"></div>
                                     <p className="text-[10px] font-black">{ordenData?.firmas?.tesoreria?.nombre || "Sin Responsable"}</p>
                                     <p className="text-[8px] font-bold text-slate-400">Jefe de Tesorería</p>
                                 </div>
+
+                                {/* Firma de Administración */}
                                 <div className="text-center">
                                     <div className="h-[60px] flex items-end justify-center mb-1.5">
-                                        {ordenData?.firmas?.administracion?.firma && <img src={API + ordenData.firmas.administracion.firma} className="max-h-[100px] object-contain mix-blend-multiply" />}
+                                        {ordenData?.firmas?.administracion?.firma && (
+                                            <img src={API + ordenData.firmas.administracion.firma} className="max-h-[100px] object-contain mix-blend-multiply" />
+                                        )}
                                     </div>
                                     <div className="border-t border-slate-400 w-full mb-1"></div>
                                     <p className="text-[10px] font-black">{ordenData?.firmas?.administracion?.nombre || "Sin Responsable"}</p>

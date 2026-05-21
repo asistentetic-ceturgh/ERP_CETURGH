@@ -397,7 +397,7 @@ switch ($accion) {
         }
 
         /* =================================
-           ADELANTO
+           ADELANTO (ANTICIPO)
         ================================= */
 
         if ($tipoSolicitud === "ADELANTO") {
@@ -416,17 +416,16 @@ switch ($accion) {
         }
 
         /* =================================
-           REEMBOLSO
+           REEMBOLSO Y VIATICOS
         ================================= */
 
-        else if ($tipoSolicitud === "REEMBOLSO") {
+        else if ($tipoSolicitud === "REEMBOLSO" || $tipoSolicitud === "VIATICOS") {
 
             /*
                 FLUJO REAL:
 
                 APROBADO
-                -> usuario sube sustento
-                -> EN_RENDICION
+                -> usuario sube sustento (EN_RENDICION o POR_REEMBOLSAR)
                 -> tesoreria paga
                 -> PAGADO
             */
@@ -439,7 +438,7 @@ switch ($accion) {
 
                 echo json_encode([
                     "success" => false,
-                    "message" => "El reembolso debe tener sustento"
+                    "message" => "La solicitud debe tener el sustento cargado"
                 ]);
 
                 exit;

@@ -76,7 +76,7 @@ if (!$orden) {
 }
 
 /* =========================
-   ITEMS CON CÓDIGO DE CENTRO DE COSTO Y NOMBRE DE DEPARTAMENTO
+   ITEMS DE LA ORDEN + RELACIÓN CON REQUERIMIENTOS
    ========================= */
 $stmtItems = $conn->prepare("
     SELECT 
@@ -87,7 +87,8 @@ $stmtItems = $conn->prepare("
         oi.total,
         oi.tipo,
         cc.codigo AS centro_costo_codigo,
-        d.nombre AS departamento_nombre
+        d.nombre AS departamento_nombre,
+        i.requerimiento_id   -- ← Necesario para obtener los departamentos
     FROM orden_compra_items oi
     LEFT JOIN items i ON oi.item_id = i.id
     LEFT JOIN centros_costos cc ON i.centro_costo_id = cc.id
@@ -108,8 +109,13 @@ $stmtItems->bind_param("i", $id);
 $stmtItems->execute();
 $resItems = $stmtItems->get_result();
 $items = [];
+$requerimientoIds = [];
 
 while ($row = $resItems->fetch_assoc()) {
+    $reqId = $row["requerimiento_id"];
+    if ($reqId && !in_array($reqId, $requerimientoIds)) {
+        $requerimientoIds[] = $reqId;
+    }
     $items[] = [
         "id" => intval($row["id"]),
         "descripcion" => $row["descripcion"],
@@ -118,15 +124,15 @@ while ($row = $resItems->fetch_assoc()) {
         "total" => floatval($row["total"]),
         "tipo" => $row["tipo"],
         "centro_costo" => $row["centro_costo_codigo"] ?? null,
-        "departamento" => $row["departamento_nombre"] ?? null
+        "departamento" => $row["departamento_nombre"] ?? null,
+        "requerimiento_id" => $reqId
     ];
 }
 $stmtItems->close();
 
 /* =========================
-   FIRMAS
+   FIRMAS DE TESORERÍA Y ADMINISTRACIÓN
 ========================= */
-
 $firmas = [
     "tesoreria" => null,
     "administracion" => null
@@ -137,7 +143,7 @@ $stmtTesoreria = $conn->prepare("
     SELECT u.nombre, u.firma
     FROM usuarios u
     INNER JOIN departamentos d ON u.departamento_id = d.id
-    WHERE UPPER(d.nombre) = 'TESORERIA'
+    WHERE UPPER(d.nombre) = 'TESORERIA' AND u.tipo = 'jefe'
     LIMIT 1
 ");
 if ($stmtTesoreria) {
@@ -158,7 +164,7 @@ $stmtAdmin = $conn->prepare("
     SELECT u.nombre, u.firma
     FROM usuarios u
     INNER JOIN departamentos d ON u.departamento_id = d.id
-    WHERE UPPER(d.nombre) = 'ADMINISTRACION'
+    WHERE UPPER(d.nombre) = 'ADMINISTRACION' AND u.tipo = 'jefe'
     LIMIT 1
 ");
 if ($stmtAdmin) {
@@ -172,6 +178,69 @@ if ($stmtAdmin) {
         ];
     }
     $stmtAdmin->close();
+}
+
+/* =========================
+   FIRMAS DE SOLICITANTES (JEFES DE DEPARTAMENTO)
+   ========================= */
+$firmas_solicitantes = [];
+
+if (!empty($requerimientoIds)) {
+    // Obtener los departamentos y montos totales por requerimiento
+    $inReqs = implode(',', array_fill(0, count($requerimientoIds), '?'));
+    $stmtMontos = $conn->prepare("
+        SELECT 
+            r.departamento_id,
+            SUM(oi.total) AS monto_total
+        FROM orden_compra_items oi
+        INNER JOIN items i ON oi.item_id = i.id
+        INNER JOIN requerimientos r ON i.requerimiento_id = r.id
+        WHERE oi.orden_id = ? AND i.requerimiento_id IN ($inReqs)
+        GROUP BY r.departamento_id
+    ");
+    if ($stmtMontos) {
+        $types = "i" . str_repeat("i", count($requerimientoIds));
+        $params = array_merge([$id], $requerimientoIds);
+        $stmtMontos->bind_param($types, ...$params);
+        $stmtMontos->execute();
+        $resMontos = $stmtMontos->get_result();
+        $departamentos_montos = [];
+        while ($row = $resMontos->fetch_assoc()) {
+            $departamentos_montos[$row['departamento_id']] = (float)$row['monto_total'];
+        }
+        $stmtMontos->close();
+
+        if (!empty($departamentos_montos)) {
+            $depto_ids = array_keys($departamentos_montos);
+            $inDeptos = implode(',', array_fill(0, count($depto_ids), '?'));
+            $stmtJefes = $conn->prepare("
+                SELECT u.nombre, u.firma, u.departamento_id, d.nombre AS depto_nombre
+                FROM usuarios u
+                INNER JOIN departamentos d ON u.departamento_id = d.id
+                WHERE u.departamento_id IN ($inDeptos) AND u.tipo = 'jefe'
+            ");
+            if ($stmtJefes) {
+                $stmtJefes->bind_param(str_repeat('i', count($depto_ids)), ...$depto_ids);
+                $stmtJefes->execute();
+                $resJefes = $stmtJefes->get_result();
+                while ($jefe = $resJefes->fetch_assoc()) {
+                    $depto_id = $jefe['departamento_id'];
+                    $firmas_solicitantes[] = [
+                        'nombre' => $jefe['nombre'],
+                        'firma' => $jefe['firma'],
+                        'departamento' => $jefe['depto_nombre'],
+                        'monto' => $departamentos_montos[$depto_id]
+                    ];
+                }
+                $stmtJefes->close();
+
+                // Ordenar de mayor a menor monto
+                usort($firmas_solicitantes, function($a, $b) {
+                    return $b['monto'] <=> $a['monto'];
+                });
+            }
+        }
+    }
 }
 
 /* =========================
@@ -207,6 +276,7 @@ echo json_encode([
             "nombre" => $orden["sede_nombre"]
         ],
         "firmas" => $firmas,
+        "firmas_solicitantes" => $firmas_solicitantes,
         "items" => $items
     ]
 ]);

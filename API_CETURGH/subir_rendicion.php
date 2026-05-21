@@ -20,12 +20,10 @@ $solicitud_id = intval($_POST["solicitud_id"] ?? 0);
 $usuario_id   = intval($_POST["usuario_id"] ?? 0);
 
 if ($solicitud_id <= 0 || $usuario_id <= 0) {
-
     echo json_encode([
         "success" => false,
         "message" => "Datos incompletos"
     ]);
-
     exit;
 }
 
@@ -33,17 +31,11 @@ if ($solicitud_id <= 0 || $usuario_id <= 0) {
    VALIDAR ARCHIVOS
 ========================================= */
 
-if (
-    !isset($_FILES["files"])
-    ||
-    empty($_FILES["files"]["name"][0])
-) {
-
+if (!isset($_FILES["files"]) || empty($_FILES["files"]["name"][0])) {
     echo json_encode([
         "success" => false,
         "message" => "No se recibieron archivos"
     ]);
-
     exit;
 }
 
@@ -64,12 +56,10 @@ $stmt = $conn->prepare("
 ");
 
 if (!$stmt) {
-
     echo json_encode([
         "success" => false,
         "message" => $conn->error
     ]);
-
     exit;
 }
 
@@ -79,12 +69,10 @@ $stmt->execute();
 $sol = $stmt->get_result()->fetch_assoc();
 
 if (!$sol) {
-
     echo json_encode([
         "success" => false,
         "message" => "Solicitud no existe"
     ]);
-
     exit;
 }
 
@@ -95,69 +83,40 @@ if (!$sol) {
 $tipo   = strtoupper(trim($sol["tipo"] ?? ""));
 $estado = strtoupper(trim($sol["estado"] ?? ""));
 
-$montoSolicitado = floatval(
-    $sol["monto_solicitado"] ?? 0
-);
-
-$montoRendido = floatval(
-    $sol["monto_rendido"] ?? 0
-);
+$montoSolicitado = floatval($sol["monto_solicitado"] ?? 0);
+$montoRendido = floatval($sol["monto_rendido"] ?? 0);
 
 /*
     DIFERENCIA:
-
     NEGATIVO  => TESORERIA REEMBOLSA
     POSITIVO  => USUARIO DEVUELVE
     CERO      => CUADRADO
 */
-
 $diferencia = $montoSolicitado - $montoRendido;
 
 /* =========================================
-   VALIDAR ESTADO
+   VALIDAR ESTADO PERMITIDO
 ========================================= */
 
 $permitido = false;
 
-/* =========================================
-   ADELANTO
-========================================= */
-
 if ($tipo === "ADELANTO") {
-
-    if (
-        $estado === "PAGADO"
-        ||
-        $estado === "EN_RENDICION"
-    ) {
-
+    if ($estado === "PAGADO" || $estado === "EN_RENDICION") {
         $permitido = true;
     }
 }
-
-/* =========================================
-   REEMBOLSO
-========================================= */
-
-if ($tipo === "REEMBOLSO") {
-
-    if (
-        $estado === "APROBADO"
-        ||
-        $estado === "EN_RENDICION"
-    ) {
-
+// REEMBOLSO y VIATICOS se comportan igual
+else if ($tipo === "REEMBOLSO" || $tipo === "VIATICOS") {
+    if ($estado === "APROBADO" || $estado === "EN_RENDICION") {
         $permitido = true;
     }
 }
 
 if (!$permitido) {
-
     echo json_encode([
         "success" => false,
         "message" => "La solicitud no puede rendirse en el estado actual"
     ]);
-
     exit;
 }
 
@@ -166,17 +125,15 @@ if (!$permitido) {
 ========================================= */
 
 $dir = "uploads/rendiciones/";
-
 if (!file_exists($dir)) {
     mkdir($dir, 0777, true);
 }
 
 /* =========================================
-   EXTENSIONES
+   EXTENSIONES PERMITIDAS
 ========================================= */
 
 $permitidos = ["pdf", "jpg", "jpeg", "png"];
-
 $subidos = [];
 
 /* =========================================
@@ -184,151 +141,55 @@ $subidos = [];
 ========================================= */
 
 foreach ($_FILES["files"]["tmp_name"] as $i => $tmp) {
-
     $original = $_FILES["files"]["name"][$i];
-
     $error = $_FILES["files"]["error"][$i];
+    if ($error !== UPLOAD_ERR_OK) continue;
 
-    if ($error !== UPLOAD_ERR_OK) {
-        continue;
-    }
+    $ext = strtolower(pathinfo($original, PATHINFO_EXTENSION));
+    if (!in_array($ext, $permitidos)) continue;
 
-    $ext = strtolower(
-        pathinfo($original, PATHINFO_EXTENSION)
-    );
-
-    if (!in_array($ext, $permitidos)) {
-        continue;
-    }
-
-    $nuevoNombre =
-        uniqid() .
-        "_" .
-        time() .
-        "." .
-        $ext;
-
+    $nuevoNombre = uniqid() . "_" . time() . "." . $ext;
     $ruta = $dir . $nuevoNombre;
 
-    if (!move_uploaded_file($tmp, $ruta)) {
-        continue;
-    }
-
-    /* =========================================
-       INSERT ARCHIVO
-    ========================================= */
+    if (!move_uploaded_file($tmp, $ruta)) continue;
 
     $stmtArchivo = $conn->prepare("
         INSERT INTO solicitud_archivos
-        (
-            solicitud_id,
-            tipo,
-            nombre_original,
-            nombre_guardado,
-            ruta,
-            subido_por
-        )
-        VALUES
-        (
-            ?,
-            'RENDICION',
-            ?,
-            ?,
-            ?,
-            ?
-        )
+        (solicitud_id, tipo, nombre_original, nombre_guardado, ruta, subido_por)
+        VALUES (?, 'RENDICION', ?, ?, ?, ?)
     ");
-
-    if (!$stmtArchivo) {
-        continue;
+    if ($stmtArchivo) {
+        $stmtArchivo->bind_param("isssi", $solicitud_id, $original, $nuevoNombre, $ruta, $usuario_id);
+        $stmtArchivo->execute();
+        $subidos[] = ["archivo" => $nuevoNombre, "ruta" => $ruta];
     }
-
-    $stmtArchivo->bind_param(
-        "isssi",
-        $solicitud_id,
-        $original,
-        $nuevoNombre,
-        $ruta,
-        $usuario_id
-    );
-
-    $stmtArchivo->execute();
-
-    $subidos[] = [
-        "archivo" => $nuevoNombre,
-        "ruta" => $ruta
-    ];
 }
 
-/* =========================================
-   VALIDAR SUBIDOS
-========================================= */
-
 if (count($subidos) === 0) {
-
     echo json_encode([
         "success" => false,
         "message" => "No se pudo subir archivos"
     ]);
-
     exit;
 }
 
 /* =========================================
-   DEFINIR NUEVO ESTADO
+   DEFINIR NUEVO ESTADO SEGÚN TIPO
 ========================================= */
 
 $nuevoEstado = "EN_RENDICION";
 
-/* =========================================
-   ADELANTO
-========================================= */
-
 if ($tipo === "ADELANTO") {
-
-    /*
-        diferencia > 0
-        SOBRÓ DINERO
-        usuario devuelve
-    */
-
     if ($diferencia > 0) {
-
         $nuevoEstado = "POR_DEVOLVER";
-    }
-
-    /*
-        diferencia < 0
-        FALTÓ DINERO
-        tesorería reembolsa
-    */
-
-    else if ($diferencia < 0) {
-
+    } else if ($diferencia < 0) {
         $nuevoEstado = "POR_REEMBOLSAR";
-    }
-
-    /*
-        diferencia == 0
-    */
-
-    else {
-
+    } else {
         $nuevoEstado = "CERRADO";
     }
-}
-
-/* =========================================
-   REEMBOLSO
-========================================= */
-
-if ($tipo === "REEMBOLSO") {
-
-    /*
-        En reembolso:
-        siempre tesorería paga luego
-    */
-
+} 
+else if ($tipo === "REEMBOLSO" || $tipo === "VIATICOS") {
+    // En reembolso y viáticos, después de subir el sustento se queda pendiente de pago
     $nuevoEstado = "POR_REEMBOLSAR";
 }
 
@@ -338,86 +199,40 @@ if ($tipo === "REEMBOLSO") {
 
 $stmtUpdate = $conn->prepare("
     UPDATE solicitudes_fondo
-    SET
-        estado=?,
-        diferencia=?
+    SET estado=?, diferencia=?
     WHERE id=?
 ");
-
 if (!$stmtUpdate) {
-
-    echo json_encode([
-        "success" => false,
-        "message" => $conn->error
-    ]);
-
+    echo json_encode(["success" => false, "message" => $conn->error]);
     exit;
 }
-
-$stmtUpdate->bind_param(
-    "sdi",
-    $nuevoEstado,
-    $diferencia,
-    $solicitud_id
-);
-
+$stmtUpdate->bind_param("sdi", $nuevoEstado, $diferencia, $solicitud_id);
 $stmtUpdate->execute();
 
 /* =========================================
-   HISTORIAL
+   REGISTRAR HISTORIAL
 ========================================= */
 
 $descripcion = "Se subieron archivos de rendición";
-
 if ($nuevoEstado === "POR_REEMBOLSAR") {
-
-    $descripcion =
-        "Rendición subida. Pendiente reembolso de tesorería";
-}
-
-if ($nuevoEstado === "POR_DEVOLVER") {
-
-    $descripcion =
-        "Rendición subida. Pendiente devolución de dinero";
-}
-
-if ($nuevoEstado === "CERRADO") {
-
-    $descripcion =
-        "Rendición cuadrada correctamente";
+    $descripcion = "Rendición subida. Pendiente reembolso de tesorería";
+} elseif ($nuevoEstado === "POR_DEVOLVER") {
+    $descripcion = "Rendición subida. Pendiente devolución de dinero";
+} elseif ($nuevoEstado === "CERRADO") {
+    $descripcion = "Rendición cuadrada correctamente";
 }
 
 $stmtHist = $conn->prepare("
-    INSERT INTO solicitud_historial
-    (
-        solicitud_id,
-        usuario_id,
-        accion,
-        descripcion
-    )
-    VALUES
-    (
-        ?,
-        ?,
-        'RENDICION',
-        ?
-    )
+    INSERT INTO solicitud_historial (solicitud_id, usuario_id, accion, descripcion)
+    VALUES (?, ?, 'RENDICION', ?)
 ");
-
 if ($stmtHist) {
-
-    $stmtHist->bind_param(
-        "iis",
-        $solicitud_id,
-        $usuario_id,
-        $descripcion
-    );
-
+    $stmtHist->bind_param("iis", $solicitud_id, $usuario_id, $descripcion);
     $stmtHist->execute();
 }
 
 /* =========================================
-   RESPONSE
+   RESPUESTA
 ========================================= */
 
 echo json_encode([

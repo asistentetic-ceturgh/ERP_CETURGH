@@ -25,7 +25,6 @@ if (!$data) {
 
 $solicitante_id = intval($data["solicitante_id"] ?? 0);
 $departamento_id = intval($data["departamento_id"] ?? 0);
-
 $empresa = trim($data["empresa"] ?? "");
 $sede = trim($data["sede"] ?? "");
 $tipo = strtoupper(trim($data["tipo"] ?? "ADELANTO"));
@@ -49,6 +48,12 @@ if ($empresa === "" || $sede === "" || $concepto === "") {
 
 if ($monto <= 0) {
     exit(json_encode(["success"=>false,"message"=>"Monto inválido"]));
+}
+
+// Validar tipo permitido (ahora incluye VIATICOS)
+$tiposPermitidos = ['ADELANTO', 'REEMBOLSO', 'VIATICOS'];
+if (!in_array($tipo, $tiposPermitidos)) {
+    exit(json_encode(["success"=>false,"message"=>"Tipo de solicitud no válido"]));
 }
 
 /* ========================= */
@@ -91,7 +96,7 @@ if (!$stmt) {
 }
 
 /* ========================= */
-/* FIX CRÍTICO AQUÍ */
+/* BIND PARAMS (sin cambios) */
 /* ========================= */
 
 $stmt->bind_param(
@@ -149,3 +154,4 @@ if ($stmt->execute()) {
 }
 
 $conn->close();
+?>
