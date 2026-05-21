@@ -47,6 +47,7 @@ const Fondos = ({ user }) => {
     const [showPagoModal, setShowPagoModal] = useState(false);
     const [archivoPago, setArchivoPago] = useState(null);
     const [montoTesoreria, setMontoTesoreria] = useState(0);
+    const [gastos, setGastos] = useState([]);
 
     const [showModal, setShowModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
@@ -179,6 +180,19 @@ const Fondos = ({ user }) => {
 
         }
     };
+
+    const obtenerGastos = async (solicitudId) => {
+        try {
+            const res = await fetch(`${API}listar_gastos.php?solicitud_id=${solicitudId}`);
+            const data = await res.json();
+            if (data.success) setGastos(data.gastos);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const montoRendidoReal = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
+    const diferenciaMonto = montoSolicitado - montoRendidoReal;
 
     const obtenerArchivosSolicitud = async (id) => {
 
