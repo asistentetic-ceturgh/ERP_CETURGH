@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+
+# Compilación
+dist/
+
+# Variables privadas
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# XAMPP
+xampp/
+htdocs/
+
+# Archivos temporales
+*.tmp
