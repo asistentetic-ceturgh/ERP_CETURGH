@@ -3,7 +3,6 @@ import {
     CheckCircle2,
     XCircle,
     AlertCircle,
-    Loader2,
     ChevronDown,
     ChevronUp,
     Building2,
@@ -13,6 +12,7 @@ import {
 import { API_BASE } from "../../config/api";
 
 const API = API_BASE + "administracion.php";
+const IGV_RATE = 0.18; // 18%
 
 const Administracion = () => {
     const [items, setItems] = useState([]);
@@ -23,11 +23,16 @@ const Administracion = () => {
     const [filtroEstado, setFiltroEstado] = useState("TODOS");
     const [expandedReq, setExpandedReq] = useState(null);
 
-    // Colores corporativos
     const colors = {
         granate: "#800020",
         dorado: "#D4AF37",
         doradoSuave: "#F4EBD0"
+    };
+
+    const getPrecioVisual = (item) => {
+        const precioBase = Number(item.precio_unitario) || 0;
+        const incluyeIgv = Number(item.incluye_igv) === 1;
+        return incluyeIgv ? precioBase * (1 + IGV_RATE) : precioBase;
     };
 
     const fetchItems = async () => {
@@ -50,7 +55,6 @@ const Administracion = () => {
     const itemsFiltrados = items.filter(it => {
         if (filtroEstado === "TODOS") return true;
         if (filtroEstado === "ADMINISTRACION") return (it.flujo_estado || "") === "ADMINISTRACION";
-
         const estadoAdmin = (it.estado_administracion || "PENDIENTE").toUpperCase();
         return estadoAdmin === filtroEstado;
     });
@@ -150,7 +154,10 @@ const Administracion = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {requerimientosAgrupados.map(req => {
-                                    const totalReq = req.items.reduce((acc, i) => acc + (Number(i.precio_unitario || 0) * Number(i.cantidad || 0)), 0);
+                                    const totalReq = req.items.reduce((acc, i) => {
+                                        const precioVis = getPrecioVisual(i);
+                                        return acc + (precioVis * (Number(i.cantidad) || 0));
+                                    }, 0);
                                     const isExpanded = expandedReq === req.id;
 
                                     return (
@@ -191,7 +198,9 @@ const Administracion = () => {
                                                                         <tr key={it.id} className="hover:bg-slate-50/50 transition-colors">
                                                                             <td className="px-4 py-3 text-sm font-medium">{it.descripcion}</td>
                                                                             <td className="px-4 py-3 text-sm">{it.cantidad} <span className="text-slate-400 text-xs">{it.unidad}</span></td>
-                                                                            <td className="px-4 py-3 text-sm text-right font-bold">S/ {Number(it.precio_unitario || 0).toFixed(2)}</td>
+                                                                            <td className="px-4 py-3 text-sm text-right font-bold">
+                                                                                S/ {getPrecioVisual(it).toFixed(2)}
+                                                                            </td>
                                                                             <td className="px-4 py-3 text-center">
                                                                                 <Badge variant={(it.estado_administracion || "PENDIENTE").toUpperCase()}>
                                                                                     {it.estado_administracion || "PENDIENTE"}
@@ -248,6 +257,7 @@ const Administracion = () => {
                     )}
                 </div>
             </div>
+
             {/* MODAL OBSERVACION */}
             {modalObs && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999] flex items-center justify-center p-4">

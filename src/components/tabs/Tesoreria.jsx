@@ -9,7 +9,7 @@ import { API_BASE } from "../../config/api";
 
 const API = API_BASE;
 
-// Componente auxiliar para subir múltiples archivos
+// Componente FileUploader  
 const FileUploader = ({ grupoId, tipo, onUpload }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const fileInputRef = useRef(null);
@@ -17,7 +17,7 @@ const FileUploader = ({ grupoId, tipo, onUpload }) => {
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     setSelectedFiles(prev => [...prev, ...files]);
-    e.target.value = ''; // permite volver a seleccionar los mismos archivos
+    e.target.value = '';
   };
 
   const handleUpload = () => {
@@ -64,17 +64,10 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
   // --- ESTADOS ---
   const [expandedProveedor, setExpandedProveedor] = useState(null);
   const [pagosFiltrados, setPagosFiltrados] = useState([]);
-  const [modoIGVTesoreria, setModoIGVTesoreria] = useState("incluido");
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [sedeSeleccionada, setSedeSeleccionada] = useState(null);
   const [tipoVista, setTipoVista] = useState("PENDIENTE");
-  const [ordenGenerada, setOrdenGenerada] = useState(null);
-
-  // --- Función para aplicar el modo IGV ---
-  const aplicarModoIGV = (monto) => {
-    if (modoIGVTesoreria === "incluido") return monto;
-    return monto / 1.18;
-  };
+  const [filtroIGV, setFiltroIGV] = useState("TODOS"); // TODOS, CON_IGV, SIN_IGV
 
   // --- FETCH PAGOS ---
   const fetchPagos = async () => {
@@ -91,6 +84,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
         montoTotal: Number(p.montoTotal) || 0,
         grupos: (p.grupos || []).map(g => ({
           ...g,
+          incluye_igv: Number(g.incluye_igv) || 0, // nuevo campo
           montoTotal: Number(g.montoTotal) || 0,
           items: (g.items || []).map(i => ({
             ...i,
@@ -105,7 +99,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
     }
   };
 
-  // --- SUBIR COMPROBANTE (múltiples archivos) ---
+  // --- SUBIR COMPROBANTE (múltiples) ---
   const subirComprobanteGrupo = async (grupoId, file) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -125,7 +119,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
     }
   };
 
-  // --- SUBIR GUÍA (múltiples archivos) ---
+  // --- SUBIR GUÍA (múltiples) ---
   const subirGuiaGrupo = async (grupoId, file) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -165,7 +159,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
     }
   };
 
-  // --- GENERAR ORDEN DE COMPRA ---
+  // --- GENERAR ORDEN DE COMPRA (envía incluye_igv) ---
   const generarOrdenCompra = async (grupo, pago) => {
     try {
       if (!grupo?.items || grupo.items.length === 0) {
@@ -177,7 +171,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
         empresa_id: Number(pago.empresa_id),
         sede_id: Number(pago.sede_id),
         grupo_id: Number(grupo.grupo_id),
-        modo_igv: modoIGVTesoreria,
+        incluye_igv: grupo.incluye_igv,  // 🔥 enviamos el flag real del grupo
         items: grupo.items.map(i => {
           const cantidad = Number(i.cantidad) || 1;
           const total = Number(i.monto) || 0;
@@ -213,7 +207,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
       setOrdenSeleccionada({
         ...data.orden,
         tipo: data.orden.tipo,
-        modo_igv: modoIGVTesoreria,
+        incluye_igv: grupo.incluye_igv,
         proveedor: {
           nombre: pago.proveedor || "",
           ruc: pago.proveedor_ruc || "",
@@ -251,16 +245,25 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
     }
   };
 
-  // --- FILTRO FINAL CON IGV ---
+  // --- FILTRO FINAL (con filtro IGV) ---
   const pagosFiltradosFinal = pagosFiltrados
     .map(p => {
       const gruposFiltrados = (p.grupos || []).map(g => {
+        // Filtrar items por estado de pago (PENDIENTE / PAGADO)
         let itemsFiltrados = g.items;
         if (tipoVista === "PENDIENTE") itemsFiltrados = g.items.filter(i => i.estado_pago === "Pendiente");
         else if (tipoVista === "PAGADO") itemsFiltrados = g.items.filter(i => i.estado_pago === "Pagado");
-        const montoTotalGrupo = itemsFiltrados.reduce((acc, i) => acc + aplicarModoIGV(i.monto || 0), 0);
+
+        // Filtrar por tipo de IGV si se seleccionó
+        if (filtroIGV === "CON_IGV" && g.incluye_igv !== 1) return null;
+        if (filtroIGV === "SIN_IGV" && g.incluye_igv !== 0) return null;
+
+        if (itemsFiltrados.length === 0) return null;
+
+        const montoTotalGrupo = itemsFiltrados.reduce((acc, i) => acc + (i.monto || 0), 0);
         return { ...g, items: itemsFiltrados, montoTotal: montoTotalGrupo };
-      }).filter(g => g.items.length > 0);
+      }).filter(g => g !== null);
+
       return { ...p, grupos: gruposFiltrados };
     })
     .filter(p => p.grupos.length > 0)
@@ -275,7 +278,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
 
   return (
     <div className="flex-1 flex flex-col h-screen bg-[#F8F9FA] overflow-hidden font-sans">
-      {/* HEADER */}
+      {/* HEADER (sin cambios) */}
       <header className="h-24 bg-white border-b border-gray-100 flex items-center justify-between px-10 shadow-sm z-10">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-[#800000] rounded-xl flex items-center justify-center shadow-lg shadow-maroon-200">
@@ -300,7 +303,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
 
       <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
         <div className="max-w-6xl mx-auto space-y-8">
-          {/* FILTROS Y TOTAL */}
+          {/* FILTROS DE EMPRESA Y SEDE (igual) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
             <div className="lg:col-span-2 space-y-4">
               <div>
@@ -364,7 +367,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
             </div>
           </div>
 
-          {/* BOTONES PENDIENTE/PAGADO/TODOS */}
+          {/* FILTROS POR ESTADO DE PAGO */}
           <div className="flex gap-2">
             {["PENDIENTE", "PAGADO", "TODOS"].map(tipo => (
               <button
@@ -377,20 +380,33 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
             ))}
           </div>
 
-          {/* SELECTOR MODO IGV */}
-          <div className="flex gap-4 items-center bg-white p-3 rounded-xl shadow-sm border border-gray-100">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Modo IGV:</span>
-            <div className="flex gap-2">
-              <button onClick={() => setModoIGVTesoreria("incluido")} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${modoIGVTesoreria === "incluido" ? "bg-[#800000] text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>Total incluye IGV</button>
-              <button onClick={() => setModoIGVTesoreria("agregado")} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${modoIGVTesoreria === "agregado" ? "bg-[#800000] text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>IGV se agrega al subtotal</button>
-            </div>
+          {/* NUEVOS FILTROS POR IGV */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFiltroIGV("TODOS")}
+              className={`px-4 py-2 rounded-xl font-bold ${filtroIGV === "TODOS" ? 'bg-[#800000] text-white' : 'bg-white border'}`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFiltroIGV("CON_IGV")}
+              className={`px-4 py-2 rounded-xl font-bold ${filtroIGV === "CON_IGV" ? 'bg-[#800000] text-white' : 'bg-white border'}`}
+            >
+              PRECIO TOTAL
+            </button>
+            <button
+              onClick={() => setFiltroIGV("SIN_IGV")}
+              className={`px-4 py-2 rounded-xl font-bold ${filtroIGV === "SIN_IGV" ? 'bg-[#800000] text-white' : 'bg-white border'}`}
+            >
+              PRECIO SUBTOTAL
+            </button>
           </div>
 
           {/* LISTADO DE PROVEEDORES */}
           <div className="space-y-4">
             <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center gap-2">
               <Truck size={16} className="text-[#800000]" />
-              Proveedores Pendientes ({pagosFiltradosFinal.length})
+              Proveedores ({pagosFiltradosFinal.length})
             </h3>
             {pagosFiltradosFinal.length > 0 ? (
               pagosFiltradosFinal.map(pago => {
@@ -440,7 +456,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
                                     <tr className="bg-gray-50/80 border-t border-gray-200">
                                       <td colSpan="4" className="px-6 py-4">
                                         <div className="flex items-center justify-between">
-                                          <div className="font-bold text-sm text-gray-700">Grupo #{grupo.grupo_id}</div>
+                                          <div className="font-bold text-sm text-gray-700">Grupo #{grupo.grupo_id} {grupo.incluye_igv === 1 ? "(IGV incluido)" : "(Sin IGV)"}</div>
                                           <div className="font-black text-base text-gray-800 bg-white px-4 py-1.5 rounded-lg shadow-sm">Total: S/ {grupo.montoTotal.toFixed(2)}</div>
                                         </div>
                                         <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -468,7 +484,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
                                             <FileUploader grupoId={grupo.grupo_id} tipo="guia" onUpload={async (id, files) => { for (const f of files) await subirGuiaGrupo(id, f); fetchPagos(); }} />
                                           </div>
                                           <button onClick={() => generarOrdenCompra(grupo, pago)} className="bg-white border-2 border-[#800000] text-[#800000] px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-red-50 transition-all">
-                                            <FileText size={14} /> {ordenGenerada?.tipo === "OS" ? "Orden Servicio" : "Orden Compra"}
+                                            <FileText size={14} /> Orden de Compra
                                           </button>
                                         </div>
                                       </td>
@@ -477,7 +493,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
                                       <tr key={item.id} className="hover:bg-gray-50 transition-colors duration-150 border-t border-gray-50">
                                         <td className="px-6 py-3.5 font-semibold text-gray-700 text-sm">{item.descripcion}</td>
                                         <td className="px-6 py-3.5"><div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium"><Calendar size={14} className="text-gray-400" /> {item.fecha}</div></td>
-                                        <td className="px-6 py-3.5"><span className="font-black text-gray-800 text-sm bg-gray-50 px-2 py-1 rounded">S/ {aplicarModoIGV(item.monto || 0).toFixed(2)}</span></td>
+                                        <td className="px-6 py-3.5"><span className="font-black text-gray-800 text-sm bg-gray-50 px-2 py-1 rounded">S/ {item.monto.toFixed(2)}</span></td>
                                         <td className="px-6 py-3.5 text-center">
                                           {item.estado_pago === "Pagado" ? <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-[10px] font-black"><CheckCircle2 size={12} /> Pagado</span>
                                           : <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-full text-[10px] font-black"><AlertCircle size={12} /> Pendiente</span>}
@@ -498,7 +514,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
             ) : (
               <div className="bg-white rounded-3xl border border-dashed border-gray-200 py-20 text-center space-y-3 shadow-inner">
                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto"><Receipt size={32} className="text-gray-200" /></div>
-                <p className="text-gray-400 font-bold uppercase text-xs tracking-[0.2em]">No se encontraron pagos pendientes</p>
+                <p className="text-gray-400 font-bold uppercase text-xs tracking-[0.2em]">No se encontraron pagos</p>
               </div>
             )}
           </div>

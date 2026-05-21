@@ -27,6 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // =======================
+// 🔥 LEER FLAG IGV
+// =======================
+$incluye_igv = isset($_POST['incluye_igv']) ? (int)$_POST['incluye_igv'] : 0;
+
+// =======================
 // 🔥 VALIDAR ITEMS
 // =======================
 if (!isset($_POST['items'])) {
@@ -104,17 +109,17 @@ $conn->begin_transaction();
 
 try {
 
-    // 🔥 1. CREAR GRUPO
+    // 🔥 1. CREAR GRUPO CON IGV
     $stmt = $conn->prepare("
-        INSERT INTO grupos_tesoreria (guia_url)
-        VALUES (?)
+        INSERT INTO grupos_tesoreria (guia_url, incluye_igv)
+        VALUES (?, ?)
     ");
 
     if (!$stmt) {
         throw new Exception("Error prepare INSERT: " . $conn->error);
     }
 
-    $stmt->bind_param("s", $ruta);
+    $stmt->bind_param("si", $ruta, $incluye_igv);
 
     if (!$stmt->execute()) {
         throw new Exception("Error execute INSERT: " . $stmt->error);
@@ -124,14 +129,14 @@ try {
 
     // 🔥 2. ACTUALIZAR ITEMS
     $stmtUpdate = $conn->prepare("
-    UPDATE items
-    SET 
-        flujo_estado = 'ADMINISTRACION',
-        estado_logistica = 'ENVIADO',
-        estado_administracion = 'PENDIENTE',
-        grupo_id = ?
-    WHERE id = ?
-");
+        UPDATE items
+        SET 
+            flujo_estado = 'ADMINISTRACION',
+            estado_logistica = 'ENVIADO',
+            estado_administracion = 'PENDIENTE',
+            grupo_id = ?
+        WHERE id = ?
+    ");
 
     if (!$stmtUpdate) {
         throw new Exception("Error prepare UPDATE: " . $conn->error);
@@ -157,7 +162,8 @@ try {
     echo json_encode([
         "success" => true,
         "grupo_id" => $grupo_id,
-        "archivo" => $ruta
+        "archivo" => $ruta,
+        "incluye_igv" => $incluye_igv
     ]);
 
 } catch (Exception $e) {

@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
@@ -17,6 +17,7 @@ SELECT
     g.id as grupo_id,
     g.guia_url,
     g.comprobante_url,
+    g.incluye_igv,                -- 🔥 NUEVO: flag IGV del grupo
 
     p.id AS proveedor_id,
     p.nombre AS proveedor,
@@ -40,15 +41,15 @@ SELECT
 
 FROM grupos_tesoreria g
 INNER JOIN items i
-ON i.grupo_id = g.id
+    ON i.grupo_id = g.id
 INNER JOIN requerimientos r
-ON i.requerimiento_id = r.id
+    ON i.requerimiento_id = r.id
 LEFT JOIN proveedores p
-ON i.proveedor_id = p.id
+    ON i.proveedor_id = p.id
 LEFT JOIN empresas e
-ON r.empresa_id = e.id
+    ON r.empresa_id = e.id
 LEFT JOIN sedes s
-ON r.sede_id = s.id
+    ON r.sede_id = s.id
 
 WHERE UPPER(COALESCE(i.estado_administracion, 'PENDIENTE')) = 'APROBADO'
 
@@ -71,9 +72,9 @@ $agrupado = [];
 while ($row = $res->fetch_assoc()) {
 
     $key = 
-    ($row['proveedor_id'] ?? 0) . "_" .
-    ($row['empresa_id'] ?? 0) . "_" .
-    ($row['sede_id'] ?? 0);
+        ($row['proveedor_id'] ?? 0) . "_" .
+        ($row['empresa_id'] ?? 0) . "_" .
+        ($row['sede_id'] ?? 0);
     $grupo_id = $row['grupo_id'];
 
     if (!isset($agrupado[$key])) {
@@ -90,10 +91,11 @@ while ($row = $res->fetch_assoc()) {
     }
 
     if (!isset($agrupado[$key]["grupos"][$grupo_id])) {
-       $agrupado[$key]["grupos"][$grupo_id] = [
+        $agrupado[$key]["grupos"][$grupo_id] = [
             "grupo_id" => $grupo_id,
             "guia_url" => $row["guia_url"] ?? null,
             "comprobante_url" => $row["comprobante_url"] ?? null,
+            "incluye_igv" => (int)($row["incluye_igv"] ?? 0),   // 🔥 NUEVO: incluye IGV
             "items" => [],
             "montoTotal" => 0
         ];
@@ -109,8 +111,6 @@ while ($row = $res->fetch_assoc()) {
         "monto" => $monto,
         "estado_pago" => $row["estado_pago"],
         "fecha" => $row["fecha"],
-
-        // 🔥 IMPORTANTE
         "centro_costo" => $row["centro_costo_id"],
         "area_costo" => $row["area_costo_id"]
     ];

@@ -10,7 +10,6 @@ header("Access-Control-Allow-Headers: Content-Type");
 
 require_once "db.php";
 
-
 /* ===========================
    ✅ PREFLIGHT
 =========================== */
@@ -22,65 +21,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $method = $_SERVER['REQUEST_METHOD'];
 
 /* ===========================
-   🔍 LISTAR ITEMS ADMIN
+   🔍 LISTAR ITEMS ADMIN (con incluye_igv)
 =========================== */
 if ($method === 'GET') {
 
-   $sql = "
-    SELECT 
-        i.id,
-        i.requerimiento_id,
-        i.descripcion,
-        i.cantidad,
-        i.unidad,
-        i.precio_unitario,
-        i.proveedor,
-        i.flujo_estado,
-        i.estado_logistica,
-        i.estado_administracion,
-        i.estado_tesoreria,
-        i.comentario_estado,
-        i.grupo_id,
+    $sql = "
+        SELECT 
+            i.id,
+            i.requerimiento_id,
+            i.descripcion,
+            i.cantidad,
+            i.unidad,
+            i.precio_unitario,
+            i.proveedor,
+            i.flujo_estado,
+            i.estado_logistica,
+            i.estado_administracion,
+            i.estado_tesoreria,
+            i.comentario_estado,
+            i.grupo_id,
 
-        r.codigo AS requerimiento_codigo,
-        r.fecha,
+            r.codigo AS requerimiento_codigo,
+            r.fecha,
 
-        e.nombre AS empresa,
-        s.nombre AS sede,
-        d.nombre AS departamento
+            e.nombre AS empresa,
+            s.nombre AS sede,
+            d.nombre AS departamento,
 
-    FROM items i
+            -- 🔥 OBTENER FLAG IGV DESDE EL GRUPO (por defecto 0)
+            COALESCE(g.incluye_igv, 0) AS incluye_igv
 
-    INNER JOIN requerimientos r
-        ON r.id = i.requerimiento_id
+        FROM items i
 
-    LEFT JOIN empresas e
-        ON e.id = r.empresa_id
+        INNER JOIN requerimientos r
+            ON r.id = i.requerimiento_id
 
-    LEFT JOIN sedes s
-        ON s.id = r.sede_id
+        LEFT JOIN empresas e
+            ON e.id = r.empresa_id
 
-    LEFT JOIN departamentos d
-        ON d.id = r.departamento_id
+        LEFT JOIN sedes s
+            ON s.id = r.sede_id
 
-    WHERE i.flujo_estado IN (
-        'LOGISTICA',
-        'ADMINISTRACION',
-        'TESORERIA'
-    )
+        LEFT JOIN departamentos d
+            ON d.id = r.departamento_id
 
-    ORDER BY r.id DESC, i.id DESC
-";
+        LEFT JOIN grupos_tesoreria g
+            ON g.id = i.grupo_id
+
+        WHERE i.flujo_estado IN (
+            'LOGISTICA',
+            'ADMINISTRACION',
+            'TESORERIA'
+        )
+
+        ORDER BY r.id DESC, i.id DESC
+    ";
 
     $result = $conn->query($sql);
 
     if (!$result) {
-
         echo json_encode([
             "success" => false,
             "error" => $conn->error
         ]);
-
         exit();
     }
 
@@ -120,7 +123,10 @@ if ($method === 'GET') {
 
             "empresa" => $row["empresa"],
             "sede" => $row["sede"],
-            "departamento" => $row["departamento"]
+            "departamento" => $row["departamento"],
+
+            // 🔥 NUEVO CAMPO
+            "incluye_igv" => (int)$row["incluye_igv"]
         ];
     }
 

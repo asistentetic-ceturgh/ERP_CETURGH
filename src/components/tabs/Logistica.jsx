@@ -40,6 +40,7 @@ const Logistica = () => {
     const [archivo, setArchivo] = useState(null);
     const fileRef = useRef(null);
     const [dirtyItems, setDirtyItems] = useState(new Set());
+    const [incluyeIgv, setIncluyeIgv] = useState(false);  
 
     // =====================
     // SAFE ITEMS (DEBE IR PRIMERO)
@@ -458,6 +459,7 @@ const Logistica = () => {
             if (archivo) {
                 formData.append("archivo", archivo);
             }
+            formData.append("incluye_igv", incluyeIgv ? "1" : "0");
 
             formData.append("items", JSON.stringify(itemsEnviar));
 
@@ -536,6 +538,29 @@ const Logistica = () => {
                             {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                             {isSaving ? "Sincronizando..." : "Guardar Lote"}
                         </button>
+
+                        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+                            <button
+                                type="button"
+                                onClick={() => setIncluyeIgv(false)}
+                                className={`px-3 py-1.5 text-[11px] font-bold rounded-md transition-all ${!incluyeIgv
+                                        ? 'bg-white text-slate-800 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                PRECIO SUBTOTAL
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIncluyeIgv(true)}
+                                className={`px-3 py-1.5 text-[11px] font-bold rounded-md transition-all ${incluyeIgv
+                                        ? 'bg-white text-slate-800 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                PRECIO TOTAL
+                            </button>
+                        </div>
 
                         <button
                             onClick={enviarAdministracion}
