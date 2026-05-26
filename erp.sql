@@ -3541,6 +3541,9 @@ AFTER tipo;
 ALTER TABLE solicitudes_fondo
 MODIFY tipo ENUM('ADELANTO', 'REEMBOLSO', 'VIATICOS') NOT NULL DEFAULT 'ADELANTO';
 
+ALTER TABLE solicitudes_fondo 
+ADD COLUMN departamento_solicitante VARCHAR(100) NULL AFTER solicitante_id;
+
 CREATE TABLE cajas_chicas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     empresa_id INT,
@@ -3677,9 +3680,4 @@ CREATE TABLE rendicion_items (
 
     archivo VARCHAR(255) NULL
 );
-
-ALTER TABLE correlativos MODIFY COLUMN tipo ENUM('OC','OS','RQ') NOT NULL;
-
-INSERT INTO correlativos (tipo, anio, numero_actual) 
-SELECT 'RQ', YEAR(CURDATE()), 0
-WHERE NOT EXISTS (SELECT 1 FROM correlativos WHERE tipo = 'RQ' AND anio = YEAR(CURDATE()));
+ 

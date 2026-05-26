@@ -1,1192 +1,592 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-    Wallet,
-    Plus,
-    RefreshCcw,
-    Receipt,
-    ArrowUpCircle,
-    ArrowDownCircle,
-    Clock3,
-    CheckCircle2,
-    XCircle,
-    Eye,
-    Building2,
-    Landmark,
-    Search,
-    ChevronDown,
-    FileText,
-    Upload,
-    Trash2,
-    Save,
-    AlertCircle, X
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { 
+  Plus, FileText, DollarSign, Layers, Calendar, Trash2, Info, FileCheck,
+  Award, UploadCloud, ChevronRight, TrendingUp, User, ShieldCheck, Loader2
 } from 'lucide-react';
 
 import { API_BASE } from "../../config/api";
 
-const API = API_BASE;
+const API_BASE_URL = API_BASE;
 
-const CajaChica = ({ user }) => {
+export default function CajaChica() {
+  // ==================== ESTADOS PRINCIPALES ====================
+  const [cajas, setCajas] = useState([]);
+  const [rendiciones, setRendiciones] = useState([]);      // rendiciones de la caja seleccionada
+  const [loadingCajas, setLoadingCajas] = useState(true);
+  const [loadingRendiciones, setLoadingRendiciones] = useState(false);
+  const [selectedCajaId, setSelectedCajaId] = useState(null); // para filtrar rendiciones
 
-    /* =========================================================
-       STATES
-    ========================================================= */
+  // ==================== CONTROL DE MODALES ====================
+  const [showAperturaModal, setShowAperturaModal] = useState(false);
+  const [showRendicionModal, setShowRendicionModal] = useState(false);
+  const [selectedCaja, setSelectedCaja] = useState(null);
 
-    const [tab, setTab] = useState('cajas');
+  // ==================== FORMULARIO APERTURA (con datos maestros) ====================
+  const [empresas, setEmpresas] = useState([]);
+  const [sedes, setSedes] = useState([]);
+  const [centrosCosto, setCentrosCosto] = useState([]);
+  const [searchCentroTerm, setSearchCentroTerm] = useState('');
+  const [loadingCentros, setLoadingCentros] = useState(false);
+  const debounceRef = useRef(null);
 
-    const [loading, setLoading] = useState(false);
+  const [nuevaCaja, setNuevaCaja] = useState({
+    empresa_id: '',
+    sede_id: '',
+    centro_costo_id: '',
+    codigo: '',
+    monto_base: 1000.00,
+  });
 
-    const [cajas, setCajas] = useState([]);
-    const [solicitudes, setSolicitudes] = useState([]);
-    const [movimientos, setMovimientos] = useState([]);
-    const [rendiciones, setRendiciones] = useState([]);
+  // ==================== FORMULARIO RENDICIÓN ====================
+  const [cabeceraRendicion, setCabeceraRendicion] = useState({
+    numero: '',
+    fecha_rendicion: new Date().toISOString().split('T')[0],
+    fecha_deposito: '',
+    saldo_inicial: 0,
+  });
+  const [itemsRendicion, setItemsRendicion] = useState([
+    { id: 1, fecha: '', proveedor: '', ruc_dni: '', tipo_documento: 'FACTURA', numero_documento: '', descripcion: '', monto: 0 }
+  ]);
 
-    const [empresas, setEmpresas] = useState([]);
-    const [sedes, setSedes] = useState([]);
-    const [centros, setCentros] = useState([]);
+  // ==================== NOTIFICACIONES ====================
+  const [notification, setNotification] = useState(null);
+  const triggerNotification = (msg, type = 'success') => {
+    setNotification({ text: msg, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
 
-    const [showModalCaja, setShowModalCaja] = useState(false);
-    const [showModalRecarga, setShowModalRecarga] = useState(false);
-    const [showModalRendicion, setShowModalRendicion] = useState(false);
+  // ==================== CÁLCULOS RENDICIÓN ====================
+  const totalRendido = itemsRendicion.reduce((acc, curr) => acc + (parseFloat(curr.monto) || 0), 0);
+  const saldoCajaFinal = parseFloat(cabeceraRendicion.saldo_inicial) - totalRendido;
+  const pendientePorDepositar = totalRendido;
 
-    const [cajaSeleccionada, setCajaSeleccionada] = useState(null);
+  // ==================== FUNCIONES DE CARGA DE DATOS MAESTROS ====================
+  const loadEmpresas = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}empresas.php`);
+      const data = await res.json();
+      if (data.ok) setEmpresas(data.data);
+    } catch (error) {
+      console.error('Error cargando empresas:', error);
+      triggerNotification('Error al cargar empresas', 'error');
+    }
+  };
 
-    /* =========================================================
-       FORM NUEVA CAJA
-    ========================================================= */
+  const loadSedes = async (empresaId) => {
+    if (!empresaId) {
+      setSedes([]);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}sedes.php?empresa_id=${empresaId}`);
+      const data = await res.json();
+      if (data.ok) setSedes(data.data);
+    } catch (error) {
+      console.error('Error cargando sedes:', error);
+    }
+  };
 
-    const [formCaja, setFormCaja] = useState({
-        empresa_id: '',
-        sede_id: '',
-        centro_costo_id: '',
-        monto: '',
-        motivo: ''
+  const searchCentrosCosto = async (query, empresaId, sedeId) => {
+    if (!query || !empresaId || !sedeId) {
+      setCentrosCosto([]);
+      return;
+    }
+    setLoadingCentros(true);
+    try {
+      const url = `${API_BASE_URL}buscar_centros_costos.php?q=${encodeURIComponent(query)}&empresa_id=${empresaId}&sede_id=${sedeId}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.ok) setCentrosCosto(data.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingCentros(false);
+    }
+  };
+
+  // Debounce para búsqueda de centros de costo
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (nuevaCaja.empresa_id && nuevaCaja.sede_id && searchCentroTerm) {
+        searchCentrosCosto(searchCentroTerm, nuevaCaja.empresa_id, nuevaCaja.sede_id);
+      } else {
+        setCentrosCosto([]);
+      }
+    }, 500);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchCentroTerm, nuevaCaja.empresa_id, nuevaCaja.sede_id]);
+
+  // ==================== FUNCIONES DE CARGA DE NEGOCIO ====================
+  const fetchCajas = async () => {
+    setLoadingCajas(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}cajas.php`);
+      const data = await res.json();
+      if (data.ok) setCajas(data.data);
+      else triggerNotification('Error al cargar cajas', 'error');
+    } catch (error) {
+      triggerNotification('Error de conexión', 'error');
+    } finally {
+      setLoadingCajas(false);
+    }
+  };
+
+  const fetchRendiciones = async (cajaId) => {
+    if (!cajaId) return;
+    setLoadingRendiciones(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}rendiciones.php?caja_id=${cajaId}`);
+      const data = await res.json();
+      if (data.ok) setRendiciones(data.data);
+      else setRendiciones([]);
+    } catch (error) {
+      console.error(error);
+      setRendiciones([]);
+    } finally {
+      setLoadingRendiciones(false);
+    }
+  };
+
+  // ==================== EFECTOS INICIALES ====================
+  useEffect(() => {
+    loadEmpresas();
+    fetchCajas();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCajaId) {
+      fetchRendiciones(selectedCajaId);
+    } else {
+      setRendiciones([]);
+    }
+  }, [selectedCajaId]);
+
+  // ==================== MANEJADORES APERTURA ====================
+  const handleEmpresaChange = async (empId) => {
+    setNuevaCaja({ ...nuevaCaja, empresa_id: empId, sede_id: '', centro_costo_id: '' });
+    await loadSedes(empId);
+    setCentrosCosto([]);
+    setSearchCentroTerm('');
+  };
+
+  const handleSedeChange = (sedeId) => {
+    setNuevaCaja({ ...nuevaCaja, sede_id: sedeId, centro_costo_id: '' });
+    setCentrosCosto([]);
+    setSearchCentroTerm('');
+  };
+
+  const handleCentroCostoSelect = (centro) => {
+    setNuevaCaja({ ...nuevaCaja, centro_costo_id: centro.id });
+    setSearchCentroTerm(centro.nombre);
+    setCentrosCosto([]);
+  };
+
+  const handleCreateCaja = async (e) => {
+    e.preventDefault();
+    if (!nuevaCaja.codigo || !nuevaCaja.monto_base || nuevaCaja.monto_base <= 0) {
+      triggerNotification('Código y monto base son obligatorios', 'error');
+      return;
+    }
+    if (!nuevaCaja.empresa_id || !nuevaCaja.sede_id || !nuevaCaja.centro_costo_id) {
+      triggerNotification('Complete empresa, sede y centro de costo', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}cajas.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          empresa_id: nuevaCaja.empresa_id,
+          sede_id: nuevaCaja.sede_id,
+          centro_costo_id: nuevaCaja.centro_costo_id,
+          codigo: nuevaCaja.codigo.toUpperCase(),
+          monto_base: parseFloat(nuevaCaja.monto_base),
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        triggerNotification(`Caja ${nuevaCaja.codigo} creada correctamente`);
+        setShowAperturaModal(false);
+        fetchCajas(); // recargar lista
+        setNuevaCaja({
+          empresa_id: '',
+          sede_id: '',
+          centro_costo_id: '',
+          codigo: '',
+          monto_base: 1000,
+        });
+        setSearchCentroTerm('');
+        setCentrosCosto([]);
+      } else {
+        triggerNotification(data.error || 'Error al crear', 'error');
+      }
+    } catch (error) {
+      triggerNotification('Error de conexión', 'error');
+    }
+  };
+
+  // ==================== MANEJADORES RENDICIÓN ====================
+  const handleOpenRendicion = (caja) => {
+    setSelectedCaja(caja);
+    setCabeceraRendicion({
+      numero: `Nº ${Math.floor(Math.random() * 100)}`, // temporal, podrías generar un correlativo
+      fecha_rendicion: new Date().toISOString().split('T')[0],
+      fecha_deposito: caja.created_at?.split('T')[0] || '',
+      saldo_inicial: parseFloat(caja.saldo_actual),
     });
+    // Inicializar con una fila vacía
+    setItemsRendicion([{ id: 1, fecha: '', proveedor: '', ruc_dni: '', tipo_documento: 'FACTURA', numero_documento: '', descripcion: '', monto: 0 }]);
+    setShowRendicionModal(true);
+  };
 
-    /* =========================================================
-       FORM RECARGA
-    ========================================================= */
+  const handleAddRow = () => {
+    const nextId = itemsRendicion.length > 0 ? Math.max(...itemsRendicion.map(i => i.id)) + 1 : 1;
+    setItemsRendicion([...itemsRendicion, { id: nextId, fecha: '', proveedor: '', ruc_dni: '', tipo_documento: 'FACTURA', numero_documento: '', descripcion: '', monto: 0 }]);
+  };
 
-    const [formRecarga, setFormRecarga] = useState({
-        caja_id: '',
-        centro_costo_id: '',
-        monto: '',
-        motivo: ''
-    });
+  const handleRemoveRow = (id) => {
+    if (itemsRendicion.length === 1) {
+      triggerNotification('Debe haber al menos un ítem', 'error');
+      return;
+    }
+    setItemsRendicion(itemsRendicion.filter(item => item.id !== id));
+  };
 
-    /* =========================================================
-       FORM RENDICION
-    ========================================================= */
+  const handleItemChange = (id, field, value) => {
+    setItemsRendicion(itemsRendicion.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
 
-    const [formRendicion, setFormRendicion] = useState({
-        fecha_rendicion: new Date().toISOString().slice(0, 10),
-        items: []
-    });
+  const handleSaveRendicion = async (estadoRendicion) => {
+    // Validaciones
+    if (itemsRendicion.some(item => !item.proveedor || item.monto <= 0)) {
+      triggerNotification('Complete proveedor e importe en todos los ítems', 'error');
+      return;
+    }
+    if (!cabeceraRendicion.numero) {
+      triggerNotification('Ingrese número de planilla', 'error');
+      return;
+    }
 
-    /* =========================================================
-       EFFECTS
-    ========================================================= */
+    const payload = {
+      caja_id: selectedCaja.id,
+      numero: cabeceraRendicion.numero,
+      fecha_rendicion: cabeceraRendicion.fecha_rendicion,
+      saldo_inicial: parseFloat(cabeceraRendicion.saldo_inicial),
+      total_rendido: totalRendido,
+      saldo_final: saldoCajaFinal >= 0 ? saldoCajaFinal : 0,
+      estado: estadoRendicion, // "BORRADOR" o "APROBADO"
+      created_by: 1, // TODO: conectar con usuario autenticado
+      items: itemsRendicion.map(item => ({
+        fecha: item.fecha,
+        proveedor: item.proveedor,
+        ruc_dni: item.ruc_dni,
+        tipo_documento: item.tipo_documento,
+        numero_documento: item.numero_documento,
+        descripcion: item.descripcion,
+        monto: parseFloat(item.monto),
+      })),
+    };
 
-    useEffect(() => {
-        fetchInitialData();
-    }, []);
-
-    /* =========================================================
-       FETCHES
-    ========================================================= */
-
-    const fetchInitialData = async () => {
-
-        setLoading(true);
-
-        try {
-
-            await Promise.all([
-                fetchCajas(),
-                fetchSolicitudes(),
-                fetchEmpresas(),
-                fetchRendiciones()
-            ]);
-
-        } catch (err) {
-            console.error(err);
+    try {
+      const res = await fetch(`${API_BASE_URL}rendiciones.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        triggerNotification(`Rendición ${cabeceraRendicion.numero} guardada como ${estadoRendicion}`);
+        setShowRendicionModal(false);
+        fetchCajas();               // actualiza saldos en lista de cajas
+        if (selectedCaja.id === selectedCajaId) {
+          fetchRendiciones(selectedCaja.id); // refresca historial
         }
-
-        setLoading(false);
-
-    };
-
-    const fetchCajas = async () => {
-
-        try {
-
-            const res = await fetch(API + "listar_cajas.php");
-            const data = await res.json();
-
-            if (data.ok) {
-                setCajas(data.data);
-            }
-
-        } catch (err) {
-            console.error(err);
-        }
-
-    };
-
-    const fetchSolicitudes = async () => {
-
-        try {
-
-            const res = await fetch(API + "listar_solicitudes_caja.php");
-            const data = await res.json();
-
-            if (data.ok) {
-                setSolicitudes(data.data);
-            }
-
-        } catch (err) {
-            console.error(err);
-        }
-
-    };
-
-    const fetchRendiciones = async () => {
-
-        try {
-
-            const res = await fetch(API + "listar_rendiciones_caja.php");
-            const data = await res.json();
-
-            if (data.ok) {
-                setRendiciones(data.data);
-            }
-
-        } catch (err) {
-            console.error(err);
-        }
-
-    };
-
-    const fetchEmpresas = async () => {
-
-        try {
-
-            const res = await fetch(API + "empresas.php");
-            const data = await res.json();
-
-            if (data.ok) {
-                setEmpresas(data.data);
-            }
-
-        } catch (err) {
-            console.error(err);
-        }
-
-    };
-
-    const fetchSedes = async (empresa_id) => {
-
-        try {
-
-            const res = await fetch(
-                API + "sedes.php?empresa_id=" + empresa_id
-            );
-
-            const data = await res.json();
-
-            if (data.ok) {
-                setSedes(data.data);
-            }
-
-        } catch (err) {
-            console.error(err);
-        }
-
-    };
-
-    const buscarCentros = async (q, empresa_id, sede_id) => {
-
-        if (!q) return;
-
-        try {
-
-            const res = await fetch(
-                API +
-                "buscar_centros_costos.php?" +
-                new URLSearchParams({
-                    q,
-                    empresa_id,
-                    sede_id
-                })
-            );
-
-            const data = await res.json();
-
-            if (data.ok) {
-                setCentros(data.data);
-            }
-
-        } catch (err) {
-            console.error(err);
-        }
-
-    };
-
-    /* =========================================================
-       NUEVA CAJA
-    ========================================================= */
-
-    const handleCrearCaja = async () => {
-
-        try {
-
-            const payload = {
-                tipo: 'APERTURA',
-                ...formCaja
-            };
-
-            const res = await fetch(API + "crear_solicitud_caja.php", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await res.json();
-
-            if (!data.ok) {
-                throw new Error(data.error);
-            }
-
-            alert("Solicitud enviada");
-
-            setShowModalCaja(false);
-
-            setFormCaja({
-                empresa_id: '',
-                sede_id: '',
-                centro_costo_id: '',
-                monto: '',
-                motivo: ''
-            });
-
-            fetchSolicitudes();
-
-        } catch (err) {
-            alert(err.message);
-        }
-
-    };
-
-    /* =========================================================
-       RECARGA
-    ========================================================= */
-
-    const handleRecargarCaja = async () => {
-
-        try {
-
-            const payload = {
-                tipo: 'RECARGA',
-                caja_id: cajaSeleccionada.id,
-                ...formRecarga
-            };
-
-            const res = await fetch(API + "crear_solicitud_caja.php", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await res.json();
-
-            if (!data.ok) {
-                throw new Error(data.error);
-            }
-
-            alert("Solicitud de recarga enviada");
-
-            setShowModalRecarga(false);
-
-            setFormRecarga({
-                caja_id: '',
-                centro_costo_id: '',
-                monto: '',
-                motivo: ''
-            });
-
-            fetchSolicitudes();
-
-        } catch (err) {
-            alert(err.message);
-        }
-
-    };
-
-    /* =========================================================
-       RENDICION
-    ========================================================= */
-
-    const addItemRendicion = () => {
-
-        setFormRendicion(prev => ({
-            ...prev,
-            items: [
-                ...prev.items,
-                {
-                    fecha: '',
-                    proveedor: '',
-                    ruc_dni: '',
-                    tipo_documento: 'FACTURA',
-                    numero_documento: '',
-                    descripcion: '',
-                    monto: '',
-                    archivo: null
-                }
-            ]
-        }));
-
-    };
-
-    const removeItemRendicion = (index) => {
-
-        setFormRendicion(prev => ({
-            ...prev,
-            items: prev.items.filter((_, i) => i !== index)
-        }));
-
-    };
-
-    const updateItem = (index, field, value) => {
-
-        const updated = [...formRendicion.items];
-
-        updated[index][field] = value;
-
-        setFormRendicion(prev => ({
-            ...prev,
-            items: updated
-        }));
-
-    };
-
-    const totalRendicion = useMemo(() => {
-
-        return formRendicion.items.reduce((acc, item) => {
-            return acc + Number(item.monto || 0);
-        }, 0);
-
-    }, [formRendicion]);
-
-    const handleGuardarRendicion = async () => {
-
-        try {
-
-            const formData = new FormData();
-
-            formData.append(
-                "caja_id",
-                cajaSeleccionada.id
-            );
-
-            formData.append(
-                "fecha_rendicion",
-                formRendicion.fecha_rendicion
-            );
-
-            formData.append(
-                "items",
-                JSON.stringify(formRendicion.items.map(item => ({
-                    fecha: item.fecha,
-                    proveedor: item.proveedor,
-                    ruc_dni: item.ruc_dni,
-                    tipo_documento: item.tipo_documento,
-                    numero_documento: item.numero_documento,
-                    descripcion: item.descripcion,
-                    monto: item.monto
-                })))
-            );
-
-            formRendicion.items.forEach((item, index) => {
-
-                if (item.archivo) {
-                    formData.append(
-                        `archivo_${index}`,
-                        item.archivo
-                    );
-                }
-
-            });
-
-            const res = await fetch(API + "guardar_rendicion.php", {
-                method: "POST",
-                body: formData
-            });
-
-            const data = await res.json();
-
-            if (!data.ok) {
-                throw new Error(data.error);
-            }
-
-            alert("Rendición registrada");
-
-            setShowModalRendicion(false);
-
-            setFormRendicion({
-                fecha_rendicion: new Date().toISOString().slice(0, 10),
-                items: []
-            });
-
-            fetchRendiciones();
-            fetchCajas();
-
-        } catch (err) {
-            alert(err.message);
-        }
-
-    };
-
-    /* =========================================================
-       UI HELPERS
-    ========================================================= */
-
-    const EstadoBadge = ({ estado }) => {
-
-        const styles = {
-            ACTIVA: 'bg-emerald-100 text-emerald-700',
-            AGOTADA: 'bg-red-100 text-red-700',
-            CERRADA: 'bg-slate-200 text-slate-700',
-            PENDIENTE_APERTURA: 'bg-amber-100 text-amber-700',
-
-            PENDIENTE_ADMIN: 'bg-amber-100 text-amber-700',
-            APROBADO_ADMIN: 'bg-blue-100 text-blue-700',
-            PENDIENTE_TESORERIA: 'bg-violet-100 text-violet-700',
-            PAGADO: 'bg-emerald-100 text-emerald-700',
-            RECHAZADO_ADMIN: 'bg-red-100 text-red-700'
-        };
-
-        return (
-            <span className={`px-3 py-1 rounded-full text-[10px] font-black ${styles[estado]}`}>
-                {estado}
-            </span>
-        );
-
-    };
-
-    /* =========================================================
-       RENDER
-    ========================================================= */
-
-    return (
-        <div className="min-h-screen bg-slate-100 p-4 md:p-8">
-
-            {/* HEADER */}
-
-            <div>
-                {/* HEADER DE LA SECCIÓN */}
-                <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                            Caja Chica
-                        </h1>
-                        <p className="text-sm text-slate-500 mt-1 font-medium">
-                            Gestión financiera de cajas, recargas y rendiciones.
-                        </p>
-                    </div>
-
-                    <div>
-                        <button
-                            onClick={() => setShowModalCaja(true)}
-                            className="w-full sm:w-auto bg-[#800000] hover:bg-[#600000] text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm shadow-maroon-900/10"
-                        >
-                            <Plus size={18} strokeWidth={2.5} />
-                            Nueva Caja
-                        </button>
-                    </div>
-                </div>
-
-                {/* NAVEGACIÓN POR PESTAÑAS (TABS STYLE) */}
-                <div className="flex gap-1 p-1 bg-slate-100/80 rounded-xl mb-8 w-fit overflow-auto max-w-full backdrop-blur-sm">
-                    {[
-                        ['cajas', 'Cajas'],
-                        ['solicitudes', 'Solicitudes'],
-                        ['rendiciones', 'Rendiciones']
-                    ].map(([key, label]) => (
-                        <button
-                            key={key}
-                            onClick={() => setTab(key)}
-                            className={`
-          px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 whitespace-nowrap
-          ${tab === key
-                                    ? 'bg-white text-slate-900 shadow-sm'
-                                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'}
-        `}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* CONTENIDO DE LAS PESTAÑAS */}
-
-                {/* VISTA: CAJAS */}
-                {tab === 'cajas' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {cajas.map(caja => (
-                            <div
-                                key={caja.id}
-                                className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
-                            >
-                                <div>
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div>
-                                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                                Código de Caja
-                                            </span>
-                                            <h3 className="text-lg font-bold text-slate-800 mt-0.5">
-                                                {caja.codigo}
-                                            </h3>
-                                        </div>
-                                        <EstadoBadge estado={caja.estado} />
-                                    </div>
-
-                                    <div className="space-y-2.5 py-3 border-y border-slate-50">
-                                        <div className="flex items-center gap-2.5 text-sm text-slate-600 font-medium">
-                                            <Building2 size={16} className="text-slate-400" />
-                                            <span>{caja.empresa}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2.5 text-sm text-slate-600 font-medium">
-                                            <Landmark size={16} className="text-slate-400" />
-                                            <span>{caja.centro_costo}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-5 grid grid-cols-2 gap-3">
-                                        <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                Base
-                                            </p>
-                                            <p className="text-base font-bold text-slate-700 mt-0.5">
-                                                S/ {Number(caja.monto_base).toFixed(2)}
-                                            </p>
-                                        </div>
-
-                                        <div className="bg-[#800000]/5 rounded-xl p-3 border border-[#800000]/10">
-                                            <p className="text-[10px] font-bold text-[#800000] uppercase tracking-wider">
-                                                Saldo Actual
-                                            </p>
-                                            <p className="text-base font-bold text-[#800000] mt-0.5">
-                                                S/ {Number(caja.saldo_actual).toFixed(2)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-2.5 mt-6 pt-2">
-                                    <button
-                                        onClick={() => {
-                                            setCajaSeleccionada(caja);
-                                            setShowModalRecarga(true);
-                                        }}
-                                        className="flex-1 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors"
-                                    >
-                                        Recargar
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setCajaSeleccionada(caja);
-                                            setShowModalRendicion(true);
-                                        }}
-                                        className="flex-1 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold transition-colors"
-                                    >
-                                        Rendir
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* VISTA: SOLICITUDES */}
-                {tab === 'solicitudes' && (
-                    <div className="bg-white rounded-2xl border border-slate-200/70 shadow-sm overflow-hidden">
-                        <div className="overflow-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50/70 text-slate-500 font-semibold border-b border-slate-200/50">
-                                    <tr>
-                                        <th className="px-6 py-4 font-semibold">Tipo</th>
-                                        <th className="px-6 py-4 font-semibold">Empresa</th>
-                                        <th className="px-6 py-4 font-semibold">Monto</th>
-                                        <th className="px-6 py-4 font-semibold">Estado</th>
-                                        <th className="px-6 py-4 font-semibold">Fecha</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 text-slate-700">
-                                    {solicitudes.map(item => (
-                                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-6 py-4 font-semibold text-slate-900">{item.tipo}</td>
-                                            <td className="px-6 py-4 text-slate-600">{item.empresa}</td>
-                                            <td className="px-6 py-4 font-bold text-slate-900">S/ {Number(item.monto).toFixed(2)}</td>
-                                            <td className="px-6 py-4"><EstadoBadge estado={item.estado} /></td>
-                                            <td className="px-6 py-4 text-slate-500 text-xs">{item.created_at}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* VISTA: RENDICIONES */}
-                {tab === 'rendiciones' && (
-                    <div className="bg-white rounded-2xl border border-slate-200/70 shadow-sm overflow-hidden">
-                        <div className="overflow-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50/70 text-slate-500 font-semibold border-b border-slate-200/50">
-                                    <tr>
-                                        <th className="px-6 py-4 font-semibold">Número</th>
-                                        <th className="px-6 py-4 font-semibold">Caja</th>
-                                        <th className="px-6 py-4 font-semibold">Fecha</th>
-                                        <th className="px-6 py-4 font-semibold">Total</th>
-                                        <th className="px-6 py-4 font-semibold">Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 text-slate-700">
-                                    {rendiciones.map(item => (
-                                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-6 py-4 font-bold text-slate-900">{item.numero}</td>
-                                            <td className="px-6 py-4 text-slate-600">{item.caja}</td>
-                                            <td className="px-6 py-4 text-slate-500 text-xs">{item.fecha_rendicion}</td>
-                                            <td className="px-6 py-4 font-bold text-slate-900">S/ {Number(item.total_rendido).toFixed(2)}</td>
-                                            <td className="px-6 py-4"><EstadoBadge estado={item.estado} /></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-            </div>
-            {/* =========================================================
-               MODAL NUEVA CAJA
-            ========================================================= */}
-
-            {showModalCaja && (
-                <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
-                    <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl border border-slate-100 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-
-                        {/* CABECERA DEL MODAL */}
-                        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-                            <div>
-                                <h2 className="text-xl font-bold text-slate-900">
-                                    Nueva Caja Chica
-                                </h2>
-                                <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                                    Completa los datos para aperturar o solicitar una nueva caja.
-                                </p>
-                            </div>
-
-                            {/* Botón X de cierre rápido opcional */}
-                            <button
-                                onClick={() => setShowModalCaja(false)}
-                                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-50 transition-colors"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        {/* CUERPO DEL FORMULARIO */}
-                        <div className="p-6 overflow-y-auto max-h-[calc(100vh-12rem)] space-y-5">
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                {/* Campo: Empresa */}
-                                <div className="flex flex-col">
-                                    <label className="text-xs font-semibold text-slate-600 mb-1.5 tracking-wide">
-                                        Empresa
-                                    </label>
-                                    <select
-                                        value={formCaja.empresa_id}
-                                        onChange={(e) => {
-                                            setFormCaja({
-                                                ...formCaja,
-                                                empresa_id: e.target.value
-                                            });
-                                            fetchSedes(e.target.value);
-                                        }}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-800 shadow-sm focus:border-slate-400 focus:ring-0 transition-all outline-none"
-                                    >
-                                        <option value="">Seleccione una empresa</option>
-                                        {empresas.map(emp => (
-                                            <option key={emp.id} value={emp.id}>
-                                                {emp.nombre}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                {/* Campo: Sede */}
-                                <div className="flex flex-col">
-                                    <label className="text-xs font-semibold text-slate-600 mb-1.5 tracking-wide">
-                                        Sede
-                                    </label>
-                                    <select
-                                        value={formCaja.sede_id}
-                                        onChange={(e) =>
-                                            setFormCaja({
-                                                ...formCaja,
-                                                sede_id: e.target.value
-                                            })
-                                        }
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-800 shadow-sm focus:border-slate-400 focus:ring-0 transition-all outline-none"
-                                    >
-                                        <option value="">Seleccione una sede</option>
-                                        {sedes.map(sede => (
-                                            <option key={sede.id} value={sede.id}>
-                                                {sede.nombre}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Campo: Buscador de Centro de Costo */}
-                            <div className="flex flex-col">
-                                <label className="text-xs font-semibold text-slate-600 mb-1.5 tracking-wide">
-                                    Centro de Costo
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        onChange={(e) =>
-                                            buscarCentros(
-                                                e.target.value,
-                                                formCaja.empresa_id,
-                                                formCaja.sede_id
-                                            )
-                                        }
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm shadow-sm placeholder:text-slate-400 focus:border-slate-400 focus:ring-0 transition-all outline-none"
-                                        placeholder="Escribe para buscar un centro de costo..."
-                                    />
-                                </div>
-
-                                {/* Resultados de Búsqueda */}
-                                {centros.length > 0 && (
-                                    <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-md max-h-48 overflow-y-auto bg-white divide-y divide-slate-100 z-10">
-                                        {centros.map(cc => {
-                                            const isSelected = formCaja.centro_costo_id === cc.id;
-                                            return (
-                                                <button
-                                                    type="button"
-                                                    key={cc.id}
-                                                    onClick={() =>
-                                                        setFormCaja({
-                                                            ...formCaja,
-                                                            centro_costo_id: cc.id
-                                                        })
-                                                    }
-                                                    className={`w-full text-left px-4 py-3 text-xs font-medium transition-colors flex items-center justify-between
-                      ${isSelected
-                                                            ? 'bg-[#800000]/5 text-[#800000] font-semibold'
-                                                            : 'text-slate-700 hover:bg-slate-50'}`}
-                                                >
-                                                    <span>{cc.codigo} — {cc.nombre}</span>
-                                                    {isSelected && <span className="text-[10px] bg-[#800000] text-white px-2 py-0.5 rounded-md font-bold">Seleccionado</span>}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Campo: Monto */}
-                            <div className="flex flex-col sm:w-1/2">
-                                <label className="text-xs font-semibold text-slate-600 mb-1.5 tracking-wide">
-                                    Monto Inicial (S/)
-                                </label>
-                                <div className="relative rounded-xl shadow-sm">
-                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                                        <span className="text-slate-400 text-sm font-medium">S/</span>
-                                    </div>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formCaja.monto}
-                                        onChange={(e) =>
-                                            setFormCaja({
-                                                ...formCaja,
-                                                monto: e.target.value
-                                            })
-                                        }
-                                        className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 font-semibold focus:border-slate-400 focus:ring-0 transition-all outline-none"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Campo: Motivo */}
-                            <div className="flex flex-col">
-                                <label className="text-xs font-semibold text-slate-600 mb-1.5 tracking-wide">
-                                    Motivo / Justificación
-                                </label>
-                                <textarea
-                                    value={formCaja.motivo}
-                                    onChange={(e) =>
-                                        setFormCaja({
-                                            ...formCaja,
-                                            motivo: e.target.value
-                                        })
-                                    }
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 h-24 resize-none focus:border-slate-400 focus:ring-0 transition-all outline-none"
-                                    placeholder="Describe brevemente el propósito de esta caja chica..."
-                                />
-                            </div>
-
-                        </div>
-
-                        {/* ACCIONES / BOTONES */}
-                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setShowModalCaja(false)}
-                                className="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold shadow-sm transition-colors"
-                            >
-                                Cancelar
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleCrearCaja}
-                                className="px-5 py-2 rounded-xl bg-[#800000] hover:bg-[#600000] text-white text-sm font-semibold shadow-sm shadow-maroon-900/10 transition-colors"
-                            >
-                                Crear Solicitud
-                            </button>
-                        </div>
-
-                    </div>
-                </div>
-            )}
-
-            {/* =========================================================
-               MODAL RECARGA
-            ========================================================= */}
-
-            {showModalRecarga && (
-
-                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-
-                    <div className="bg-white w-full max-w-xl rounded-[2rem] p-8">
-
-                        <h2 className="text-2xl font-black mb-6">
-                            Recargar Caja
-                        </h2>
-
-                        <div className="space-y-5">
-
-                            <div>
-
-                                <label className="text-xs font-black text-slate-500">
-                                    Monto
-                                </label>
-
-                                <input
-                                    type="number"
-                                    value={formRecarga.monto}
-                                    onChange={(e) =>
-                                        setFormRecarga({
-                                            ...formRecarga,
-                                            monto: e.target.value
-                                        })
-                                    }
-                                    className="w-full mt-2 p-4 rounded-2xl border border-slate-200"
-                                />
-
-                            </div>
-
-                            <div>
-
-                                <label className="text-xs font-black text-slate-500">
-                                    Motivo
-                                </label>
-
-                                <textarea
-                                    value={formRecarga.motivo}
-                                    onChange={(e) =>
-                                        setFormRecarga({
-                                            ...formRecarga,
-                                            motivo: e.target.value
-                                        })
-                                    }
-                                    className="w-full mt-2 p-4 rounded-2xl border border-slate-200 h-32"
-                                />
-
-                            </div>
-
-                        </div>
-
-                        <div className="flex justify-end gap-3 mt-8">
-
-                            <button
-                                onClick={() => setShowModalRecarga(false)}
-                                className="px-5 py-3 rounded-2xl bg-slate-100 font-black"
-                            >
-                                Cancelar
-                            </button>
-
-                            <button
-                                onClick={handleRecargarCaja}
-                                className="px-5 py-3 rounded-2xl bg-blue-600 text-white font-black"
-                            >
-                                Solicitar Recarga
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            )}
-
-            {/* =========================================================
-               MODAL RENDICION
-            ========================================================= */}
-
-            {showModalRendicion && (
-
-                <div className="fixed inset-0 z-50 bg-black/40 overflow-auto p-6">
-
-                    <div className="max-w-7xl mx-auto bg-white rounded-[2rem] p-8">
-
-                        <div className="flex items-center justify-between mb-8">
-
-                            <div>
-
-                                <h2 className="text-3xl font-black">
-                                    Rendición de Caja
-                                </h2>
-
-                                <p className="text-sm text-slate-500 mt-1">
-                                    Registra los gastos realizados.
-                                </p>
-
-                            </div>
-
-                            <button
-                                onClick={() => setShowModalRendicion(false)}
-                                className="px-5 py-3 bg-slate-100 rounded-2xl font-black"
-                            >
-                                Cerrar
-                            </button>
-
-                        </div>
-
-                        <div className="flex items-center justify-between mb-6">
-
-                            <div>
-
-                                <p className="text-sm text-slate-500">
-                                    Caja:
-                                </p>
-
-                                <p className="text-xl font-black">
-                                    {cajaSeleccionada?.codigo}
-                                </p>
-
-                            </div>
-
-                            <button
-                                onClick={addItemRendicion}
-                                className="bg-[#800000] text-white px-5 py-3 rounded-2xl font-black flex items-center gap-2"
-                            >
-                                <Plus size={18} />
-                                Agregar Item
-                            </button>
-
-                        </div>
-
-                        <div className="overflow-auto border rounded-2xl">
-
-                            <table className="w-full min-w-[1400px]">
-
-                                <thead className="bg-slate-50">
-
-                                    <tr>
-
-                                        <th className="p-3">Fecha</th>
-                                        <th className="p-3">Proveedor</th>
-                                        <th className="p-3">RUC/DNI</th>
-                                        <th className="p-3">Tipo</th>
-                                        <th className="p-3">Documento</th>
-                                        <th className="p-3">Descripción</th>
-                                        <th className="p-3">Monto</th>
-                                        <th className="p-3">Archivo</th>
-                                        <th className="p-3"></th>
-
-                                    </tr>
-
-                                </thead>
-
-                                <tbody>
-
-                                    {formRendicion.items.map((item, index) => (
-
-                                        <tr key={index} className="border-t">
-
-                                            <td className="p-2">
-                                                <input
-                                                    type="date"
-                                                    value={item.fecha}
-                                                    onChange={(e) =>
-                                                        updateItem(index, 'fecha', e.target.value)
-                                                    }
-                                                    className="p-3 border rounded-xl"
-                                                />
-                                            </td>
-
-                                            <td className="p-2">
-                                                <input
-                                                    type="text"
-                                                    value={item.proveedor}
-                                                    onChange={(e) =>
-                                                        updateItem(index, 'proveedor', e.target.value)
-                                                    }
-                                                    className="p-3 border rounded-xl w-full"
-                                                />
-                                            </td>
-
-                                            <td className="p-2">
-                                                <input
-                                                    type="text"
-                                                    value={item.ruc_dni}
-                                                    onChange={(e) =>
-                                                        updateItem(index, 'ruc_dni', e.target.value)
-                                                    }
-                                                    className="p-3 border rounded-xl w-full"
-                                                />
-                                            </td>
-
-                                            <td className="p-2">
-
-                                                <select
-                                                    value={item.tipo_documento}
-                                                    onChange={(e) =>
-                                                        updateItem(index, 'tipo_documento', e.target.value)
-                                                    }
-                                                    className="p-3 border rounded-xl"
-                                                >
-                                                    <option value="FACTURA">FACTURA</option>
-                                                    <option value="BOLETA">BOLETA</option>
-                                                    <option value="RXH">RXH</option>
-                                                    <option value="MOVILIDAD">MOVILIDAD</option>
-                                                    <option value="OTROS">OTROS</option>
-                                                </select>
-
-                                            </td>
-
-                                            <td className="p-2">
-                                                <input
-                                                    type="text"
-                                                    value={item.numero_documento}
-                                                    onChange={(e) =>
-                                                        updateItem(index, 'numero_documento', e.target.value)
-                                                    }
-                                                    className="p-3 border rounded-xl w-full"
-                                                />
-                                            </td>
-
-                                            <td className="p-2">
-                                                <textarea
-                                                    value={item.descripcion}
-                                                    onChange={(e) =>
-                                                        updateItem(index, 'descripcion', e.target.value)
-                                                    }
-                                                    className="p-3 border rounded-xl w-full"
-                                                />
-                                            </td>
-
-                                            <td className="p-2">
-                                                <input
-                                                    type="number"
-                                                    value={item.monto}
-                                                    onChange={(e) =>
-                                                        updateItem(index, 'monto', e.target.value)
-                                                    }
-                                                    className="p-3 border rounded-xl w-32"
-                                                />
-                                            </td>
-
-                                            <td className="p-2">
-
-                                                <input
-                                                    type="file"
-                                                    onChange={(e) =>
-                                                        updateItem(
-                                                            index,
-                                                            'archivo',
-                                                            e.target.files[0]
-                                                        )
-                                                    }
-                                                />
-
-                                            </td>
-
-                                            <td className="p-2">
-
-                                                <button
-                                                    onClick={() => removeItemRendicion(index)}
-                                                    className="text-red-500"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-
-                                            </td>
-
-                                        </tr>
-
-                                    ))}
-
-                                </tbody>
-
-                            </table>
-
-                        </div>
-
-                        <div className="mt-8 flex items-center justify-between">
-
-                            <div>
-
-                                <p className="text-sm text-slate-500">
-                                    Total Rendición
-                                </p>
-
-                                <p className="text-4xl font-black text-[#800000]">
-                                    S/ {totalRendicion.toFixed(2)}
-                                </p>
-
-                            </div>
-
-                            <button
-                                onClick={handleGuardarRendicion}
-                                className="bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2"
-                            >
-                                <Save size={20} />
-                                Guardar Rendición
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            )}
-
+      } else {
+        triggerNotification(data.error || 'Error al guardar', 'error');
+      }
+    } catch (error) {
+      triggerNotification('Error de conexión', 'error');
+    }
+  };
+
+  // ==================== RENDER ====================
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-900 custom-scrollbar">
+      
+      {/* NOTIFICACIÓN FLOTANTE */}
+      {notification && (
+        <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 p-4 rounded-2xl shadow-2xl border animate-bounce ${
+          notification.type === 'error' ? 'bg-rose-50 text-rose-900 border-rose-200' : 'bg-emerald-50 text-emerald-950 border-emerald-200'
+        }`}>
+          <Info className={`w-5 h-5 ${notification.type === 'error' ? 'text-rose-600' : 'text-emerald-600'}`} />
+          <p className="text-sm font-bold">{notification.text}</p>
         </div>
-    );
+      )}
 
-};
+      <div className="max-w-7xl mx-auto space-y-8">
 
-export default CajaChica;
+        {/* HEADER */}
+        <div className="bg-[#800000] p-6 sm:p-8 rounded-[2.5rem] text-white border-b-4 border-[#D4AF37] shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 bg-[#D4AF37] rounded-3xl flex items-center justify-center text-[#800000] shadow-lg">
+              <Award size={36} />
+            </div>
+            <div>
+              <span className="text-red-100 text-xs uppercase font-black tracking-widest">ADMINISTRACIÓN & TESORERÍA</span>
+              <h3 className="text-xl sm:text-2xl font-black uppercase italic tracking-wider font-serif">Módulo de Caja Chica</h3>
+            </div>
+          </div>
+          <button onClick={() => setShowAperturaModal(true)} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-950 text-[#D4AF37] border border-[#D4AF37]/50 px-6 py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2">
+            <Plus size={18} /> Aperturar Caja Chica
+          </button>
+        </div>
+
+        {/* MÉTRICAS (cálculos en tiempo real) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-[2.5rem] shadow-sm border p-6 flex justify-between">
+            <div><p className="text-[10px] font-black text-slate-400">Cajas Bajo Control</p><h3 className="text-3xl font-black">{cajas.length}</h3></div>
+            <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center"><Layers className="w-6 h-6 text-[#800000]" /></div>
+          </div>
+          <div className="bg-white rounded-[2.5rem] shadow-sm border p-6 flex justify-between">
+            <div><p className="text-[10px] font-black text-slate-400">Fondos Disponibles</p><h3 className="text-3xl font-black text-emerald-700">S/ {cajas.reduce((sum, c) => sum + parseFloat(c.saldo_actual), 0).toLocaleString()}</h3></div>
+            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center"><DollarSign className="w-6 h-6 text-emerald-600" /></div>
+          </div>
+          <div className="bg-white rounded-[2.5rem] shadow-sm border p-6 flex justify-between">
+            <div><p className="text-[10px] font-black text-slate-400">Rendido Acumulado</p><h3 className="text-3xl font-black text-[#800000]">S/ {rendiciones.reduce((sum, r) => sum + parseFloat(r.total_rendido), 0).toLocaleString()}</h3></div>
+            <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center"><FileCheck className="w-6 h-6 text-[#D4AF37]" /></div>
+          </div>
+        </div>
+
+        {/* CONTENIDO PRINCIPAL */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* LISTADO DE CAJAS */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="border-l-4 border-[#D4AF37] pl-4">
+              <h4 className="font-black text-slate-700 uppercase text-sm">Listado de Cajas Chicas Activas</h4>
+            </div>
+            {loadingCajas ? (
+              <div className="flex justify-center py-12"><Loader2 className="animate-spin w-8 h-8 text-[#800000]" /></div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {cajas.map((c) => {
+                  const porcentajeGastado = ((c.monto_base - c.saldo_actual) / c.monto_base) * 100;
+                  return (
+                    <div key={c.id} className="bg-white rounded-[2.5rem] border shadow-sm hover:shadow-md transition">
+                      <div className="bg-slate-50 px-6 py-5 border-b flex justify-between">
+                        <div>
+                          <span className="bg-[#800000] text-white px-3 py-1 rounded-full font-black text-[10px] font-mono">{c.empresa_nombre || 'Sin empresa'}</span>
+                          <h4 className="font-serif font-black text-slate-800 text-sm mt-2">{c.codigo}</h4> 
+                        </div>
+                        <div className={`flex items-center gap-1 px-3 py-1 rounded-full border ${c.estado === 'ACTIVA' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${c.estado === 'ACTIVA' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                          <span className="text-[9px] font-black">{c.estado}</span>
+                        </div>
+                      </div>
+                      <div className="p-6 space-y-5">
+                        <div className="grid grid-cols-2 gap-3 text-[11px]">
+                          <div className="bg-slate-50 p-2.5 rounded-2xl">
+                            <span className="text-slate-400 block text-[8px]">Sede</span>
+                            <span className="font-black">{c.sede_nombre || '-'}</span> 
+                          </div>
+                          <div className="bg-slate-50 p-2.5 rounded-2xl">
+                            <span className="text-slate-400 block text-[8px]">Centro Costo</span>
+                            <span className="font-black">{c.centro_costo_nombre || '-'}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-xxs font-black">
+                            <span>Fondos Consumidos</span>
+                            <span className={porcentajeGastado >= 90 ? 'text-rose-600' : ''}>{porcentajeGastado.toFixed(0)}%</span>
+                          </div>
+                          <div className="w-full h-2.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                            <div className={`h-full rounded-full ${porcentajeGastado >= 90 ? 'bg-rose-600' : 'bg-[#800000]'}`} style={{ width: `${porcentajeGastado}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-end pt-3 border-t">
+                          <div>
+                            <span className="text-slate-400 text-[9px]">Saldo Disponible</span>
+                            <span className="text-2xl font-black">S/ {parseFloat(c.saldo_actual).toFixed(2)}</span>
+                            <span className="text-[10px] text-slate-400 block">Monto Base: S/ {parseFloat(c.monto_base).toFixed(2)}</span>
+                          </div>
+                          <button onClick={() => handleOpenRendicion(c)} className="bg-slate-900 hover:bg-[#800000] text-white px-5 py-3 rounded-2xl text-[10px] font-black flex items-center gap-2">
+                            <FileText size={14} className="text-[#D4AF37]" /> RENDIR CAJA
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* HISTORIAL DE RENDICIONES (de la caja seleccionada) */}
+          <div className="space-y-6">
+            <div className="border-l-4 border-[#D4AF37] pl-4">
+              <h4 className="font-black text-slate-700 uppercase text-sm">Rendiciones Registradas</h4>
+              <select
+                className="mt-2 w-full text-xs border rounded-lg p-2"
+                value={selectedCajaId || ''}
+                onChange={(e) => setSelectedCajaId(e.target.value ? parseInt(e.target.value) : null)}
+              >
+                <option value="">Seleccione una caja</option>
+                {cajas.map(c => <option key={c.id} value={c.id}>{c.codigo} - {c.empresa_nombre}</option>)}
+              </select>
+            </div>
+            <div className="bg-white rounded-[2.5rem] border shadow-sm overflow-hidden divide-y">
+              {loadingRendiciones && <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto" /></div>}
+              {!loadingRendiciones && rendiciones.length === 0 && selectedCajaId && (
+                <div className="p-8 text-center text-slate-400">No hay rendiciones para esta caja</div>
+              )}
+              {!loadingRendiciones && rendiciones.map((rend) => (
+                <div key={rend.id} className="p-6 hover:bg-slate-50">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black">{rend.numero}</span>
+                        <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[8px] font-black">{rend.estado}</span>
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-400 mt-1 flex items-center gap-1">
+                        <Calendar size={12} /> Fecha: {rend.fecha_rendicion}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-black text-[#800000]">S/ {parseFloat(rend.total_rendido).toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 bg-slate-50 rounded-2xl p-3 text-[10px]">
+                    <div><span className="text-slate-400">Saldo Inicial</span><br />S/ {parseFloat(rend.saldo_inicial).toFixed(2)}</div>
+                    <div><span className="text-slate-400">Comprobantes</span><br />{rend.items_count || 0} registros</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ==================== MODAL APERTURA ==================== */}
+      {showAperturaModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl border-t-8 border-[#800000] max-w-xl w-full">
+            <div className="p-8 pb-4 flex justify-between">
+              <div><h3 className="font-black text-[#800000] text-2xl">Aperturar Caja Chica</h3></div>
+              <button onClick={() => setShowAperturaModal(false)} className="text-3xl font-light">×</button>
+            </div>
+            <form onSubmit={handleCreateCaja} className="p-8 pt-0 space-y-6">
+              <div className="grid grid-cols-1 gap-5">
+                <div>
+                  <label className="text-[10px] font-black uppercase">Empresa</label>
+                  <select className="w-full bg-slate-50 p-3 rounded-2xl" value={nuevaCaja.empresa_id} onChange={(e) => handleEmpresaChange(e.target.value)} required>
+                    <option value="">Seleccione</option>
+                    {empresas.map(emp => <option key={emp.id} value={emp.id}>{emp.nombre}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase">Sede</label>
+                  <select className="w-full bg-slate-50 p-3 rounded-2xl" value={nuevaCaja.sede_id} onChange={(e) => handleSedeChange(e.target.value)} required disabled={!nuevaCaja.empresa_id}>
+                    <option value="">Seleccione</option>
+                    {sedes.map(sede => <option key={sede.id} value={sede.id}>{sede.nombre}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase">Centro de Costo</label>
+                  <input type="text" placeholder="Buscar por código o nombre" className="w-full bg-slate-50 p-3 rounded-2xl" value={searchCentroTerm} onChange={(e) => setSearchCentroTerm(e.target.value)} disabled={!nuevaCaja.sede_id} />
+                  {loadingCentros && <div className="text-xs text-slate-400 mt-1">Buscando...</div>}
+                  {centrosCosto.length > 0 && (
+                    <ul className="border rounded-xl mt-1 max-h-40 overflow-auto bg-white">
+                      {centrosCosto.map(cc => <li key={cc.id} className="p-2 hover:bg-slate-100 cursor-pointer text-sm" onClick={() => handleCentroCostoSelect(cc)}>{cc.codigo} - {cc.nombre}</li>)}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase">Nombre de Caja</label>
+                  <input type="text" className="w-full bg-slate-50 p-3 rounded-2xl uppercase font-mono" value={nuevaCaja.codigo} onChange={(e) => setNuevaCaja({...nuevaCaja, codigo: e.target.value.toUpperCase()})} required />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase">Monto Base (S/.)</label>
+                  <input type="number" step="0.01" className="w-full bg-slate-50 p-3 rounded-2xl font-black" value={nuevaCaja.monto_base} onChange={(e) => setNuevaCaja({...nuevaCaja, monto_base: e.target.value})} required />
+                </div>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button type="button" onClick={() => setShowAperturaModal(false)} className="flex-1 border-2 py-3 rounded-2xl">Cancelar</button>
+                <button type="submit" className="flex-1 bg-[#800000] text-white font-black py-3 rounded-2xl">Guardar Apertura</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL RENDICIÓN ==================== */}
+      {showRendicionModal && selectedCaja && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-2">
+          <div className="bg-white rounded-[2.5rem] border-t-8 border-[#800000] max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+            <div className="p-6 pb-2 flex justify-between shrink-0">
+              <div><h3 className="font-black text-[#800000] text-2xl">Planilla de Rendición - {selectedCaja.codigo}</h3></div>
+              <button onClick={() => setShowRendicionModal(false)} className="text-3xl font-light">×</button>
+            </div>
+            <div className="overflow-y-auto p-6 bg-slate-50 flex-grow">
+              <div className="bg-white p-6 rounded-2xl border space-y-6">
+                {/* Cabecera reducida (igual a la tuya pero más compacta) */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="text-xs font-bold">Nº Planilla</label><input className="border rounded p-2 w-full" value={cabeceraRendicion.numero} onChange={e => setCabeceraRendicion({...cabeceraRendicion, numero: e.target.value})} /></div>
+                  <div><label className="text-xs font-bold">Fecha Rendición</label><input type="date" className="border rounded p-2 w-full" value={cabeceraRendicion.fecha_rendicion} onChange={e => setCabeceraRendicion({...cabeceraRendicion, fecha_rendicion: e.target.value})} /></div>
+                  <div><label className="text-xs font-bold">Saldo Inicial</label><input type="number" step="0.01" className="border rounded p-2 w-full" value={cabeceraRendicion.saldo_inicial} onChange={e => setCabeceraRendicion({...cabeceraRendicion, saldo_inicial: e.target.value})} /></div>
+                  <div><label className="text-xs font-bold">Fecha Depósito</label><input type="date" className="border rounded p-2 w-full" value={cabeceraRendicion.fecha_deposito} onChange={e => setCabeceraRendicion({...cabeceraRendicion, fecha_deposito: e.target.value})} /></div>
+                </div>
+                {/* Tabla de items (simplifico para no repetir 200 líneas, pero puedes mantener tu tabla original) */}
+                <div className="border rounded-xl overflow-x-auto">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-slate-100">
+                      <tr><th>#</th><th>Fecha</th><th>Proveedor</th><th>RUC/DNI</th><th>Tipo Doc</th><th>N° Doc</th><th>Importe</th><th>Descripción</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                      {itemsRendicion.map((item, idx) => (
+                        <tr key={item.id}>
+                          <td className="p-1 text-center">{idx+1}</td>
+                          <td><input type="date" className="border p-1 w-28" value={item.fecha} onChange={e => handleItemChange(item.id, 'fecha', e.target.value)} /></td>
+                          <td><input className="border p-1 w-40" value={item.proveedor} onChange={e => handleItemChange(item.id, 'proveedor', e.target.value)} /></td>
+                          <td><input className="border p-1 w-28" value={item.ruc_dni} onChange={e => handleItemChange(item.id, 'ruc_dni', e.target.value)} /></td>
+                          <td>
+                            <select className="border p-1 w-24" value={item.tipo_documento} onChange={e => handleItemChange(item.id, 'tipo_documento', e.target.value)}>
+                              <option>FACTURA</option><option>BOLETA</option><option>RXH</option><option>MOVILIDAD</option><option>OTROS</option>
+                            </select>
+                          </td>
+                          <td><input className="border p-1 w-28" value={item.numero_documento} onChange={e => handleItemChange(item.id, 'numero_documento', e.target.value)} /></td>
+                          <td><input type="number" step="0.01" className="border p-1 w-24 text-right" value={item.monto || ''} onChange={e => handleItemChange(item.id, 'monto', e.target.value)} /></td>
+                          <td><input className="border p-1 w-48" value={item.descripcion} onChange={e => handleItemChange(item.id, 'descripcion', e.target.value)} /></td>
+                          <td><button type="button" onClick={() => handleRemoveRow(item.id)} className="text-rose-600"><Trash2 size={14} /></button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex justify-between">
+                  <button type="button" onClick={handleAddRow} className="bg-slate-800 text-white px-4 py-2 rounded-xl text-xs">+ Añadir comprobante</button>
+                  <div className="text-right space-y-1">
+                    <div><span className="font-bold">Total Rendido:</span> S/ {totalRendido.toFixed(2)}</div>
+                    <div><span className="font-bold">Saldo Final:</span> S/ {saldoCajaFinal.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="bg-slate-100 px-6 py-4 flex justify-end gap-3 shrink-0">
+              <button onClick={() => setShowRendicionModal(false)} className="border px-5 py-2 rounded-xl">Cerrar</button>
+              <button onClick={() => handleSaveRendicion('BORRADOR')} className="bg-[#D4AF37] px-5 py-2 rounded-xl font-black">Borrador</button>
+              <button onClick={() => handleSaveRendicion('APROBADO')} className="bg-[#800000] text-white px-6 py-2 rounded-xl font-black">Confirmar Planilla</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #800000; }
+      `}</style>
+    </div>
+  );
+}
