@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
     UserPlus,
     Trash2,
@@ -9,7 +9,8 @@ import {
     Shield,
     Building,
     User,
-    ShieldCheck
+    ShieldCheck,
+    Search
 } from "lucide-react";
 
 import { API_BASE } from "../../config/api";
@@ -40,6 +41,11 @@ const Usuarios = () => {
     const [nombre, setNombre] = useState("");
     const [documento, setDocumento] = useState("");
     const [tipoDocumento, setTipoDocumento] = useState("DNI");
+
+    // =========================
+    // FILTRO BÚSQUEDA
+    // =========================
+    const [searchText, setSearchText] = useState("");
 
     // =========================
     // LOAD
@@ -133,6 +139,19 @@ const Usuarios = () => {
             );
         }
     };
+
+    // =========================
+    // FILTRADO DE USUARIOS (MEMOIZADO)
+    // =========================
+    const filteredUsuarios = useMemo(() => {
+        if (searchText.trim() === "") return usuarios;
+        
+        const term = searchText.toLowerCase();
+        return usuarios.filter(u => 
+            u.nombre?.toLowerCase().includes(term) ||
+            u.correo?.toLowerCase().includes(term)
+        );
+    }, [usuarios, searchText]);
 
     // =========================
     // CREAR
@@ -483,162 +502,183 @@ const Usuarios = () => {
                 </button>
             </div>
 
+            {/* BARRA DE BÚSQUEDA */}
+            <div className="max-w-6xl mx-auto mb-6">
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <div className="flex flex-col md:flex-row gap-4 items-end">
+                        <div className="flex-1">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <Search size={12} /> Buscar usuario
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Nombre o correo electrónico..."
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#800000]/30 focus:border-[#800000] transition-all"
+                            />
+                        </div>
+                        <div className="text-right text-[10px] font-bold text-slate-400 whitespace-nowrap pb-1">
+                            Mostrando {filteredUsuarios.length} de {usuarios.length} usuarios
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* TABLA */}
             <div className="max-w-6xl mx-auto bg-white border border-gray-100 rounded-3xl shadow-xl shadow-gray-200/50 overflow-hidden">
-    <div className="overflow-x-auto">
-        <table className="w-full text-left border-separate border-spacing-0 table-fixed">
-            <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="w-[30%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b">
-                        Usuario
-                    </th>
-                    <th className="w-[15%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b">
-                        Documento
-                    </th>
-                    <th className="w-[15%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b">
-                        Acceso
-                    </th>
-                    <th className="w-[12%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b text-center">
-                        Telefono
-                    </th>
-                    {/* Ancho controlado para evitar desbordes */}
-                    <th className="w-[18%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b">
-                        Departamentos
-                    </th>
-                    <th className="w-[10%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b text-center">
-                        Acciones
-                    </th>
-                </tr>
-            </thead>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-separate border-spacing-0 table-fixed">
+                        <thead>
+                            <tr className="bg-gray-50 border-b border-gray-100">
+                                <th className="w-[30%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b">
+                                    Usuario
+                                </th>
+                                <th className="w-[15%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b">
+                                    Documento
+                                </th>
+                                <th className="w-[15%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b">
+                                    Acceso
+                                </th>
+                                <th className="w-[12%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b text-center">
+                                    Teléfono
+                                </th>
+                                <th className="w-[18%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b">
+                                    Departamentos
+                                </th>
+                                <th className="w-[10%] px-6 py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest border-b text-center">
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
 
-            <tbody className="divide-y divide-gray-100 bg-white">
-                {usuarios.map((u) => (
-                    <tr
-                        key={u.id}
-                        className="hover:bg-gray-50/50 transition-all group align-middle"
-                    >
-                        {/* USUARIO */}
-                        <td className="px-6 py-4">
-                            <div className="flex items-center gap-4">
-                                <div className="relative flex-shrink-0">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center text-[#800000] font-bold shadow-sm border border-red-200/50">
-                                        {u.correo?.charAt(0)?.toUpperCase() || "?"}
-                                    </div>
-                                    <span className="absolute -top-1 -left-1 text-[9px] bg-white border border-gray-200 px-1 rounded text-gray-400 font-mono">
-                                        #{u.id}
-                                    </span>
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="font-bold text-gray-800 leading-tight truncate">
-                                        {u.nombre}
-                                    </span>
-                                    <span className="text-xs text-gray-500 truncate">
-                                        {u.correo}
-                                    </span>
-                                </div>
-                            </div>
-                        </td>
-
-                        {/* DOCUMENTO */}
-                        <td className="px-6 py-4">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">
-                                    {u.tipo_documento}
-                                </span>
-                                <span className="text-sm font-medium text-gray-700 font-mono tracking-tight">
-                                    {u.documento}
-                                </span>
-                            </div>
-                        </td>
-
-                        {/* ROL */}
-                        <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold ring-1 ring-inset ${ROL_CONFIG[u.rol]?.styles}`}>
-                                {ROL_CONFIG[u.rol]?.icon}
-                                {ROL_CONFIG[u.rol]?.label}
-                            </span>
-                        </td>
-
-                        {/* TELEFONO */}
-                        <td className="px-6 py-4 text-gray-600 text-center text-sm">
-                            {u.telefono || "-"}
-                        </td>
-
-                        {/* DEPARTAMENTOS (Rediseñado y optimizado) */}
-                        <td className="px-6 py-4 max-w-[220px]">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                                {u.departamentos?.slice(0, 2).map(dep => (
-                                    <div
-                                        key={dep.id}
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600 truncate max-w-[120px]"
-                                        title={dep.nombre}
-                                    >
-                                        <Building size={11} className="text-slate-400 flex-shrink-0" />
-                                        <span className="truncate">{dep.nombre}</span>
-                                    </div>
-                                ))}
-                                
-                                {/* Contador sutil si tiene más de 2 departamentos */}
-                                {u.departamentos && u.departamentos.length > 2 && (
-                                    <div 
-                                        className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-[10px] font-bold text-blue-600 cursor-help"
-                                        title={u.departamentos.slice(2).map(d => d.nombre).join(', ')}
-                                    >
-                                        +{u.departamentos.length - 2}
-                                    </div>
-                                )}
-
-                                {(!u.departamentos || u.departamentos.length === 0) && (
-                                    <span className="text-xs text-gray-400 italic">Ninguno</span>
-                                )}
-                            </div>
-                        </td>
-
-                        {/* ACCIONES */}
-                        <td className="px-6 py-4">
-                            <div className="flex justify-center gap-1.5">
-                                <button
-                                    onClick={() => {
-                                        setModalEditarUsuario(u);
-                                        setNombre(u.nombre || "");
-                                        setDocumento(u.documento || "");
-                                        setTipoDocumento(u.tipo_documento || "DNI");
-                                        setCorreo(u.correo || "");
-                                        setRolId(u.rol || "");
-                                        setDepartamentosSeleccionados(u.departamentos_ids || []);
-                                        setTelefono(u.telefono || "");
-                                        setPreviewFirma(u.firma ? API + u.firma : null);
-                                        setFirma(null);
-                                        setPassword("");
-                                        setModalUsuario(true);
-                                    }}
-                                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100 rounded-xl transition-all active:scale-90"
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                            {filteredUsuarios.map((u) => (
+                                <tr
+                                    key={u.id}
+                                    className="hover:bg-gray-50/50 transition-all group align-middle"
                                 >
-                                    <Edit size={18} />
-                                </button>
+                                    {/* USUARIO */}
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative flex-shrink-0">
+                                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center text-[#800000] font-bold shadow-sm border border-red-200/50">
+                                                    {u.correo?.charAt(0)?.toUpperCase() || "?"}
+                                                </div>
+                                                <span className="absolute -top-1 -left-1 text-[9px] bg-white border border-gray-200 px-1 rounded text-gray-400 font-mono">
+                                                    #{u.id}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="font-bold text-gray-800 leading-tight truncate">
+                                                    {u.nombre}
+                                                </span>
+                                                <span className="text-xs text-gray-500 truncate">
+                                                    {u.correo}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
 
-                                <button
-                                    onClick={() => eliminarUsuario(u.id)}
-                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-xl transition-all active:scale-90"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    </div>
+                                    {/* DOCUMENTO */}
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">
+                                                {u.tipo_documento}
+                                            </span>
+                                            <span className="text-sm font-medium text-gray-700 font-mono tracking-tight">
+                                                {u.documento}
+                                            </span>
+                                        </div>
+                                    </td>
 
-    {usuarios.length === 0 && (
-        <div className="p-20 text-center text-gray-400">
-            No se encontraron usuarios registrados.
-        </div>
-    )}
-</div>
+                                    {/* ROL */}
+                                    <td className="px-6 py-4">
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold ring-1 ring-inset ${ROL_CONFIG[u.rol]?.styles}`}>
+                                            {ROL_CONFIG[u.rol]?.icon}
+                                            {ROL_CONFIG[u.rol]?.label}
+                                        </span>
+                                    </td>
 
-            {/* MODAL */}
+                                    {/* TELÉFONO */}
+                                    <td className="px-6 py-4 text-gray-600 text-center text-sm">
+                                        {u.telefono || "-"}
+                                     </td>
+
+                                    {/* DEPARTAMENTOS */}
+                                    <td className="px-6 py-4 max-w-[220px]">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            {u.departamentos?.slice(0, 2).map(dep => (
+                                                <div
+                                                    key={dep.id}
+                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600 truncate max-w-[120px]"
+                                                    title={dep.nombre}
+                                                >
+                                                    <Building size={11} className="text-slate-400 flex-shrink-0" />
+                                                    <span className="truncate">{dep.nombre}</span>
+                                                </div>
+                                            ))}
+                                            
+                                            {u.departamentos && u.departamentos.length > 2 && (
+                                                <div 
+                                                    className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-[10px] font-bold text-blue-600 cursor-help"
+                                                    title={u.departamentos.slice(2).map(d => d.nombre).join(', ')}
+                                                >
+                                                    +{u.departamentos.length - 2}
+                                                </div>
+                                            )}
+
+                                            {(!u.departamentos || u.departamentos.length === 0) && (
+                                                <span className="text-xs text-gray-400 italic">Ninguno</span>
+                                            )}
+                                        </div>
+                                     </td>
+
+                                    {/* ACCIONES */}
+                                    <td className="px-6 py-4">
+                                        <div className="flex justify-center gap-1.5">
+                                            <button
+                                                onClick={() => {
+                                                    setModalEditarUsuario(u);
+                                                    setNombre(u.nombre || "");
+                                                    setDocumento(u.documento || "");
+                                                    setTipoDocumento(u.tipo_documento || "DNI");
+                                                    setCorreo(u.correo || "");
+                                                    setRolId(u.rol || "");
+                                                    setDepartamentosSeleccionados(u.departamentos_ids || []);
+                                                    setTelefono(u.telefono || "");
+                                                    setPreviewFirma(u.firma ? API + u.firma : null);
+                                                    setFirma(null);
+                                                    setPassword("");
+                                                    setModalUsuario(true);
+                                                }}
+                                                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100 rounded-xl transition-all active:scale-90"
+                                            >
+                                                <Edit size={18} />
+                                            </button>
+
+                                            <button
+                                                onClick={() => eliminarUsuario(u.id)}
+                                                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-xl transition-all active:scale-90"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                     </td>
+                                 </tr>
+                            ))}
+                        </tbody>
+                     </table>
+                </div>
+
+                {filteredUsuarios.length === 0 && (
+                    <div className="p-20 text-center text-gray-400">
+                        No se encontraron usuarios con el criterio de búsqueda.
+                    </div>
+                )}
+            </div>
+
+            {/* MODAL (sin cambios) */}
             {modalUsuario && (
 
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">

@@ -4,7 +4,7 @@ import {
     FileText, ShieldCheck, Truck, Plus, ChevronDown, CalendarDays, Calendar,
     Trash2, Save, Send, Edit3, Eye, UserCheck, User, Package,
     Building2, MessageSquare, AlertCircle, Search, ClipboardCheck,
-    X, List, ArrowRight
+    X, List, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, Filter
 } from 'lucide-react';
 import jsPDF from "jspdf";
 import logo from "../../assets/logo.png";
@@ -20,11 +20,18 @@ const Requerimientos = () => {
         "ALMACEN",
         "LOGISTICA",
         "ADMINISTRACION",
-        "TIC"
+        "TIC",
+        "VENTAS"
     ].includes(currentUser?.depto);
 
     // --- DATOS ---
     const [requerimientos, setRequerimientos] = useState([]);
+
+    // --- FILTROS Y BÚSQUEDA ---
+    const [searchCodigo, setSearchCodigo] = useState('');
+    const [searchItem, setSearchItem] = useState('');
+    const [fechaOrder, setFechaOrder] = useState('desc'); // 'asc' o 'desc'
+    const [pagadoFilter, setPagadoFilter] = useState('todos'); // 'todos', 'pagado', 'no_pagado'
 
     // --- UI STATES ---
     const [showModal, setShowModal] = useState(false);
@@ -493,17 +500,82 @@ const Requerimientos = () => {
             .then(data => setEmpresasSedes(data));
     }, []);
 
-    const dataMostrar = requerimientos.filter(req => {
-        if (activeTab === 'general') return true;
+    // --- LÓGICA DE FILTRADO Y ORDENAMIENTO ---
+    const filteredAndSortedReqs = useMemo(() => {
+        // Primero aplicar pestaña activa
+        let filtered = requerimientos.filter(req => {
+            if (activeTab === 'general') return true;
+            if (activeTab === 'mis') {
+                return Number(req.departamento_id) === Number(currentUser?.departamento_id);
+            }
+            return true;
+        });
 
-        if (activeTab === 'mis') {
-            return Number(req.departamento_id) === Number(currentUser?.departamento_id);
+        // Filtro por código
+        if (searchCodigo.trim() !== '') {
+            filtered = filtered.filter(req =>
+                req.codigo?.toLowerCase().includes(searchCodigo.toLowerCase())
+            );
         }
 
-        return true;
-    });
+        // Filtro por descripción de ítem
+        if (searchItem.trim() !== '') {
+            const term = searchItem.toLowerCase();
+            filtered = filtered.filter(req =>
+                req.items?.some(item => item.descripcion?.toLowerCase().includes(term))
+            );
+        }
 
-    // LÓGICA DE NEGOCIO
+        // Filtro por pagado/finalizado
+        if (pagadoFilter === 'pagado') {
+            filtered = filtered.filter(req =>
+                req.estado === 'Pagado' || req.estado === 'Finalizado'
+            );
+        } else if (pagadoFilter === 'no_pagado') {
+            filtered = filtered.filter(req =>
+                req.estado !== 'Pagado' && req.estado !== 'Finalizado'
+            );
+        }
+
+        // Ordenamiento por fecha
+        const sorted = [...filtered];
+        sorted.sort((a, b) => {
+            const dateA = new Date(a.fecha);
+            const dateB = new Date(b.fecha);
+            if (fechaOrder === 'asc') {
+                return dateA - dateB;
+            } else {
+                return dateB - dateA;
+            }
+        });
+
+        return sorted;
+    }, [requerimientos, activeTab, currentUser, searchCodigo, searchItem, pagadoFilter, fechaOrder]);
+
+    // --- COMPONENTE ESTADO ---
+    const StatusBadge = ({ estado }) => {
+        const styles = {
+            'Sin firmar': 'bg-gray-100 text-gray-700 border-gray-200',
+            'Pendiente': 'bg-amber-100 text-amber-700 border-amber-200',
+            'Cotizado': 'bg-blue-100 text-blue-700 border-blue-200',
+            'Pagado': 'bg-cyan-100 text-cyan-700 border-cyan-200',
+            'Evaluando': 'bg-indigo-100 text-indigo-700 border-indigo-200',
+            'Aprobado': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+            'Denegado': 'bg-red-100 text-red-700 border-red-200',
+            'Observado': 'bg-orange-50 text-orange-600 border-orange-100',
+            'Finalizado': 'bg-green-100 text-green-700 border-green-200',
+        };
+
+        return (
+            <span
+                className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide border ${styles[estado] || styles['Pendiente Firma']
+                    }`}
+            >
+                {estado}
+            </span>
+        );
+    };
+
     const canEdit = (req) => {
         if (!currentUser) return false;
 
@@ -533,7 +605,6 @@ const Requerimientos = () => {
             const payload = {
                 id: editingReq?.id || null,
                 creador_id: currentUser.id,
-                codigo: editingReq?.codigo || `RQ-2026-${String(Date.now()).slice(-4)}`,
                 departamento_id: editingReq?.departamento_id || currentUser.departamento_id,
                 empresa_id: editingReq.empresa_id,
                 sede_id: editingReq.sede_id,
@@ -603,8 +674,6 @@ const Requerimientos = () => {
         }
     };
 
-
-
     // CAMBIAR ESTADO
     const cambiarEstado = async (id, nuevoEstado, extra = {}) => {
         try {
@@ -623,52 +692,6 @@ const Requerimientos = () => {
         } catch (error) {
             console.error("Error cambiando estado:", error);
         }
-    };
-
-    useEffect(() => {
-        fetch(API + "requerimientos.php?empresas=1")
-            .then(res => res.json())
-            .then(data => setEmpresas(data));
-    }, []);
-
-    useEffect(() => {
-        if (!editingReq?.empresa_id) return;
-
-        fetch(API + `requerimientos.php?sedes=1&empresa_id=${editingReq.empresa_id}`)
-            .then(res => res.json())
-            .then(data => setSedes(data));
-    }, [editingReq?.empresa_id]);
-
-    // --- CARGAR REQUERIMIENTOS ---
-
-
-    useEffect(() => {
-        fetchReqs();
-    }, []);
-
-
-
-    // --- COMPONENTE ESTADO ---
-    const StatusBadge = ({ estado }) => {
-        const styles = {
-            'Sin firmar': 'bg-gray-100 text-gray-700 border-gray-200',
-            'Pendiente': 'bg-amber-100 text-amber-700 border-amber-200',
-            'Cotizado': 'bg-blue-100 text-blue-700 border-blue-200',
-            'Pagado': 'bg-cyan-100 text-cyan-700 border-cyan-200',
-            'Evaluando': 'bg-indigo-100 text-indigo-700 border-indigo-200',
-            'Aprobado': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-            'Denegado': 'bg-red-100 text-red-700 border-red-200',
-            'Observado': 'bg-orange-50 text-orange-600 border-orange-100',
-        };
-
-        return (
-            <span
-                className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide border ${styles[estado] || styles['Pendiente Firma']
-                    }`}
-            >
-                {estado}
-            </span>
-        );
     };
 
     // --- PROTECCIÓN ---
@@ -741,6 +764,87 @@ const Requerimientos = () => {
                     )}
                 </div>
 
+                {/* BARRA DE FILTROS */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        {/* Búsqueda por código */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <Search size={12} /> Código Requerimiento
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Ej: REQ-001"
+                                value={searchCodigo}
+                                onChange={(e) => setSearchCodigo(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-300"
+                            />
+                        </div>
+
+                        {/* Búsqueda por ítem */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <Package size={12} /> Descripción de Ítem
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Buscar en productos/servicios..."
+                                value={searchItem}
+                                onChange={(e) => setSearchItem(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-300"
+                            />
+                        </div>
+
+                        {/* Filtro estado pagado */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <Filter size={12} /> Estado de Pago
+                            </label>
+                            <select
+                                value={pagadoFilter}
+                                onChange={(e) => setPagadoFilter(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                            >
+                                <option value="todos">Todos</option>
+                                <option value="pagado">Pagados / Finalizados</option>
+                                <option value="no_pagado">No pagados</option>
+                            </select>
+                        </div>
+
+                        {/* Orden por fecha con botones */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <CalendarDays size={12} /> Orden por Fecha
+                            </label>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setFechaOrder('desc')}
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all ${fechaOrder === 'desc'
+                                        ? 'bg-[#800000] text-white shadow-md'
+                                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                        }`}
+                                >
+                                    <ArrowDown size={14} /> Más Reciente
+                                </button>
+                                <button
+                                    onClick={() => setFechaOrder('asc')}
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all ${fechaOrder === 'asc'
+                                        ? 'bg-[#800000] text-white shadow-md'
+                                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                        }`}
+                                >
+                                    <ArrowUp size={14} /> Más Antigua
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Indicador de resultados */}
+                    <div className="mt-4 text-right text-[10px] font-bold text-slate-400">
+                        Mostrando {filteredAndSortedReqs.length} de {requerimientos.length} requerimientos
+                    </div>
+                </div>
+
                 {/* TABLA PRINCIPAL */}
                 {(activeTab === 'general' || activeTab === 'mis') && (
                     <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
@@ -757,7 +861,7 @@ const Requerimientos = () => {
                                 </thead>
 
                                 <tbody className="divide-y divide-slate-100">
-                                    {(dataMostrar || []).map((req) => {
+                                    {(filteredAndSortedReqs || []).map((req) => {
                                         const actual = req?.flujo_global || 'LOGISTICA';
                                         const pasos = ['LOGISTICA', 'ADMINISTRACION', 'TESORERIA', 'FINALIZADO'];
                                         const orden = { LOGISTICA: 1, ADMINISTRACION: 2, TESORERIA: 3, FINALIZADO: 4 };
@@ -866,6 +970,11 @@ const Requerimientos = () => {
                                 </tbody>
                             </table>
                         </div>
+                        {filteredAndSortedReqs.length === 0 && (
+                            <div className="text-center py-12 text-slate-400 text-sm font-medium">
+                                No se encontraron requerimientos con los filtros aplicados.
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -1213,12 +1322,15 @@ const Requerimientos = () => {
                                                             <option>Metros</option>
                                                             <option>Cajas</option>
                                                             <option>Paquetes</option>
+                                                            <option>Envases</option>
                                                             <option>Saco</option>
                                                             <option>Galón</option>
                                                             <option>Pares</option>
                                                             <option>KG</option>
                                                             <option>GR</option>
                                                             <option>LT</option>
+                                                             <option>Botella</option>
+                                                            <option>Blister</option>
                                                             <option>Latas</option>
                                                             <option>ML</option>
                                                         </select>

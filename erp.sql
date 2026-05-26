@@ -3678,4 +3678,8 @@ CREATE TABLE rendicion_items (
     archivo VARCHAR(255) NULL
 );
 
-ALTER TABLE grupos_tesoreria ADD COLUMN incluye_igv TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE correlativos MODIFY COLUMN tipo ENUM('OC','OS','RQ') NOT NULL;
+
+INSERT INTO correlativos (tipo, anio, numero_actual) 
+SELECT 'RQ', YEAR(CURDATE()), 0
+WHERE NOT EXISTS (SELECT 1 FROM correlativos WHERE tipo = 'RQ' AND anio = YEAR(CURDATE()));

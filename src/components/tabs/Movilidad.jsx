@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Car, X, Save, CheckCircle2, XCircle, PenTool, Plus, Truck, Info, Edit3,
-    Navigation, Calendar, Building2, Wallet, ArrowRight, LayoutDashboard
+    Navigation, Calendar, Building2, Wallet, ArrowRight, LayoutDashboard,
+    Search, Filter, ArrowUp, ArrowDown
 } from 'lucide-react';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -20,6 +21,11 @@ const Movilidad = ({ user }) => {
     const currentUser = user || null;
     const currentUserName = user?.nombre || "Administración";
     const currentRole = user?.tipo || "";
+
+    // --- FILTROS Y BÚSQUEDA ---
+    const [searchText, setSearchText] = useState('');         // búsqueda por motivo, origen, destino o ID
+    const [fechaOrder, setFechaOrder] = useState('desc');     // 'asc' o 'desc'
+    const [pagadoFilter, setPagadoFilter] = useState('todos'); // 'todos', 'pagado', 'no_pagado'
 
     const getBase64FromUrl = async (url) => {
 
@@ -45,7 +51,7 @@ const Movilidad = ({ user }) => {
     const normalize = (text) =>
         text
             ?.normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[\u0300-\u0301]/g, "")
             .toUpperCase();
 
     const currentDept = normalize(user?.departamento || "");
@@ -404,21 +410,51 @@ const Movilidad = ({ user }) => {
     }, []);
 
     // =====================
-    // FILTRO
+    // FILTROS Y ORDENAMIENTO (MEMOIZADO)
     // =====================
-    const getFilteredData = () => {
-        if (activeTab === 'general' && puedeVerTodo) {
-            return planillaMovilidad;
-        }
+    const filteredAndSortedMovilidad = useMemo(() => {
+        // 1. Filtrar por pestaña activa (mis / general)
+        let filtered = planillaMovilidad.filter(m => {
+            if (activeTab === 'general' && puedeVerTodo) return true;
+            if (activeTab === 'mis') {
+                return Number(m.departamento_id) === Number(user?.departamento_id);
+            }
+            return false;
+        });
 
-        if (activeTab === 'mis') {
-            return planillaMovilidad.filter(m =>
-                Number(m.departamento_id) === Number(user?.departamento_id)
+        // 2. Búsqueda por texto (motivo, origen, destino, ID)
+        if (searchText.trim() !== '') {
+            const term = searchText.toLowerCase();
+            filtered = filtered.filter(m =>
+                m.motivo?.toLowerCase().includes(term) ||
+                m.origen?.toLowerCase().includes(term) ||
+                m.destino?.toLowerCase().includes(term) ||
+                `mov-${m.id}`.includes(term) ||
+                m.id?.toString().includes(term)
             );
         }
 
-        return [];
-    };
+        // 3. Filtro por estado pagado
+        if (pagadoFilter === 'pagado') {
+            filtered = filtered.filter(m => m.estado === 'Pagado');
+        } else if (pagadoFilter === 'no_pagado') {
+            filtered = filtered.filter(m => m.estado !== 'Pagado');
+        }
+
+        // 4. Ordenamiento por fecha
+        const sorted = [...filtered];
+        sorted.sort((a, b) => {
+            const dateA = new Date(a.fecha);
+            const dateB = new Date(b.fecha);
+            if (fechaOrder === 'asc') {
+                return dateA - dateB;
+            } else {
+                return dateB - dateA;
+            }
+        });
+
+        return sorted;
+    }, [planillaMovilidad, activeTab, puedeVerTodo, user, searchText, pagadoFilter, fechaOrder]);
 
     // =====================
     // CREAR
@@ -802,6 +838,73 @@ const Movilidad = ({ user }) => {
                         )}
                     </div>
 
+                    {/* BARRA DE FILTROS */}
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                            {/* Búsqueda por texto (motivo, origen, destino, ID) */}
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                    <Search size={12} /> Buscar
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="Motivo, origen, destino o #ID"
+                                    value={searchText}
+                                    onChange={(e) => setSearchText(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-300"
+                                />
+                            </div>
+
+                            {/* Filtro estado pagado */}
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                    <Filter size={12} /> Estado de Pago
+                                </label>
+                                <select
+                                    value={pagadoFilter}
+                                    onChange={(e) => setPagadoFilter(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                                >
+                                    <option value="todos">Todos</option>
+                                    <option value="pagado">Pagados</option>
+                                    <option value="no_pagado">No pagados</option>
+                                </select>
+                            </div>
+
+                            {/* Orden por fecha con botones */}
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                    <Calendar size={12} /> Orden por Fecha
+                                </label>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setFechaOrder('desc')}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all ${fechaOrder === 'desc'
+                                                ? 'bg-[#800000] text-white shadow-md'
+                                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                            }`}
+                                    >
+                                        <ArrowDown size={14} /> Más Reciente
+                                    </button>
+                                    <button
+                                        onClick={() => setFechaOrder('asc')}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all ${fechaOrder === 'asc'
+                                                ? 'bg-[#800000] text-white shadow-md'
+                                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                            }`}
+                                    >
+                                        <ArrowUp size={14} /> Más Antigua
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Indicador de resultados */}
+                        <div className="mt-4 text-right text-[10px] font-bold text-slate-400">
+                            Mostrando {filteredAndSortedMovilidad.length} de {planillaMovilidad.length} movilidades
+                        </div>
+                    </div>
+
                     {/* TABLE CARD */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div className="overflow-x-auto">
@@ -817,7 +920,7 @@ const Movilidad = ({ user }) => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {getFilteredData().map(m => (
+                                    {filteredAndSortedMovilidad.map(m => (
                                         <tr
                                             key={m.id}
                                             onClick={() => {
@@ -864,10 +967,10 @@ const Movilidad = ({ user }) => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {getFilteredData().length === 0 && (
+                                    {filteredAndSortedMovilidad.length === 0 && (
                                         <tr>
-                                            <td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic">
-                                                No se encontraron registros de movilidad.
+                                            <td colSpan="6" className="px-6 py-12 text-center text-slate-400 italic">
+                                                No se encontraron registros de movilidad con los filtros aplicados.
                                             </td>
                                         </tr>
                                     )}

@@ -6,7 +6,7 @@ import {
     ChevronDown,
     ChevronUp,
     Building2,
-    Filter
+    Filter, Calendar
 } from "lucide-react";
 
 import { API_BASE } from "../../config/api";
@@ -20,7 +20,7 @@ const Administracion = () => {
     const [modalObs, setModalObs] = useState(false);
     const [itemSeleccionado, setItemSeleccionado] = useState(null);
     const [comentario, setComentario] = useState("");
-    const [filtroEstado, setFiltroEstado] = useState("TODOS");
+    const [filtroEstado, setFiltroEstado] = useState("ADMINISTRACION");
     const [expandedReq, setExpandedReq] = useState(null);
 
     const colors = {
@@ -66,6 +66,7 @@ const Administracion = () => {
                 acc[reqId] = {
                     id: reqId,
                     codigo: item.requerimiento_codigo || "-",
+                    fecha: item.fecha || "-",           // ← agregar fecha
                     empresa: item.empresa || "-",
                     sede: item.sede || "-",
                     departamento: item.departamento || "-",
@@ -131,9 +132,10 @@ const Administracion = () => {
                         onChange={(e) => setFiltroEstado(e.target.value)}
                         className="bg-transparent text-sm font-bold focus:outline-none pr-4 cursor-pointer text-slate-700"
                     >
-                        {["ESTADOS", "APROBADO", "DENEGADO", "PENDIENTE"].map(f => (
-                            <option key={f} value={f}>{f}</option>
-                        ))}
+                        <option value="ADMINISTRACION">Pendientes</option>
+                        <option value="APROBADO">Aprobados</option>
+                        <option value="DENEGADO">Rechazados</option>
+                        <option value="TODOS">Todos</option>
                     </select>
                 </div>
             </div>
@@ -145,6 +147,7 @@ const Administracion = () => {
                             <thead>
                                 <tr className="text-white" style={{ backgroundColor: colors.granate }}>
                                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest border-r border-white/10">Código</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest border-r border-white/10">Fecha</th>
                                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest border-r border-white/10">Departamento</th>
                                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest border-r border-white/10">Empresa / Sede</th>
                                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-right border-r border-white/10">Total</th>
@@ -166,6 +169,12 @@ const Administracion = () => {
                                                 style={{ borderLeftColor: isExpanded ? colors.dorado : 'transparent' }}
                                                 onClick={() => setExpandedReq(isExpanded ? null : req.id)}>
                                                 <td className="px-6 py-5 font-bold" style={{ color: colors.granate }}>{req.codigo}</td>
+                                                <td className="px-6 py-5 font-bold text-slate-700">
+                                                    <div className="flex items-center gap-1">
+                                                        <Calendar size={12} className="text-slate-400" />
+                                                        <span>{req.fecha}</span>
+                                                    </div>
+                                                </td>
                                                 <td className="px-6 py-5 text-sm font-medium text-slate-600">{req.departamento}</td>
                                                 <td className="px-6 py-5 text-sm text-slate-500">{req.empresa} <span className="mx-1 text-slate-300">|</span> {req.sede}</td>
                                                 <td className="px-6 py-5 text-right font-bold text-slate-900 text-base">S/ {totalReq.toFixed(2)}</td>
@@ -181,7 +190,7 @@ const Administracion = () => {
 
                                             {isExpanded && (
                                                 <tr>
-                                                    <td colSpan="6" className="px-8 py-6 bg-slate-50">
+                                                    <td colSpan="7" className="px-8 py-6 bg-slate-50"> {/* colSpan cambiado a 7 porque agregamos columna fecha */}
                                                         <div className="bg-white rounded-lg shadow-inner border border-slate-200 overflow-hidden">
                                                             <table className="w-full">
                                                                 <thead className="bg-slate-800 text-white">

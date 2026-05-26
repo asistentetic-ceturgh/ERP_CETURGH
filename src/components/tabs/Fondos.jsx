@@ -1,81 +1,409 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Coins, RefreshCw, FileText, Users, Plus, Inbox, Eye, Pencil, Trash2, X,
-    DollarSign, Calendar, Info, GitCommit, AlertTriangle, Check, UploadCloud
+    DollarSign, Calendar, Info, AlertTriangle, Check, UploadCloud, Search,
+    ArrowUp, ArrowDown, Filter, Building2, ChevronDown
 } from 'lucide-react';
 import { API_BASE } from "../../config/api";
 
 const API = API_BASE;
 const FONDO_ASIGNADO = 10000;
 
-// ============================================
-// USUARIO ACTUAL
-// ============================================
 const Fondos = ({ user }) => {
     const currentUser = user || null;
+    const currentUserId = currentUser?.id || null;
+    const currentRole = (currentUser?.tipo || "").toLowerCase().trim();
+    const currentDeptNombre = (currentUser?.departamento || "").toUpperCase().trim();
+    const deptNombre = currentDeptNombre;
 
-    const currentUserId =
-        currentUser?.id || null;
+    // ===================== FILTROS Y BÚSQUEDA =====================
+    const [searchText, setSearchText] = useState('');
+    const [fechaOrder, setFechaOrder] = useState('desc');
+    const [pagadoFilter, setPagadoFilter] = useState('todos');
 
-    const currentUserName =
-        currentUser?.nombre || "";
+    // ===================== DATOS DINÁMICOS (Empresas y Sedes) =====================
+    const [empresas, setEmpresas] = useState([]);
+    const [sedes, setSedes] = useState([]);
+    const [loadingEmpresas, setLoadingEmpresas] = useState(true);
+    const [loadingSedes, setLoadingSedes] = useState(false);
+    const [empresaSeleccionada, setEmpresaSeleccionada] = useState("");
+    const [sedeSeleccionada, setSedeSeleccionada] = useState("");
 
-    const currentRole =
-        (currentUser?.tipo || "")
-            .toLowerCase()
-            .trim();
-
-    const dept = (currentUser?.departamento || "")
-        .toUpperCase()
-        .trim();
-
-    const currentDeptId =
-        currentUser?.departamento_id || null;
-
-    const currentDeptCode =
-        currentUser?.departamento_codigo || "";
-
+    // ===================== ESTADOS ORIGINALES =====================
     const [registros, setRegistros] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("mis");
-    const [txtBuscar, setTxtBuscar] = useState("");
-    const [selTipo, setSelTipo] = useState("todos");
-    const [selEstado, setSelEstado] = useState("todos");
-    const [showRendicionModal, setShowRendicionModal] = useState(false);
+    const [gastosEnviado, setGastosEnviado] = useState(false);
+    const [showVerGastosModal, setShowVerGastosModal] = useState(false);
     const [archivosRendicion, setArchivosRendicion] = useState([]);
     const [rendiciones, setRendiciones] = useState([]);
-    const [showPagoModal, setShowPagoModal] = useState(false);
-    const [archivoPago, setArchivoPago] = useState(null);
-    const [montoTesoreria, setMontoTesoreria] = useState(0);
-    const [gastos, setGastos] = useState([]);
-
-    const [showModal, setShowModal] = useState(false);
-    const [showViewModal, setShowViewModal] = useState(false);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [idToDelete, setIdToDelete] = useState(null);
-    const [showCerrarModal, setShowCerrarModal] = useState(false);
-    const [archivoCierre, setArchivoCierre] = useState(null);
     const [archivosTesoreria, setArchivosTesoreria] = useState([]);
 
+    // Pagos
+    const [showPagoModal, setShowPagoModal] = useState(false);
+    const [archivoPago, setArchivoPago] = useState(null);
+    const [showCerrarModal, setShowCerrarModal] = useState(false);
+    const [archivoCierre, setArchivoCierre] = useState(null);
+
+    // Gastos detallados
+    const [gastos, setGastos] = useState([]);
+    const [showGastoModal, setShowGastoModal] = useState(false);
+    const [editandoGasto, setEditandoGasto] = useState(null);
+    const [gastoForm, setGastoForm] = useState({
+        fecha: new Date().toISOString().slice(0, 10),
+        proveedor: "",
+        tipo_comprobante: "",
+        numero_comprobante: "",
+        descripcion: "",
+        monto: "",
+        archivo: null
+    });
+
+    // Modales de solicitud
+    const [showModal, setShowModal] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
     const [editingReq, setEditingReq] = useState(null);
     const [viewingReq, setViewingReq] = useState(null);
     const [formError, setFormError] = useState("");
-    const [showRejectModal, setShowRejectModal] =
-        useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState("");
 
-    const [rejectReason, setRejectReason] =
-        useState("");
+    // ===================== CARGAR EMPRESAS Y SEDES =====================
+    useEffect(() => {
+        fetch(API + "empresas.php")
+            .then(res => res.json())
+            .then(data => {
+                const empresasArray = Array.isArray(data) ? data : (data.data || []);
+                setEmpresas(empresasArray);
+            })
+            .catch(err => {
+                console.error("Error cargando empresas:", err);
+                setEmpresas([]);
+            })
+            .finally(() => setLoadingEmpresas(false));
+    }, []);
 
+    useEffect(() => {
+        if (!empresaSeleccionada) {
+            setSedes([]);
+            return;
+        }
+        setLoadingSedes(true);
+        fetch(API + `sedes.php?empresa_id=${empresaSeleccionada}`)
+            .then(res => res.json())
+            .then(data => {
+                const sedesArray = Array.isArray(data) ? data : (data.data || []);
+                setSedes(sedesArray);
+            })
+            .catch(err => {
+                console.error("Error cargando sedes:", err);
+                setSedes([]);
+            })
+            .finally(() => setLoadingSedes(false));
+    }, [empresaSeleccionada]);
 
+    // ===================== PERMISOS =====================
+    const esTIC = deptNombre === "TIC";
+    const esAdministracion = deptNombre.includes("ADMIN");
+    const esTesoreria = deptNombre === "TESORERIA";
+    const esJefe = currentRole === "jefe";
+    const puedeVerGeneral = ["LOGISTICA", "ADMINISTRACION", "TIC", "TESORERIA"].includes(deptNombre);
+    const puedeAprobar = esTIC || (esAdministracion && esJefe);
+    const puedePagar = esTIC || esTesoreria;
+    const puedeFirmar = viewingReq && Number(currentUserId) === Number(viewingReq.solicitante_id) && esJefe;
 
-    // =========================
-    // USUARIO LOGUEADO
-    // =========================
+    // ===================== API CALLS =====================
+    const obtenerSolicitudes = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch(`${API}listar_solicitudes.php`);
+            const data = await res.json();
+            if (!Array.isArray(data)) {
+                console.error("La API no devolvió un array:", data);
+                alert("Error al cargar solicitudes: " + (data.message || "Formato inválido"));
+                setRegistros([]);
+                return;
+            }
+            setRegistros(data);
+        } catch (error) {
+            console.error(error);
+            setRegistros([]);
+            alert("Error de conexión al cargar solicitudes");
+        } finally { 
+            setLoading(false); 
+        }
+    };
 
-    const usuarioSesion = JSON.parse(
-        localStorage.getItem("usuario")
-    );
+    const obtenerGastos = async (solicitudId) => {
+        try {
+            const res = await fetch(`${API}gastos.php?solicitud_id=${solicitudId}`);
+            const data = await res.json();
+            if (data.success) setGastos(data.gastos);
+        } catch (err) { console.error(err); }
+    };
 
+    const obtenerArchivosSolicitud = async (id) => {
+        try {
+            const res = await fetch(`${API}listar_archivos_solicitud.php?id=${id}`);
+            const data = await res.json();
+            if (!data.success) return;
+            const rend = data.archivos.filter(a => a.tipo === "RENDICION");
+            const tes = data.archivos.filter(a => ["DEVOLUCION", "REEMBOLSO", "PAGO_TESORERIA"].includes(a.tipo));
+            setRendiciones(rend);
+            setArchivosTesoreria(tes);
+        } catch (err) { console.error(err); }
+    };
+
+    const obtenerRendiciones = async (solicitudId) => {
+        try {
+            const res = await fetch(`${API}listar_rendiciones.php?solicitud_id=${solicitudId}`);
+            const data = await res.json();
+            setRendiciones(data);
+        } catch (err) { console.error(err); }
+    };
+
+    // CRUD Gastos
+    const agregarGasto = async () => {
+        if (!gastoForm.descripcion || !gastoForm.monto || gastoForm.monto <= 0) {
+            alert("Complete descripción y monto válido");
+            return;
+        }
+        const formData = new FormData();
+        formData.append("solicitud_id", viewingReq.id);
+        formData.append("fecha", gastoForm.fecha);
+        formData.append("proveedor", gastoForm.proveedor || "");
+        formData.append("tipo_comprobante", gastoForm.tipo_comprobante || "");
+        formData.append("numero_comprobante", gastoForm.numero_comprobante || "");
+        formData.append("descripcion", gastoForm.descripcion);
+        formData.append("monto", gastoForm.monto);
+        formData.append("usuario_id", currentUserId);
+        if (gastoForm.archivo) formData.append("archivo", gastoForm.archivo);
+        try {
+            const res = await fetch(`${API}gastos.php`, { method: "POST", body: formData });
+            const data = await res.json();
+            if (data.success) {
+                await obtenerGastos(viewingReq.id);
+                setShowGastoModal(false);
+                limpiarFormGasto();
+            } else alert(data.message);
+        } catch (error) { alert("Error al guardar el gasto"); }
+    };
+
+    const actualizarGasto = async () => {
+        if (!editandoGasto) return;
+        const payload = {
+            id: editandoGasto.id,
+            fecha: gastoForm.fecha,
+            proveedor: gastoForm.proveedor || "",
+            tipo_comprobante: gastoForm.tipo_comprobante || "",
+            numero_comprobante: gastoForm.numero_comprobante || "",
+            descripcion: gastoForm.descripcion,
+            monto: parseFloat(gastoForm.monto)
+        };
+        try {
+            const res = await fetch(`${API}gastos.php`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            const data = await res.json();
+            if (data.success) {
+                await obtenerGastos(viewingReq.id);
+                setShowGastoModal(false);
+                limpiarFormGasto();
+            } else alert(data.message);
+        } catch (error) { alert("Error al actualizar el gasto"); }
+    };
+
+    const eliminarGasto = async (id) => {
+        if (!confirm("¿Eliminar este gasto?")) return;
+        const res = await fetch(`${API}gastos.php?id=${id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (data.success) await obtenerGastos(viewingReq.id);
+        else alert(data.message);
+    };
+
+    const enviarRendicionATesoreria = async () => {
+        if (!viewingReq?.id) return alert("Solicitud inválida");
+        if (gastos.length === 0) return alert("Debe registrar al menos un gasto antes de enviar");
+        const confirmar = confirm("¿Está seguro que desea enviar la rendición a tesorería? Ya no podrá modificar los gastos.");
+        if (!confirmar) return;
+        try {
+            const res = await fetch(`${API}flujo_fondos.php`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ accion: "ENVIAR_RENDICION", solicitud_id: viewingReq.id, usuario_id: currentUserId })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.message); return; }
+            alert(data.message);
+            setGastosEnviado(true);
+            await obtenerSolicitudes();
+            setViewingReq(prev => ({ ...prev, estado: data.estado }));
+        } catch (error) { alert("Error al enviar rendición"); }
+    };
+
+    const limpiarFormGasto = () => {
+        setEditandoGasto(null);
+        setGastoForm({
+            fecha: new Date().toISOString().slice(0, 10),
+            proveedor: "",
+            tipo_comprobante: "",
+            numero_comprobante: "",
+            descripcion: "",
+            monto: "",
+            archivo: null
+        });
+    };
+
+    const abrirModalNuevoGasto = () => { limpiarFormGasto(); setShowGastoModal(true); };
+    const abrirModalEditarGasto = (gasto) => {
+        setEditandoGasto(gasto);
+        setGastoForm({
+            fecha: gasto.fecha.slice(0, 10),
+            proveedor: gasto.proveedor || "",
+            tipo_comprobante: gasto.tipo_comprobante || "",
+            numero_comprobante: gasto.numero_comprobante || "",
+            descripcion: gasto.descripcion,
+            monto: gasto.monto,
+            archivo: null
+        });
+        setShowGastoModal(true);
+    };
+
+    const eliminarSolicitud = async (id) => {
+        if (!confirm("¿Deseas eliminar esta solicitud?")) return;
+        try {
+            const res = await fetch(`${API}eliminar_solicitud.php?id=${id}`, { method: "DELETE" });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data?.message || "Error");
+            alert("Solicitud eliminada");
+            await obtenerSolicitudes();
+        } catch (error) { alert(error.message); }
+    };
+
+    const ejecutarFlujo = async (accion, solicitudId, observacion = "") => {
+        if (!currentUserId) { alert("Usuario no válido"); return; }
+        const payload = { solicitud_id: solicitudId, accion, usuario_id: currentUserId, observacion: observacion.trim() };
+        try {
+            const res = await fetch(`${API}flujo_fondos.php`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.message || "Error en el flujo"); return; }
+            alert(data.message);
+            await obtenerSolicitudes();
+            setViewingReq(prev => prev?.id === solicitudId ? { ...prev, estado: data.estado || prev.estado } : prev);
+        } catch (error) { alert("Error de conexión"); }
+    };
+
+    const ejecutarPago = async () => {
+        if (!viewingReq?.id) return alert("Solicitud inválida");
+        if (!archivoPago) return alert("Seleccione comprobante");
+        const formData = new FormData();
+        formData.append("solicitud_id", viewingReq.id);
+        formData.append("usuario_id", currentUserId);
+        formData.append("comprobante", archivoPago);
+        let montoPagar = 0;
+        const montoSolicitado = Number(viewingReq.monto_solicitado || 0);
+        const montoRendidoReal = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
+        if (viewingReq.tipo === "ADELANTO") montoPagar = montoSolicitado;
+        else montoPagar = montoRendidoReal;
+        formData.append("monto_pagado", montoPagar);
+        const res = await fetch(`${API}pago_tesoreria.php`, { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.success) {
+            alert("Pago registrado");
+            setShowPagoModal(false);
+            setArchivoPago(null);
+            await obtenerSolicitudes();
+            setViewingReq(prev => ({ ...prev, estado: data.estado }));
+        } else { alert(data.message); }
+    };
+
+    const cerrarRendicion = async () => {
+        if (!archivoCierre) { alert("Debe subir comprobante"); return; }
+        const formData = new FormData();
+        formData.append("solicitud_id", viewingReq.id);
+        formData.append("usuario_id", currentUserId);
+        formData.append("comprobante", archivoCierre);
+        try {
+            const res = await fetch(`${API}cerrar_rendicion.php`, { method: "POST", body: formData });
+            const data = await res.json();
+            if (!data.success) { alert(data.message); return; }
+            alert(data.message);
+            setShowCerrarModal(false);
+            setArchivoCierre(null);
+            await obtenerSolicitudes();
+            setViewingReq(prev => ({ ...prev, estado: "CERRADO" }));
+        } catch (error) { alert("Error al cerrar rendición"); }
+    };
+
+    const enviarRendicion = async () => {
+        if (!viewingReq?.id || !currentUserId) return alert("Datos inválidos");
+        if (archivosRendicion.length === 0) return alert("Seleccione archivos");
+        const formData = new FormData();
+        formData.append("solicitud_id", viewingReq.id);
+        formData.append("usuario_id", currentUserId);
+        archivosRendicion.forEach(file => formData.append("files[]", file));
+        try {
+            const res = await fetch(`${API}subir_rendicion.php`, { method: "POST", body: formData });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+            alert("Archivos subidos correctamente");
+            setArchivosRendicion([]);
+            await obtenerSolicitudes();
+            setViewingReq(prev => ({ ...prev, estado: "EN_RENDICION" }));
+        } catch (err) { alert("Error al subir archivos"); }
+    };
+
+    // ===================== FILTRADO Y ORDENAMIENTO =====================
+    const registrosFiltrados = useMemo(() => {
+        if (!Array.isArray(registros)) return [];
+        let filtered = registros.filter(reg => {
+            if (activeTab === 'general') return true;
+            if (activeTab === 'mis') {
+                const deptSolicitante = (reg.departamento_solicitante || "").toUpperCase().trim();
+                return deptSolicitante === currentDeptNombre;
+            }
+            return false;
+        });
+
+        if (searchText.trim() !== '') {
+            const term = searchText.toLowerCase();
+            filtered = filtered.filter(reg =>
+                (reg.codigo || "").toLowerCase().includes(term) ||
+                (reg.concepto || "").toLowerCase().includes(term) ||
+                (reg.empresa || "").toLowerCase().includes(term) ||
+                (reg.sede || "").toLowerCase().includes(term) ||
+                (reg.categoria || "").toLowerCase().includes(term)
+            );
+        }
+
+        if (pagadoFilter === 'pagado') {
+            filtered = filtered.filter(reg => reg.estado === 'PAGADO');
+        } else if (pagadoFilter === 'no_pagado') {
+            filtered = filtered.filter(reg => reg.estado !== 'PAGADO');
+        }
+
+        const sorted = [...filtered];
+        sorted.sort((a, b) => {
+            const dateA = new Date(a.fecha || a.created_at);
+            const dateB = new Date(b.fecha || b.created_at);
+            if (fechaOrder === 'asc') return dateA - dateB;
+            else return dateB - dateA;
+        });
+        return sorted;
+    }, [registros, activeTab, currentDeptNombre, searchText, pagadoFilter, fechaOrder]);
+
+    // ===================== CARGA INICIAL =====================
+    useEffect(() => { obtenerSolicitudes(); }, []);
+    useEffect(() => {
+        if (viewingReq?.id) {
+            obtenerArchivosSolicitud(viewingReq.id);
+            obtenerGastos(viewingReq.id);
+        }
+    }, [viewingReq]);
+
+    // ===================== AUXILIARES =====================
     const traducirTipo = (tipo) => {
         switch (tipo) {
             case 'ADELANTO': return 'Anticipo';
@@ -84,1416 +412,185 @@ const Fondos = ({ user }) => {
             default: return tipo;
         }
     };
-
-    // =========================
-    // CARGAR SOLICITUDES
-    // =========================
-
-    useEffect(() => {
-        obtenerSolicitudes();
-    }, []);
-
-
-    useEffect(() => {
-
-        if (viewingReq?.id) {
-            obtenerArchivosSolicitud(viewingReq.id);
-        }
-
-    }, [viewingReq]);
-
-    useEffect(() => {
-
-        if (!viewingReq) return;
-
-        const montoSolicitado =
-            Number(
-                viewingReq?.monto_solicitado ||
-                viewingReq?.monto ||
-                0
-            );
-
-        const montoRendido =
-            Number(
-                viewingReq?.monto_rendido ||
-                viewingReq?.total_rendido ||
-                0
-            );
-
-        const diferencia =
-            Math.abs(
-                montoSolicitado - montoRendido
-            );
-
-        setMontoTesoreria(diferencia);
-
-    }, [viewingReq]);
-
-    const montoSolicitado =
-        Number(
-            viewingReq?.monto_solicitado ||
-            viewingReq?.monto ||
-            0
-        );
-
-    const montoRendido =
-        Number(
-            viewingReq?.monto_rendido ||
-            viewingReq?.total_rendido ||
-            0
-        );
-
-    const diferenciaMonto =
-        montoSolicitado - montoRendido;
-
-    // =========================
-    // OBTENER SOLICITUDES
-    // =========================
-
-    const obtenerSolicitudes = async () => {
-
-        try {
-
-            setLoading(true);
-
-            const res = await fetch(
-                `${API}listar_solicitudes.php`
-            );
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(
-                    data?.message || "Error al obtener solicitudes"
-                );
-            }
-
-            setRegistros(data);
-
-        } catch (error) {
-
-            console.error(error);
-
-        } finally {
-
-            setLoading(false);
-
-        }
-    };
-
-    const obtenerGastos = async (solicitudId) => {
-        try {
-            const res = await fetch(`${API}listar_gastos.php?solicitud_id=${solicitudId}`);
-            const data = await res.json();
-            if (data.success) setGastos(data.gastos);
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
+    const montoSolicitado = Number(viewingReq?.monto_solicitado || viewingReq?.monto || 0);
     const montoRendidoReal = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
     const diferenciaMonto = montoSolicitado - montoRendidoReal;
+    const formatearMoneda = (monto) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(monto);
 
-    const obtenerArchivosSolicitud = async (id) => {
-
-        try {
-
-            const res = await fetch(
-                `${API}listar_archivos_solicitud.php?id=${id}`
-            );
-
-            const data = await res.json();
-
-            if (!data.success) return;
-
-            const rend =
-                data.archivos.filter(
-                    a => a.tipo === "RENDICION"
-                );
-
-            const tes =
-                data.archivos.filter(
-                    a =>
-                        a.tipo === "DEVOLUCION"
-                        ||
-                        a.tipo === "REEMBOLSO"
-                        ||
-                        a.tipo === "PAGO_TESORERIA"
-                );
-
-            setRendiciones(rend);
-
-            setArchivosTesoreria(tes);
-
-        } catch (err) {
-
-            console.error(err);
-
-        }
-    };
-
-    const obtenerRendiciones = async (solicitudId) => {
-
-        try {
-
-            const res = await fetch(
-                `${API}listar_rendiciones.php?solicitud_id=${solicitudId}`
-            );
-
-            const data = await res.json();
-
-            setRendiciones(data);
-
-        } catch (err) {
-
-            console.error(err);
-
-        }
-    };
-
-
-    // =========================
-    // ELIMINAR SOLICITUD
-    // =========================
-
-    const eliminarSolicitud = async (id) => {
-
-        const confirmar = window.confirm(
-            "¿Deseas eliminar esta solicitud?"
-        );
-
-        if (!confirmar) return;
-
-        try {
-
-            const res = await fetch(
-                `${API}eliminar_solicitud.php?id=${id}`,
-                {
-                    method: "DELETE"
-                }
-            );
-
-            const data = await res.json();
-
-            if (!res.ok || !data.success) {
-
-                throw new Error(
-                    data?.message ||
-                    "Error al eliminar"
-                );
-            }
-
-            alert("Solicitud eliminada correctamente");
-            await obtenerSolicitudes();
-
-        } catch (error) {
-            console.error(error);
-            alert(error.message);
-        }
-    };
-    // =========================
-    // RESUMEN DE CAJA
-    // =========================
-
-    const {
-        totalGastado,
-        totalPendiente,
-        disponible
-    } = React.useMemo(() => {
-
-        let gastado = 0;
-
-        let pendientes = 0;
-
-        registros.forEach(r => {
-
-            const monto = parseFloat(
-                r.monto_solicitado || 0
-            );
-
-            if (
-                r.estado === 'APROBADO' ||
-                r.estado === 'PAGADO' ||
-                r.estado === 'CERRADO'
-            ) {
-                gastado += monto;
-            }
-
-            if (r.estado === 'PENDIENTE') {
-                pendientes += 1;
-            }
-
-        });
-
-        return {
-            totalGastado: gastado,
-            totalPendiente: pendientes,
-            disponible: FONDO_ASIGNADO - gastado
-        };
-
-    }, [registros]);
-
-    // =========================
-    // PORCENTAJE
-    // =========================
-
-    const pctDisponible =
-        (disponible / FONDO_ASIGNADO) * 100;
-
-    // =========================
-    // FORMATO MONEDA
-    // =========================
-
-    const formatearMoneda = (monto) => {
-
-        return new Intl.NumberFormat(
-            'es-PE',
-            {
-                style: 'currency',
-                currency: 'PEN'
-            }
-        ).format(monto);
-
-    };
-
-
-    // =========================
-    // FILTROS
-    // =========================
-
-    const registrosFiltrados = React.useMemo(() => {
-
-        return registros.filter(reg => {
-
-            // TAB
-
-            const perteneceATab =
-                activeTab === 'general'
-                    ? true
-                    : reg.solicitante_id === usuarioSesion?.id;
-
-            // TEXTO
-
-            const texto = txtBuscar.toLowerCase();
-
-            const coincideTexto =
-                (reg.codigo || "")
-                    .toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                (reg.concepto || "")
-                    .toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                (reg.empresa || "")
-                    .toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                (reg.sede || "")
-                    .toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                (reg.categoria || "")
-                    .toLowerCase()
-                    .includes(texto);
-
-            // TIPO
-
-            const coincideTipo =
-                selTipo === 'todos'
-                    ? true
-                    : reg.tipo === selTipo;
-
-            // ESTADO
-
-            const coincideEstado =
-                selEstado === 'todos'
-                    ? true
-                    : reg.estado === selEstado;
-
-            return (
-                perteneceATab &&
-                coincideTexto &&
-                coincideTipo &&
-                coincideEstado
-            );
-
-        });
-
-    }, [
-        registros,
-        activeTab,
-        txtBuscar,
-        selTipo,
-        selEstado
-    ]);
-
-    // =========================
-    // ABRIR CREAR
-    // =========================
-
+    // ===================== MODALES DE SOLICITUD =====================
     const abrirModalCrear = () => {
-
         setFormError("");
         setEditingReq({
-            id: "",
-            codigo: "",
-            tipo: "ADELANTO",
-            fecha: new Date()
-                .toISOString()
-                .substring(0, 10),
-            empresa: "",
-            sede: "",
-            categoria: "",
-            monto_solicitado: "",
-            concepto: "",
-            estado: "PENDIENTE",
-            firma_digital: ""
+            id: "", codigo: "", tipo: "ADELANTO",
+            fecha: new Date().toISOString().substring(0, 10),
+            empresa: "", sede: "", categoria: "", monto_solicitado: "", concepto: "", estado: "PENDIENTE", firma_digital: ""
         });
-
+        setEmpresaSeleccionada("");
+        setSedeSeleccionada("");
         setShowModal(true);
     };
 
     const abrirModalEditar = (id) => {
-        setFormError("");
-        const reg = registros.find(
-            r => r.id === id
-        );
+        const reg = registros.find(r => r.id === id);
         if (!reg) return;
         setEditingReq({
-            id: reg.id,
-            codigo: reg.codigo || "",
-            empresa: reg.empresa || "",
-            sede: reg.sede || "",
-            categoria: reg.categoria || "",
-            concepto: reg.concepto || "",
-            monto_solicitado: reg.monto_solicitado || "",
-            estado: reg.estado || "PENDIENTE",
-            fecha: reg.fecha || "",
-            firma_digital: reg.firma_digital || "",
-            // NORMALIZAR TIPO
-            tipo: reg.tipo === "Adelanto" ? "ADELANTO" :
-                reg.tipo === "Reembolso" ? "REEMBOLSO" :
-                    reg.tipo === "Viaticos" ? "VIATICOS" :
-                        reg.tipo || "ADELANTO"
+            id: reg.id, codigo: reg.codigo || "", empresa: reg.empresa || "", sede: reg.sede || "",
+            categoria: reg.categoria || "", concepto: reg.concepto || "", monto_solicitado: reg.monto_solicitado || "",
+            estado: reg.estado || "PENDIENTE", fecha: reg.fecha || "", firma_digital: reg.firma_digital || "",
+            tipo: reg.tipo === "Adelanto" ? "ADELANTO" : reg.tipo === "Reembolso" ? "REEMBOLSO" : reg.tipo === "Viaticos" ? "VIATICOS" : reg.tipo || "ADELANTO"
         });
+        setEmpresaSeleccionada("");
+        setSedeSeleccionada("");
         setShowModal(true);
     };
 
-    const abrirModalVisualizar = (id) => {
-
-        const reg = registros.find(
-            r => r.id === id
-        );
-
+    const abrirModalVisualizar = async (id) => {
+        const reg = registros.find(r => r.id === id);
         if (reg) {
-
             setViewingReq(reg);
-
             setShowViewModal(true);
-
-            obtenerRendiciones(reg.id);
+            setGastosEnviado(false);
+            await obtenerGastos(reg.id);
+            await obtenerRendiciones(reg.id);
         }
     };
 
     const guardarRegistro = async (e) => {
-
         e.preventDefault();
-
         setFormError("");
-
+        if (!empresaSeleccionada || !sedeSeleccionada || !editingReq.categoria || !editingReq.concepto || !editingReq.monto_solicitado) {
+            setFormError("Complete todos los campos obligatorios (empresa, sede, categoría, concepto, monto).");
+            return;
+        }
+        if (parseFloat(editingReq.monto_solicitado) <= 0) { setFormError("Monto mayor a cero."); return; }
+        
+        const empresaNombre = empresas.find(e => e.id == empresaSeleccionada)?.nombre || "";
+        const sedeNombre = sedes.find(s => s.id == sedeSeleccionada)?.nombre || "";
+        
+        let tipoNormalizado = "ADELANTO";
+        if (editingReq.tipo === "REEMBOLSO" || editingReq.tipo === "Reembolso") tipoNormalizado = "REEMBOLSO";
+        else if (editingReq.tipo === "VIATICOS" || editingReq.tipo === "Viaticos") tipoNormalizado = "VIATICOS";
+        
         try {
-
-            // =========================================
-            // VALIDACIONES
-            // =========================================
-
-            if (
-                !editingReq.empresa ||
-                !editingReq.sede ||
-                !editingReq.categoria ||
-                !editingReq.concepto ||
-                !editingReq.monto_solicitado
-            ) {
-
-                setFormError(
-                    "Completa todos los campos obligatorios."
-                );
-
-                return;
-            }
-
-            if (
-                parseFloat(editingReq.monto_solicitado) <= 0
-            ) {
-
-                setFormError(
-                    "El monto debe ser mayor a cero."
-                );
-
-                return;
-            }
-
-            // =========================================
-            // NORMALIZAR TIPO
-            // =========================================
-
-            let tipoNormalizado = "ADELANTO";
-            if (editingReq.tipo === "REEMBOLSO" || editingReq.tipo === "Reembolso") {
-                tipoNormalizado = "REEMBOLSO";
-            } else if (editingReq.tipo === "VIATICOS" || editingReq.tipo === "Viaticos") {
-                tipoNormalizado = "VIATICOS";
-            }
-            // =========================================
-            // ACTUALIZAR
-            // =========================================
-
             if (editingReq.id) {
-
                 const payload = {
-
                     id: editingReq.id,
-
-                    empresa: editingReq.empresa,
-
-                    sede: editingReq.sede,
-
+                    empresa: empresaNombre,
+                    sede: sedeNombre,
                     tipo: tipoNormalizado,
-
                     categoria: editingReq.categoria,
-
                     concepto: editingReq.concepto,
-
-                    monto_solicitado:
-                        editingReq.monto_solicitado,
-
+                    monto_solicitado: editingReq.monto_solicitado,
                     estado: editingReq.estado
                 };
-
-                const res = await fetch(
-                    `${API}actualizar_solicitud.php`,
-                    {
-                        method: "PUT",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify(payload)
-                    }
-                );
-
+                const res = await fetch(`${API}actualizar_solicitud.php`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
                 const data = await res.json();
-
-                if (data.success) {
-
-                    alert(
-                        "Solicitud actualizada correctamente"
-                    );
-
-                    await obtenerSolicitudes();
-
-                    setShowModal(false);
-
-                } else {
-
-                    setFormError(
-                        data.message ||
-                        "No se pudo actualizar"
-                    );
-                }
-
-            }
-
-            // =========================================
-            // CREAR
-            // =========================================
-            else {
-
+                if (data.success) { alert("Solicitud actualizada"); await obtenerSolicitudes(); setShowModal(false); }
+                else setFormError(data.message || "Error");
+            } else {
                 const payload = {
                     solicitante_id: currentUserId,
-                    departamento_id: currentDeptId,
-                    empresa: editingReq.empresa,
-                    sede: editingReq.sede,
+                    departamento_id: currentUser?.departamento_id || null,
+                    empresa: empresaNombre,
+                    sede: sedeNombre,
                     tipo: tipoNormalizado,
                     categoria: editingReq.categoria,
                     concepto: editingReq.concepto,
                     monto_solicitado: editingReq.monto_solicitado,
                     firma_digital: editingReq.firma_digital || ""
                 };
-
-                const res = await fetch(
-                    `${API}crear_solicitud.php`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify(payload)
-                    }
-                );
+                const res = await fetch(`${API}crear_solicitud.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
                 const data = await res.json();
-                if (data.success) {
-                    alert(
-                        "Solicitud registrada correctamente"
-                    );
-                    await obtenerSolicitudes();
-                    setShowModal(false);
-                } else {
-                    setFormError(
-                        data.message ||
-                        "No se pudo registrar"
-                    );
-                }
+                if (data.success) { alert("Solicitud registrada"); await obtenerSolicitudes(); setShowModal(false); }
+                else setFormError(data.message || "Error");
             }
-
-        } catch (error) {
-            console.error(error);
-            setFormError(
-                "Error de conexión con el servidor."
-            );
-        }
+        } catch (error) { setFormError("Error de conexión"); }
     };
 
-    // ============================================
-    // EJECUTAR FLUJO
-    // ============================================
-
-    const ejecutarFlujo = async (
-        accion,
-        solicitudId,
-        observacion = ""
-    ) => {
-
-        try {
-
-            // =========================
-            // VALIDACIÓN LOCAL
-            // =========================
-
-            if (!currentUserId) {
-                alert("Usuario no válido");
-                return;
-            }
-
-            const payload = {
-                solicitud_id: solicitudId,
-                accion,
-                usuario_id: currentUserId,
-                observacion: observacion.trim()
-            };
-
-            console.log("FLUJO PAYLOAD:", payload);
-
-            const res = await fetch(
-                `${API}flujo_fondos.php`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(payload)
-                }
-            );
-
-            const data = await res.json();
-
-            console.log("FLUJO RESPONSE:", data);
-
-            if (!data.success) {
-                alert(data.message || "Error en el flujo");
-                return;
-            }
-
-            alert(data.message);
-
-            // =========================
-            // OPTIMIZADO: SOLO UNA RECARGA
-            // =========================
-
-            await obtenerSolicitudes();
-
-            // =========================
-            // ACTUALIZAR MODAL SIN FETCH EXTRA
-            // =========================
-
-            setViewingReq(prev =>
-                prev?.id === solicitudId
-                    ? {
-                        ...prev,
-                        estado: data.estado || prev.estado
-                    }
-                    : prev
-            );
-
-        } catch (error) {
-
-            console.error(error);
-
-            alert("Error de conexión con el servidor");
-        }
-    };
-
-    // ============================================
-    // PERMISOS
-    // ============================================
-
-    const esTIC = dept === "TIC";
-    const esAdministracion =
-        dept.includes("ADMIN");
-    const esTesoreria = dept === "TESORERIA";
-
-    const esJefe =
-        currentRole === "jefe";
-
-    const esAsistente =
-        currentRole === "asistente";
-
-    // ============================================
-    // PERMISOS DE FLUJO
-    // ============================================
-
-    const puedeEditar =
-        viewingReq &&
-        Number(currentUserId) === Number(viewingReq.solicitante_id) &&
-        viewingReq.estado === "SIN_FIRMAR";
-
-    // TIC = acceso total
-
-    const puedeAprobar =
-        esTIC ||
-        (esAdministracion && esJefe);
-
-    // TESORERIA = pagar
-    const puedePagar =
-        esTIC ||
-        esTesoreria;
-
-    // JEFE SOLICITANTE = firmar
-
-    const puedeFirmar =
-        viewingReq &&
-        Number(currentUserId) === Number(viewingReq.solicitante_id) &&
-        esJefe;
-
-
-    const enviarRendicion = async () => {
-
-        // =========================================
-        // VALIDACIONES
-        // =========================================
-
-        if (!viewingReq?.id) {
-            alert("Solicitud inválida");
-            return;
-        }
-
-        if (!currentUserId) {
-            alert("Usuario inválido");
-            return;
-        }
-
-        if (archivosRendicion.length === 0) {
-            alert("Debe seleccionar archivos");
-            return;
-        }
-
-        try {
-
-            const formData = new FormData();
-
-            // =========================================
-            // DATA
-            // =========================================
-
-            formData.append(
-                "solicitud_id",
-                viewingReq.id
-            );
-
-            formData.append(
-                "usuario_id",
-                currentUserId
-            );
-
-            // =========================================
-            // ARCHIVOS
-            // =========================================
-
-            archivosRendicion.forEach(file => {
-
-                formData.append(
-                    "files[]",
-                    file
-                );
-
-            });
-
-            // DEBUG
-            console.log("ENVIANDO RENDICION...");
-            console.log("SOLICITUD:", viewingReq.id);
-            console.log("USUARIO:", currentUserId);
-            console.log("FILES:", archivosRendicion);
-
-            // =========================================
-            // REQUEST
-            // =========================================
-
-            const res = await fetch(
-                `${API}subir_rendicion.php`,
-                {
-                    method: "POST",
-                    body: formData
-                }
-            );
-
-            const data = await res.json();
-
-            console.log("RESPUESTA:", data);
-
-            if (!data.success) {
-
-                alert(
-                    data.message ||
-                    "Error al subir rendición"
-                );
-
-                return;
-            }
-
-            // =========================================
-            // OK
-            // =========================================
-
-            alert(
-                "Rendición subida correctamente"
-            );
-
-            setShowRendicionModal(false);
-
-            setArchivosRendicion([]);
-
-            await obtenerSolicitudes();
-
-            // =========================================
-            // ACTUALIZAR MODAL
-            // =========================================
-
-            setViewingReq(prev => ({
-                ...prev,
-                estado: "EN_RENDICION"
-            }));
-
-        } catch (err) {
-
-            console.error(err);
-
-            alert(
-                "Error al subir rendición"
-            );
-        }
-    };
-
-    const ejecutarPago = async () => {
-
-        try {
-
-            // =========================================
-            // VALIDACIONES
-            // =========================================
-
-            if (!viewingReq?.id) {
-
-                alert("Solicitud inválida");
-                return;
-            }
-
-            if (!currentUserId) {
-
-                alert("Usuario inválido");
-                return;
-            }
-
-            if (!archivoPago) {
-
-                alert("Debe seleccionar un comprobante");
-                return;
-            }
-
-            // =========================================
-            // DEBUG
-            // =========================================
-
-            console.log("=== REGISTRANDO PAGO ===");
-
-            console.log({
-                solicitud_id: viewingReq.id,
-                usuario_id: currentUserId,
-                estado: viewingReq.estado,
-                tipo: viewingReq.tipo,
-                archivo: archivoPago
-            });
-
-            // =========================================
-            // FORM DATA
-            // =========================================
-
-            const formData = new FormData();
-
-            formData.append(
-                "solicitud_id",
-                String(viewingReq.id)
-            );
-
-            formData.append(
-                "usuario_id",
-                String(currentUserId)
-            );
-
-            formData.append(
-                "comprobante",
-                archivoPago
-            );
-
-            // =========================================
-            // REQUEST
-            // =========================================
-
-            const response = await fetch(
-                `${API}pago_tesoreria.php`,
-                {
-                    method: "POST",
-                    body: formData
-                }
-            );
-
-            // DEBUG RAW
-            const raw = await response.text();
-
-            console.log("RAW RESPONSE:", raw);
-
-            let data;
-
-            try {
-
-                data = JSON.parse(raw);
-
-            } catch (e) {
-
-                console.error("JSON INVALIDO:", e);
-
-                alert("El servidor devolvió una respuesta inválida");
-
-                return;
-            }
-
-            console.log("DATA:", data);
-
-            // =========================================
-            // ERROR
-            // =========================================
-
-            if (!data.success) {
-
-                alert(
-                    data.message ||
-                    "Error al registrar pago"
-                );
-
-                return;
-            }
-
-            // =========================================
-            // SUCCESS
-            // =========================================
-
-            alert("Pago registrado correctamente");
-
-            setShowPagoModal(false);
-
-            setArchivoPago(null);
-
-            // =========================================
-            // RECARGAR
-            // =========================================
-
-            await obtenerSolicitudes();
-
-            // =========================================
-            // ACTUALIZAR MODAL
-            // =========================================
-
-            setViewingReq(prev => ({
-
-                ...prev,
-
-                estado:
-                    viewingReq.tipo === "REEMBOLSO"
-                        ? "PAGADO"
-                        : "PAGADO"
-            }));
-
-        } catch (err) {
-
-            console.error(err);
-
-            alert("Error al registrar pago");
-        }
-    };
-
-    const cerrarRendicion = async () => {
-
-        if (!archivoCierre) {
-
-            alert("Debe subir comprobante");
-
-            return;
-        }
-
-        const formData = new FormData();
-
-        formData.append(
-            "solicitud_id",
-            viewingReq.id
-        );
-
-        formData.append(
-            "usuario_id",
-            currentUserId
-        );
-
-        formData.append(
-            "comprobante",
-            archivoCierre
-        );
-
-        try {
-
-            const res = await fetch(
-                `${API}cerrar_rendicion.php`,
-                {
-                    method: "POST",
-                    body: formData
-                }
-            );
-
-            const data = await res.json();
-
-            if (!data.success) {
-
-                alert(data.message);
-
-                return;
-            }
-
-            alert(data.message);
-
-            setShowCerrarModal(false);
-
-            setArchivoCierre(null);
-
-            await obtenerSolicitudes();
-
-            setViewingReq(prev => ({
-                ...prev,
-                estado: "CERRADO"
-            }));
-
-        } catch (error) {
-
-            console.error(error);
-
-            alert("Error al cerrar rendición");
-        }
-    };
-
-    const diferencia = Number(
-        viewingReq?.diferencia || 0
-    );
-
-    const hayReembolso =
-        diferencia < 0;
-
-    const hayDevolucion =
-        diferencia > 0;
-
-    const rendicionCuadrada =
-        diferencia === 0;
-
-    const esReembolsoOViaticos = viewingReq?.tipo === "REEMBOLSO" || viewingReq?.tipo === "VIATICOS";
-    const pasosFlujo = esReembolsoOViaticos
-        ? [
-            {
-                key: "PENDIENTE",
-                title: "Solicitud Registrada",
-                desc: "Solicitud creada por el departamento solicitante."
-            },
-            {
-                key: "APROBADO",
-                title: "Aprobación Administrativa",
-                desc: "ADMINISTRACION validó la solicitud."
-            },
-            {
-                key: "EN_RENDICION",
-                title: "Rendición Enviada",
-                desc: "El solicitante adjuntó los comprobantes."
-            },
-            {
-                key: "CERRADO",
-                title: "Reembolso Finalizado",
-                desc: "TESORERIA realizó el reembolso."
-            }
-        ]
-        : [
-            {
-                key: "PENDIENTE",
-                title: "Solicitud Registrada",
-                desc: "Solicitud creada por el departamento solicitante."
-            },
-            {
-                key: "APROBADO",
-                title: "Aprobación Administrativa",
-                desc: "ADMINISTRACION validó y aprobó la solicitud."
-            },
-            {
-                key: "PAGADO",
-                title: "Pago Tesorería",
-                desc: "TESORERIA realizó el desembolso."
-            },
-            {
-                key: "EN_RENDICION",
-                title: "En Rendición",
-                desc: "Pendiente de sustento documentario."
-            },
-            {
-                key: "CERRADO",
-                title: "Proceso Cerrado",
-                desc: "Solicitud finalizada correctamente."
-            }
-        ];
-
+    // ===================== RENDER =====================
     return (
-        <div className="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased flex flex-col justify-between">
-
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-30 backdrop-blur-sm">
-                <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-5 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
-
-                    {/* IZQUIERDA */}
+        <div className="bg-slate-50 min-h-screen font-sans text-slate-800">
+            <header className="bg-white border-b sticky top-0 z-30">
+                <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-5 flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                        <div className="bg-gradient-to-br from-[#800000] to-black p-3.5 rounded-2xl shadow-xl shadow-red-950/20 border border-[#800000]/20">
-                            <Coins className="w-7 h-7 text-white" strokeWidth={2.2} />
-                        </div>
-
-                        <div>
-                            <h1 className="text-2xl font-black uppercase tracking-tight text-slate-800 leading-none">
-                                Gestión de Fondos
-                            </h1>
-
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.25em] mt-2">
-                                Solicitudes · Rendiciones · Fondos
-                            </p>
-                        </div>
+                        <div className="bg-gradient-to-br from-[#800000] to-black p-3 rounded-2xl"><Coins className="w-7 h-7 text-white" /></div>
+                        <div><h1 className="text-2xl font-black">Gestión de Fondos</h1><p className="text-[10px] font-bold text-slate-400">Solicitudes · Rendiciones · Fondos</p></div>
                     </div>
-
-                    {/* DERECHA */}
-                    <div className="flex items-center gap-3 w-full lg:w-auto">
-
-                        <button
-                            onClick={obtenerSolicitudes}
-                            className="h-11 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm group"
-                        >
-                            <RefreshCw className="w-4 h-4 text-slate-500 group-hover:rotate-180 transition-transform duration-500" />
-
-                            <span className="text-[11px] font-black uppercase tracking-wider text-slate-600">
-                                Actualizar
-                            </span>
-                        </button>
-
-                        <div className="bg-slate-100 rounded-2xl px-4 py-3 border border-slate-200 min-w-[220px]">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                                    Solicitudes Totales
-                                </span>
-
-                                <span className="text-[10px] font-black text-emerald-600 uppercase">
-                                    Activo
-                                </span>
-                            </div>
-
-                            <div className="text-2xl font-black text-slate-800 leading-none">
-                                {registros.length}
-                            </div>
-                        </div>
+                    <div className="flex gap-3">
+                        <button onClick={obtenerSolicitudes} className="h-11 px-4 rounded-xl border bg-white hover:bg-slate-50 flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Actualizar</button>
+                        <div className="bg-slate-100 rounded-2xl px-4 py-3"><div className="text-[10px] font-black">Solicitudes Totales</div><div className="text-2xl font-black">{registros.length}</div></div>
                     </div>
                 </div>
             </header>
 
-            {/* CUERPO PRINCIPAL */}
-            <main className="flex-grow max-w-[1400px] w-full mx-auto px-4 md:px-8 py-8">
-
-                {/* TOP ACTIONS */}
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 mb-8">
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
-                        {/* TABS */}
-                        <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
-                            <button
-                                onClick={() => setActiveTab("mis")}
-                                className={`px-5 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${activeTab === "mis"
-                                    ? "bg-[#800000] text-white shadow-lg shadow-red-900/20"
-                                    : "text-slate-500 hover:bg-slate-100"
-                                    }`}
-                            >
-                                <FileText className="w-4 h-4" strokeWidth={2} />
-                                Mis Solicitudes
-                            </button>
-
-                            <button
-                                onClick={() => setActiveTab("general")}
-                                className={`px-5 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${activeTab === "general"
-                                    ? "bg-[#800000] text-white shadow-lg shadow-red-900/20"
-                                    : "text-slate-500 hover:bg-slate-100"
-                                    }`}
-                            >
-                                <Users className="w-4 h-4" strokeWidth={2} />
-                                Vista General
-                            </button>
-                        </div>
-
-                        {/* BOTÓN NUEVO */}
-                        <button
-                            onClick={abrirModalCrear}
-                            className="bg-gradient-to-r from-[#800000] to-black hover:scale-[1.02] active:scale-[0.98] text-white px-6 py-3 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-xl shadow-red-950/20"
-                        >
-                            <Plus className="w-5 h-5" strokeWidth={3} />
-                            <span className="font-black text-[11px] uppercase tracking-[0.18em]">
-                                Nueva Solicitud
-                            </span>
-                        </button>
+            <main className="max-w-[1400px] mx-auto px-4 md:px-8 py-8">
+                <div className="flex justify-between items-center mb-8">
+                    <div className="flex gap-2 bg-white border rounded-2xl p-2">
+                        <button onClick={() => setActiveTab("mis")} className={`px-5 py-3 rounded-xl text-[11px] font-black uppercase flex items-center gap-2 ${activeTab === "mis" ? "bg-[#800000] text-white" : "hover:bg-slate-100"}`}><FileText className="w-4 h-4" /> Mis Solicitudes</button>
+                        {puedeVerGeneral && (
+                            <button onClick={() => setActiveTab("general")} className={`px-5 py-3 rounded-xl text-[11px] font-black uppercase flex items-center gap-2 ${activeTab === "general" ? "bg-[#800000] text-white" : "hover:bg-slate-100"}`}><Users className="w-4 h-4" /> Vista General</button>
+                        )}
                     </div>
+                    <button onClick={abrirModalCrear} className="bg-gradient-to-r from-[#800000] to-black text-white px-6 py-3 rounded-2xl flex items-center gap-2"><Plus className="w-5 h-5" /> Nueva Solicitud</button>
                 </div>
 
-                {/* FILTROS */}
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-
-                    <div className="p-5 border-b border-slate-100 bg-slate-50/40">
-                        <div className="flex flex-col lg:flex-row gap-4">
-
-                            {/* BUSCADOR */}
-                            <div className="relative flex-1">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                    <svg
-                                        className="w-4 h-4"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                                        />
-                                    </svg>
-                                </span>
-
-                                <input
-                                    type="text"
-                                    value={txtBuscar}
-                                    onChange={(e) => setTxtBuscar(e.target.value)}
-                                    placeholder="Buscar por código, solicitante, concepto o proveedor..."
-                                    className="w-full h-12 pl-11 pr-4 rounded-2xl border border-slate-200 bg-white text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#800000]/10 focus:border-[#800000] transition-all"
-                                />
+                {/* BARRA DE FILTROS */}
+                <div className="bg-white rounded-3xl border shadow-sm overflow-hidden mb-8">
+                    <div className="p-5 border-b bg-slate-50/40">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Search size={12} /> Buscar</label>
+                                <input type="text" placeholder="Código, concepto, empresa..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-400/30" />
                             </div>
-
-                            {/* SELECTS */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:w-[360px]">
-
-                                <select
-                                    value={selTipo}
-                                    onChange={(e) => setSelTipo(e.target.value)}
-                                    className="h-12 px-4 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-4 focus:ring-[#800000]/10 focus:border-[#800000]"
-                                >
-                                    <option value="todos">Todos los Tipos</option>
-                                    <option value="ADELANTO">Anticipo</option>
-                                    <option value="REEMBOLSO">Reembolso</option>
-                                    <option value="VIATICOS">Viáticos</option>
-                                </select>
-
-                                <select
-                                    value={selEstado}
-                                    onChange={(e) => setSelEstado(e.target.value)}
-                                    className="h-12 px-4 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-4 focus:ring-[#800000]/10 focus:border-[#800000]"
-                                >
-                                    <option value="todos">Todos los Estados</option>
-                                    <option value="PENDIENTE">Pendiente</option>
-                                    <option value="APROBADO">Aprobado</option>
-                                    <option value="PAGADO">Pagado</option>
-                                    <option value="CERRADO">Cerrado</option>
-                                    <option value="RECHAZADO">Rechazado</option>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Filter size={12} /> Estado de Pago</label>
+                                <select value={pagadoFilter} onChange={(e) => setPagadoFilter(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium">
+                                    <option value="todos">Todos</option>
+                                    <option value="pagado">Pagados</option>
+                                    <option value="no_pagado">No pagados</option>
                                 </select>
                             </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Calendar size={12} /> Orden por Fecha</label>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setFechaOrder('desc')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all ${fechaOrder === 'desc' ? 'bg-[#800000] text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}><ArrowDown size={14} /> Más Reciente</button>
+                                    <button onClick={() => setFechaOrder('asc')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all ${fechaOrder === 'asc' ? 'bg-[#800000] text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}><ArrowUp size={14} /> Más Antigua</button>
+                                </div>
+                            </div>
+                            <div className="text-right text-[10px] font-bold text-slate-400 self-end pb-2">Mostrando {registrosFiltrados.length} de {registros.length} solicitudes</div>
                         </div>
                     </div>
 
                     {/* TABLA */}
                     <div className="overflow-x-auto">
-
                         <table className="w-full min-w-[1100px]">
                             <thead className="bg-slate-50">
                                 <tr>
-
-                                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 border-b border-slate-200">
-                                        Código
-                                    </th>
-
-                                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 border-b border-slate-200">
-                                        Solicitante
-                                    </th>
-
-                                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 border-b border-slate-200">
-                                        Concepto
-                                    </th>
-
-                                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 border-b border-slate-200">
-                                        Estado
-                                    </th>
-
-                                    <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 border-b border-slate-200">
-                                        Monto
-                                    </th>
-
-                                    <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 border-b border-slate-200">
-                                        Acciones
-                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black">Código</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black">Solicitante</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black">Concepto</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black">Estado</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black">Monto</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black">Acciones</th>
                                 </tr>
                             </thead>
-
-                            <tbody className="divide-y divide-slate-100 bg-white">
+                            <tbody>
                                 {registrosFiltrados.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="7" className="py-20 text-center">
-                                            <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-5 border border-slate-200">
-                                                {/* Icono de estado vacío */}
-                                                <Inbox className="w-9 h-9 text-slate-300" strokeWidth={1.8} />
-                                            </div>
-
-                                            <h3 className="text-base font-black text-slate-700 uppercase">
-                                                No hay solicitudes
-                                            </h3>
-
-                                            <p className="text-sm text-slate-400 mt-2">
-                                                No se encontraron registros con los filtros actuales.
-                                            </p>
-                                        </td>
-                                    </tr>
+                                    <tr><td colSpan="6" className="py-20 text-center">No hay solicitudes</td></tr>
                                 ) : (
-                                    registrosFiltrados.map((reg) => {
-                                        const badge =
-                                            reg.estado === "PENDIENTE"
-                                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                                : reg.estado === "APROBADO"
-                                                    ? "bg-blue-50 text-blue-700 border-blue-200"
-                                                    : reg.estado === "PAGADO"
-                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                        : reg.estado === "CERRADO"
-                                                            ? "bg-slate-100 text-slate-700 border-slate-200"
-                                                            : "bg-red-50 text-red-700 border-red-200";
-
+                                    registrosFiltrados.map(reg => {
+                                        const badge = reg.estado === "PENDIENTE" ? "bg-amber-50 text-amber-700" :
+                                            reg.estado === "APROBADO" ? "bg-blue-50 text-blue-700" :
+                                                reg.estado === "PAGADO" ? "bg-emerald-50 text-emerald-700" :
+                                                    reg.estado === "CERRADO" ? "bg-slate-100 text-slate-700" : "bg-red-50 text-red-700";
                                         return (
-                                            <tr
-                                                key={reg.id}
-                                                className="hover:bg-slate-50/70 transition-all"
-                                            >
-                                                {/* CÓDIGO */}
-                                                <td className="px-6 py-5">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-xs font-black text-[#800000]">
-                                                            {reg.codigo}
-                                                        </span>
-                                                        <span className="text-[10px] text-slate-400 font-bold uppercase mt-1">
-                                                            {reg.created_at}
-                                                        </span>
-                                                    </div>
-                                                </td>
-
-                                                {/* SOLICITANTE */}
-                                                <td className="px-6 py-5">
-                                                    <div>
-                                                        <p className="text-sm font-bold text-slate-700">
-                                                            {reg.solicitante || "Sin nombre"}
-                                                        </p>
-                                                        <p className="text-[11px] text-slate-400 uppercase font-bold mt-1">
-                                                            {reg.empresa} • {reg.sede}
-                                                        </p>
-                                                    </div>
-                                                </td>
-
-                                                {/* CONCEPTO */}
-                                                <td className="px-6 py-5">
-                                                    <div className="max-w-[280px]">
-                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-slate-100 text-slate-700 mb-2">
-                                                            {traducirTipo(reg.tipo)}
-                                                        </span>
-                                                        <p className="text-sm text-slate-600 font-medium leading-relaxed">
-                                                            {reg.concepto}
-                                                        </p>
-                                                    </div>
-                                                </td>
-
-                                                {/* ESTADO */}
-                                                <td className="px-6 py-5">
-                                                    <span className={`inline-flex px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-[0.15em] ${badge}`}>
-                                                        {reg.estado}
-                                                    </span>
-                                                </td>
-
-                                                {/* MONTO */}
-                                                <td className="px-6 py-5 text-right">
-                                                    <span className="text-sm font-black text-slate-800">
-                                                        {formatearMoneda(reg.monto_solicitado)}
-                                                    </span>
-                                                </td>
-
-                                                {/* ACCIONES */}
-                                                <td className="px-6 py-5">
-                                                    <div className="flex justify-end gap-2">
-                                                        {/* Botón Visualizar */}
-                                                        <button
-                                                            onClick={() => abrirModalVisualizar(reg.id)}
-                                                            className="w-10 h-10 rounded-xl border border-slate-200 hover:border-[#800000]/20 hover:bg-[#800000]/5 flex items-center justify-center text-slate-500 hover:text-[#800000] transition-all"
-                                                            title="Visualizar"
-                                                        >
-                                                            <Eye className="w-4 h-4" strokeWidth={2.3} />
-                                                        </button>
-
-                                                        {/* Botón Editar */}
-                                                        {puedeEditar && (
-                                                            <button
-                                                                onClick={() => abrirEditar(viewingReq)}
-                                                                className="w-10 h-10 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 flex items-center justify-center text-amber-700 transition-all"
-                                                                title="Editar"
-                                                            >
-                                                                <Pencil className="w-4 h-4" />
-                                                            </button>
-                                                        )}
-
-                                                        {/* Botón Eliminar */}
-                                                        <button
-                                                            onClick={() => eliminarSolicitud(reg.id)}
-                                                            className="w-10 h-10 rounded-xl border border-slate-200 hover:border-red-200 hover:bg-red-50 flex items-center justify-center text-slate-500 hover:text-red-600 transition-all"
-                                                            title="Eliminar"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" strokeWidth={2.3} />
-                                                        </button>
-                                                    </div>
-                                                </td>
+                                            <tr key={reg.id} className="hover:bg-slate-50/70">
+                                                <td className="px-6 py-5"><div><span className="text-xs font-black text-[#800000]">{reg.codigo}</span><span className="text-[10px] text-slate-400 block">{reg.created_at}</span></div></td>
+                                                <td className="px-6 py-5"><p className="text-sm font-bold">{reg.solicitante || "Sin nombre"}</p><p className="text-[11px] text-slate-400">{reg.empresa} • {reg.sede}</p></td>
+                                                <td className="px-6 py-5"><span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-black bg-slate-100 mb-1">{traducirTipo(reg.tipo)}</span><p className="text-sm">{reg.concepto}</p></td>
+                                                <td className="px-6 py-5"><span className={`inline-flex px-3 py-1.5 rounded-full border text-[10px] font-black ${badge}`}>{reg.estado}</span></td>
+                                                <td className="px-6 py-5 text-right font-black">{formatearMoneda(reg.monto_solicitado)}</td>
+                                                <td className="px-6 py-5 text-right"><div className="flex justify-end gap-2"><button onClick={() => abrirModalVisualizar(reg.id)} className="w-10 h-10 rounded-xl border hover:border-[#800000]/20 hover:bg-[#800000]/5"><Eye className="w-4 h-4" /></button><button onClick={() => eliminarSolicitud(reg.id)} className="w-10 h-10 rounded-xl border hover:border-red-200 hover:bg-red-50"><Trash2 className="w-4 h-4" /></button></div></td>
                                             </tr>
                                         );
                                     })
@@ -1501,233 +598,69 @@ const Fondos = ({ user }) => {
                             </tbody>
                         </table>
                     </div>
-
-                    {/* FOOTER */}
-                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-3">
-
-                        <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400">
-                            {registrosFiltrados.length} registro(s) encontrados
-                        </span>
-
-                        <div className="flex items-center gap-2">
-
-                            <button className="px-4 h-10 rounded-xl border border-slate-200 bg-white text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-not-allowed">
-                                Anterior
-                            </button>
-
-                            <button className="px-4 h-10 rounded-xl border border-slate-200 bg-white text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-not-allowed">
-                                Siguiente
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </main>
 
+            {/* MODAL CREAR/EDITAR SOLICITUD */}
             {showModal && editingReq && (
-
                 <div className="fixed inset-0 z-50 overflow-y-auto">
-
                     <div className="flex min-h-screen items-center justify-center p-4">
-
-                        {/* OVERLAY */}
-                        <div
-                            onClick={() => setShowModal(false)}
-                            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-                        />
-
-                        {/* MODAL */}
+                        <div onClick={() => setShowModal(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
                         <div className="relative w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-2xl border border-slate-200">
-
-                            {/* HEADER */}
                             <div className="bg-gradient-to-r from-[#800000] via-[#650000] to-black px-7 py-6">
-
                                 <div className="flex items-start justify-between">
-
                                     <div>
-
-                                        <h2 className="text-lg font-black uppercase tracking-wide text-white">
-
-                                            {editingReq.id
-                                                ? `Editar Solicitud ${editingReq.codigo || ""}`
-                                                : "Nueva Solicitud de Fondos"}
-
-                                        </h2>
-
-                                        <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-red-100 font-semibold">
-                                            Caja Chica • Gestión Financiera
-                                        </p>
+                                        <h2 className="text-lg font-black uppercase tracking-wide text-white">{editingReq.id ? `Editar Solicitud ${editingReq.codigo || ""}` : "Nueva Solicitud de Fondos"}</h2>
+                                        <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-red-100 font-semibold">Caja Chica • Gestión Financiera</p>
                                     </div>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowModal(false)}
-                                        className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-white hover:bg-white/20"
-                                    >
-                                        ✕
-                                    </button>
+                                    <button type="button" onClick={() => setShowModal(false)} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-white hover:bg-white/20">✕</button>
                                 </div>
                             </div>
-
-                            {/* BODY */}
-                            <form
-                                onSubmit={guardarRegistro}
-                                className="max-h-[85vh] overflow-y-auto px-7 py-6 space-y-6 bg-slate-50/40"
-                            >
-
-                                {/* ERROR */}
-                                {formError && (
-
-                                    <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-red-700 text-sm font-semibold">
-
-                                        {formError}
-
-                                    </div>
-                                )}
-
-                                {/* DATOS */}
+                            <form onSubmit={guardarRegistro} className="max-h-[85vh] overflow-y-auto px-7 py-6 space-y-6 bg-slate-50/40">
+                                {formError && <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-red-700 text-sm font-semibold">{formError}</div>}
                                 <div className="rounded-3xl border border-slate-200 bg-white p-5">
-
-                                    <h3 className="mb-5 text-xs font-black uppercase tracking-[0.2em] text-slate-700">
-
-                                        Datos Generales
-
-                                    </h3>
-
+                                    <h3 className="mb-5 text-xs font-black uppercase tracking-[0.2em] text-slate-700">Datos Generales</h3>
                                     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
-                                        {/* TIPO */}
                                         <div>
-                                            <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">
-                                                Tipo
-                                            </label>
-
-                                            <select
-                                                value={editingReq.tipo || "ADELANTO"}
-                                                onChange={(e) =>
-                                                    setEditingReq(prev => ({
-                                                        ...prev,
-                                                        tipo: e.target.value
-                                                    }))
-                                                }
-                                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                                            >
+                                            <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">Tipo</label>
+                                            <select value={editingReq.tipo || "ADELANTO"} onChange={(e) => setEditingReq(prev => ({ ...prev, tipo: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                                                 <option value="ADELANTO">Anticipo</option>
                                                 <option value="REEMBOLSO">Reembolso</option>
                                                 <option value="VIATICOS">Viáticos</option>
                                             </select>
                                         </div>
-
-                                        {/* EMPRESA */}
                                         <div>
-
-                                            <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">
-
-                                                Empresa
-
-                                            </label>
-
-                                            <input
-                                                type="text"
-                                                value={editingReq.empresa || ""}
-                                                onChange={(e) =>
-                                                    setEditingReq(prev => ({
-                                                        ...prev,
-                                                        empresa: e.target.value
-                                                    }))
-                                                }
-                                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                                            />
+                                            <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">Empresa</label>
+                                            <div className="relative">
+                                                <select value={empresaSeleccionada} onChange={(e) => { setEmpresaSeleccionada(e.target.value); setSedeSeleccionada(""); }} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 appearance-none" required disabled={loadingEmpresas}>
+                                                    <option value="">Seleccione empresa</option>
+                                                    {empresas.map(emp => <option key={emp.id} value={emp.id}>{emp.nombre}</option>)}
+                                                </select>
+                                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                                            </div>
                                         </div>
-
-                                        {/* SEDE */}
                                         <div>
-
-                                            <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">
-
-                                                Sede
-
-                                            </label>
-
-                                            <input
-                                                type="text"
-                                                value={editingReq.sede || ""}
-                                                onChange={(e) =>
-                                                    setEditingReq(prev => ({
-                                                        ...prev,
-                                                        sede: e.target.value
-                                                    }))
-                                                }
-                                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                                            />
+                                            <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">Sede</label>
+                                            <div className="relative">
+                                                <select value={sedeSeleccionada} onChange={(e) => setSedeSeleccionada(e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 appearance-none" disabled={!empresaSeleccionada || loadingSedes} required>
+                                                    <option value="">Seleccione sede</option>
+                                                    {Array.isArray(sedes) && sedes.map(sed => <option key={sed.id} value={sed.id}>{sed.nombre}</option>)}
+                                                </select>
+                                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                                            </div>
                                         </div>
-
-                                        {/* CATEGORIA */}
                                         <div>
-
-                                            <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">
-
-                                                Categoría
-
-                                            </label>
-
-                                            <input
-                                                type="text"
-                                                value={editingReq.categoria || ""}
-                                                onChange={(e) =>
-                                                    setEditingReq(prev => ({
-                                                        ...prev,
-                                                        categoria: e.target.value
-                                                    }))
-                                                }
-                                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                                            />
+                                            <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">Categoría</label>
+                                            <input type="text" value={editingReq.categoria || ""} onChange={(e) => setEditingReq(prev => ({ ...prev, categoria: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" />
                                         </div>
-
-                                        {/* MONTO */}
                                         <div>
-
-                                            <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">
-
-                                                Monto Solicitado
-
-                                            </label>
-
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                value={editingReq.monto_solicitado || ""}
-                                                onChange={(e) =>
-                                                    setEditingReq(prev => ({
-                                                        ...prev,
-                                                        monto_solicitado: e.target.value
-                                                    }))
-                                                }
-                                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                                            />
+                                            <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">Monto Solicitado</label>
+                                            <input type="number" step="0.01" value={editingReq.monto_solicitado || ""} onChange={(e) => setEditingReq(prev => ({ ...prev, monto_solicitado: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" />
                                         </div>
-
-                                        {/* ESTADO */}
                                         {editingReq.id && (
-
                                             <div>
-
-                                                <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">
-
-                                                    Estado
-
-                                                </label>
-
-                                                <select
-                                                    value={editingReq.estado || "PENDIENTE"}
-                                                    onChange={(e) =>
-                                                        setEditingReq(prev => ({
-                                                            ...prev,
-                                                            estado: e.target.value
-                                                        }))
-                                                    }
-                                                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                                                >
-
+                                                <label className="mb-2 block text-[11px] font-black uppercase text-slate-500">Estado</label>
+                                                <select value={editingReq.estado || "PENDIENTE"} onChange={(e) => setEditingReq(prev => ({ ...prev, estado: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                                                     <option value="PENDIENTE">Pendiente</option>
                                                     <option value="APROBADO">Aprobado</option>
                                                     <option value="RECHAZADO">Rechazado</option>
@@ -1736,56 +669,18 @@ const Fondos = ({ user }) => {
                                                     <option value="POR_DEVOLVER">Por Devolver</option>
                                                     <option value="POR_REEMBOLSAR">Por Reembolsar</option>
                                                     <option value="CERRADO">Cerrado</option>
-
                                                 </select>
                                             </div>
                                         )}
                                     </div>
                                 </div>
-
-                                {/* CONCEPTO */}
                                 <div className="rounded-3xl border border-slate-200 bg-white p-5">
-
-                                    <h3 className="mb-5 text-xs font-black uppercase tracking-[0.2em] text-slate-700">
-
-                                        Concepto
-
-                                    </h3>
-
-                                    <textarea
-                                        rows="4"
-                                        value={editingReq.concepto || ""}
-                                        onChange={(e) =>
-                                            setEditingReq(prev => ({
-                                                ...prev,
-                                                concepto: e.target.value
-                                            }))
-                                        }
-                                        className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                                    />
+                                    <h3 className="mb-5 text-xs font-black uppercase tracking-[0.2em] text-slate-700">Concepto</h3>
+                                    <textarea rows="4" value={editingReq.concepto || ""} onChange={(e) => setEditingReq(prev => ({ ...prev, concepto: e.target.value }))} className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" />
                                 </div>
-
-                                {/* FOOTER */}
                                 <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowModal(false)}
-                                        className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-xs font-black uppercase"
-                                    >
-                                        Cancelar
-                                    </button>
-
-                                    <button
-                                        type="submit"
-                                        className="rounded-2xl bg-gradient-to-r from-[#800000] to-black px-6 py-3 text-xs font-black uppercase text-white"
-                                    >
-
-                                        {editingReq.id
-                                            ? "Actualizar Solicitud"
-                                            : "Registrar Solicitud"}
-
-                                    </button>
+                                    <button type="button" onClick={() => setShowModal(false)} className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-xs font-black uppercase">Cancelar</button>
+                                    <button type="submit" className="rounded-2xl bg-gradient-to-r from-[#800000] to-black px-6 py-3 text-xs font-black uppercase text-white">{editingReq.id ? "Actualizar Solicitud" : "Registrar Solicitud"}</button>
                                 </div>
                             </form>
                         </div>
@@ -1793,1088 +688,121 @@ const Fondos = ({ user }) => {
                 </div>
             )}
 
-            {/* MODAL DETALLE SOLICITUD */}
+            {/* MODAL DETALLE SOLICITUD (simplificado) */}
             {showViewModal && viewingReq && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="flex min-h-screen items-center justify-center p-4">
-                        {/* OVERLAY */}
-                        <div
-                            onClick={() => setShowViewModal(false)}
-                            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-                        />
-                        {/* MODAL */}
-                        <div className="relative w-full max-w-2xl overflow-hidden rounded-[30px] border border-slate-100 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-
-                            {/* HEADER */}
-                            <div className="relative overflow-hidden bg-gradient-to-r from-[#800000] via-[#650000] to-black px-8 py-8 text-white">
-
-                                {/* Círculos decorativos mejor posicionados */}
-                                <div className="absolute inset-0 opacity-10 pointer-events-none">
-                                    <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white blur-sm" />
-                                    <div className="absolute -bottom-10 left-10 h-28 w-28 rounded-full bg-white blur-sm" />
-                                </div>
-
-                                {/* BOTÓN CERRAR */}
-                                <button
-                                    onClick={() => setShowViewModal(false)}
-                                    className="absolute right-6 top-6 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-white transition-all duration-300 hover:rotate-90 hover:bg-white/20 active:scale-95"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
-
-                                <div className="relative">
-                                    {/* Código de requerimiento */}
-                                    <div className="mb-3 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-4 py-1">
-                                        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-red-100">
-                                            {viewingReq.codigo || viewingReq.id}
-                                        </span>
+                        <div onClick={() => setShowViewModal(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+                        <div className="relative w-full max-w-2xl overflow-hidden rounded-[30px] border border-slate-100 bg-white shadow-2xl">
+                            <div className="bg-gradient-to-r from-[#800000] to-black px-8 py-6 text-white">
+                                <div className="flex justify-between">
+                                    <div>
+                                        <div className="text-xs font-black uppercase tracking-wider text-amber-300">{viewingReq.codigo}</div>
+                                        <h3 className="text-xl font-black">{viewingReq.concepto}</h3>
+                                        <p className="text-sm opacity-80">Solicitado por: {viewingReq.solicitante}</p>
                                     </div>
-
-                                    {/* Título principal */}
-                                    <h2 className="max-w-xl text-2xl font-black uppercase leading-tight tracking-tight drop-shadow-sm">
-                                        {viewingReq.concepto}
-                                    </h2>
-
-                                    {/* Badges de Tipo y Categoría */}
-                                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider border ${viewingReq.tipo === "ADELANTO" ? "bg-blue-500/20 text-blue-100 border-blue-400/20" :
-                                            viewingReq.tipo === "REEMBOLSO" ? "bg-amber-500/20 text-amber-100 border-amber-400/20" :
-                                                "bg-purple-500/20 text-purple-100 border-purple-400/20"
-                                            }`}>
-                                            {traducirTipo(viewingReq.tipo)}
-                                        </span>
-
-                                        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-red-100">
-                                            {viewingReq.categoria}
-                                        </span>
-                                    </div>
+                                    <button onClick={() => setShowViewModal(false)} className="p-2 hover:bg-white/20 rounded-full"><X size={20} /></button>
                                 </div>
                             </div>
-
-                            {/* BODY */}
-                            <div className="max-h-[75vh] overflow-y-auto bg-gradient-to-b from-white to-slate-50/60 p-8 space-y-6">
-
-                                {/* RESUMEN DE TARJETAS PRINCIPALES */}
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-
-                                    {/* MONTO */}
-                                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 flex flex-col justify-between shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-600">
-                                                Monto Solicitado
-                                            </p>
-                                            <DollarSign className="h-4 w-4 text-emerald-500" />
-                                        </div>
-                                        <h3 className="mt-4 text-2xl font-black text-emerald-700 tracking-tight">
-                                            {formatearMoneda(viewingReq.monto_solicitado || viewingReq.monto)}
-                                        </h3>
-                                    </div>
-
-                                    {/* FECHA */}
-                                    <div className="rounded-2xl border border-slate-100 bg-white p-5 flex flex-col justify-between shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                                                Fecha de Registro
-                                            </p>
-                                            <Calendar className="h-4 w-4 text-slate-400" />
-                                        </div>
-                                        <h3 className="mt-4 text-sm font-black text-slate-700">
-                                            {viewingReq.fecha || viewingReq.created_at}
-                                        </h3>
-                                    </div>
-
-                                    {/* ESTADO */}
-                                    <div className="rounded-2xl border border-slate-100 bg-white p-5 flex flex-col justify-between shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                                                Estado Actual
-                                            </p>
-                                            <Info className="h-4 w-4 text-slate-400" />
-                                        </div>
-                                        <div className="mt-4">
-                                            <span className={`inline-block rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${viewingReq.estado === "PENDIENTE" ? "bg-indigo-50 text-indigo-700 border border-indigo-100" :
-                                                viewingReq.estado === "APROBADO" ? "bg-amber-50 text-amber-700 border border-amber-100" :
-                                                    viewingReq.estado === "PAGADO" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
-                                                        viewingReq.estado === "RECHAZADO" ? "bg-red-50 text-red-700 border border-red-100" :
-                                                            "bg-slate-50 text-slate-700 border border-slate-100"
-                                                }`}>
-                                                {viewingReq.estado}
-                                            </span>
-                                        </div>
-                                    </div>
+                            <div className="p-6 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><span className="text-xs text-slate-400">Tipo</span><p className="font-bold">{traducirTipo(viewingReq.tipo)}</p></div>
+                                    <div><span className="text-xs text-slate-400">Monto</span><p className="font-bold text-emerald-600">{formatearMoneda(viewingReq.monto_solicitado)}</p></div>
+                                    <div><span className="text-xs text-slate-400">Estado</span><p className="font-bold">{viewingReq.estado}</p></div>
+                                    <div><span className="text-xs text-slate-400">Categoría</span><p>{viewingReq.categoria}</p></div>
                                 </div>
+                                <div><span className="text-xs text-slate-400">Empresa / Sede</span><p>{viewingReq.empresa} - {viewingReq.sede}</p></div>
+                                <div><span className="text-xs text-slate-400">Concepto</span><p className="bg-slate-50 p-3 rounded-xl">{viewingReq.concepto}</p></div>
 
-                                {/* INFORMACIÓN GENERAL */}
-                                <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-                                    <div className="mb-5 flex items-center gap-2 border-b border-slate-100 pb-3">
-                                        <div className="h-2.5 w-2.5 rounded-full bg-[#800000]" />
-                                        <h3 className="text-xs font-black uppercase tracking-[0.15em] text-slate-700">
-                                            Información General
-                                        </h3>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                                        <div>
-                                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Solicitante</p>
-                                            <p className="mt-1 text-sm font-semibold text-slate-800">
-                                                {viewingReq.solicitante || "No registrado"}
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Empresa</p>
-                                            <p className="mt-1 text-sm font-semibold text-slate-800">{viewingReq.empresa}</p>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sede</p>
-                                            <p className="mt-1 text-sm font-semibold text-slate-800">{viewingReq.sede}</p>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Categoría</p>
-                                            <p className="mt-1 text-sm font-semibold text-slate-800">{viewingReq.categoria}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* CONCEPTO / JUSTIFICACIÓN */}
-                                    <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Concepto / Justificación</p>
-                                        <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                            {viewingReq.concepto}
-                                        </p>
-                                    </div>
+                                <div className="flex gap-3 pt-4">
+                                    <button onClick={() => alert("Función PDF pendiente")} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold">PDF</button>
+                                    {viewingReq.estado === "PENDIENTE" && puedeAprobar && (
+                                        <button onClick={() => ejecutarFlujo("APROBAR", viewingReq.id)} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs">Aprobar</button>
+                                    )}
+                                    {viewingReq.estado === "PENDIENTE" && puedeAprobar && (
+                                        <button onClick={() => setShowRejectModal(true)} className="bg-red-600 text-white px-4 py-2 rounded-xl text-xs">Rechazar</button>
+                                    )}
+                                    <button onClick={() => setShowViewModal(false)} className="ml-auto border px-4 py-2 rounded-xl text-xs">Cerrar</button>
                                 </div>
-
-                                {/* SECCIÓN COMPROBANTE (CONDICIONAL) */}
-                                {(viewingReq.proveedor || viewingReq.numero_comprobante || viewingReq.nroComprobante) && (
-                                    <div className="rounded-2xl border border-amber-100 bg-amber-50/40 p-6 shadow-sm">
-                                        <div className="mb-4 flex items-center gap-2">
-                                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                                                <FileText className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="text-xs font-black uppercase tracking-[0.15em] text-amber-800">
-                                                Datos del Comprobante
-                                            </h3>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                            <div>
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700/70">Proveedor</p>
-                                                <p className="mt-1 text-sm font-semibold text-slate-800">{viewingReq.proveedor}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700/70">Número Documento</p>
-                                                <p className="mt-1 text-sm font-semibold text-slate-800">
-                                                    {viewingReq.numero_comprobante || viewingReq.nroComprobante}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* SEGUIMIENTO DEL FLUJO */}
-                                <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-
-                                    {/* HEADER */}
-                                    <div className="mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                                        <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-
-                                        <h3 className="text-xs font-black uppercase tracking-[0.15em] text-slate-700">
-                                            Seguimiento del Flujo
-                                        </h3>
-                                    </div>
-
-                                    <div className="mb-8 rounded-2xl border border-slate-100 bg-slate-50/70 p-6">
-
-                                        <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-3">
-
-                                            <div>
-                                                <h3 className="text-xs font-black uppercase tracking-[0.15em] text-slate-700">
-                                                    Acciones Disponibles
-                                                </h3>
-
-                                                <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                                    DEPARTAMENTO ACTUAL: {currentDeptId || "SIN DEPARTAMENTO"}
-                                                </p>
-                                            </div>
-
-                                            <div className="rounded-xl bg-[#800000] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                                                {currentRole || "SIN ROL"}
-                                            </div>
-                                        </div>
-
-                                        {viewingReq?.estado !== "SIN_FIRMAR" && (
-
-                                            <div
-                                                className={`rounded-2xl px-5 py-4 border ${diferenciaMonto < 0
-                                                    ? "border-emerald-100 bg-emerald-50"
-                                                    : diferenciaMonto > 0
-                                                        ? "border-amber-100 bg-amber-50"
-                                                        : "border-slate-200 bg-slate-50"
-                                                    }`}
-                                            >
-
-                                                {/* HEADER */}
-
-                                                <div className="flex items-start justify-between gap-4">
-
-                                                    <div>
-
-                                                        <p
-                                                            className={`text-[10px] font-black uppercase tracking-widest ${diferenciaMonto < 0
-                                                                ? "text-emerald-700"
-                                                                : diferenciaMonto > 0
-                                                                    ? "text-amber-700"
-                                                                    : "text-slate-600"
-                                                                }`}
-                                                        >
-
-                                                            {diferenciaMonto < 0
-                                                                ? "MONTO A REEMBOLSAR"
-                                                                : diferenciaMonto > 0
-                                                                    ? "MONTO A DEVOLVER"
-                                                                    : "RENDICIÓN CUADRADA"}
-
-                                                        </p>
-
-                                                        <h3
-                                                            className={`mt-2 text-3xl font-black ${diferenciaMonto < 0
-                                                                ? "text-emerald-700"
-                                                                : diferenciaMonto > 0
-                                                                    ? "text-amber-700"
-                                                                    : "text-slate-700"
-                                                                }`}
-                                                        >
-
-                                                            S/ {Math.abs(diferenciaMonto).toFixed(2)}
-
-                                                        </h3>
-
-                                                    </div>
-
-                                                    {(esTesoreria || puedePagar) && (
-
-                                                        <div className="w-[220px]">
-
-                                                            <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                                                MONTO A PROCESAR
-                                                            </label>
-
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                value={montoTesoreria}
-                                                                onChange={(e) =>
-                                                                    setMontoTesoreria(
-                                                                        Number(e.target.value)
-                                                                    )
-                                                                }
-                                                                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#800000] focus:ring-4 focus:ring-red-100"
-                                                                placeholder="0.00"
-                                                            />
-
-                                                        </div>
-
-                                                    )}
-
-                                                </div>
-
-                                                {/* MENSAJE */}
-
-                                                <div className="mt-4 rounded-xl bg-white/70 px-4 py-3 border border-white/60">
-
-                                                    <p className="text-xs leading-relaxed text-slate-600">
-
-                                                        {diferenciaMonto < 0
-                                                            ? "El solicitante gastó MÁS de lo entregado. TESORERÍA debe reembolsar la diferencia."
-                                                            : diferenciaMonto > 0
-                                                                ? "El solicitante gastó MENOS de lo entregado. Debe devolver el saldo restante."
-                                                                : "La rendición fue cuadrada correctamente. No existen diferencias monetarias."}
-
-                                                    </p>
-
-                                                </div>
-
-                                            </div>
-
-                                        )}
-                                        <div className="flex flex-wrap gap-3">
-
-                                            {/* FIRMAR */}
-
-                                            {puedeFirmar &&
-                                                viewingReq?.estado === "SIN_FIRMAR" && (
-
-                                                    <button
-                                                        onClick={() =>
-                                                            ejecutarFlujo(
-                                                                "FIRMAR",
-                                                                viewingReq.id
-                                                            )
-                                                        }
-                                                        className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-5 py-3 text-xs font-black uppercase tracking-wide text-white"
-                                                    >
-                                                        Firmar Solicitud
-                                                    </button>
-                                                )}
-
-                                            {/* APROBAR */}
-
-                                            {puedeAprobar &&
-                                                viewingReq?.estado === "PENDIENTE" && (
-
-                                                    <button
-                                                        onClick={() =>
-                                                            ejecutarFlujo(
-                                                                "APROBAR",
-                                                                viewingReq.id
-                                                            )
-                                                        }
-                                                        className="rounded-2xl bg-emerald-600 hover:bg-emerald-700 px-5 py-3 text-xs font-black uppercase tracking-wide text-white"
-                                                    >
-                                                        Aprobar Solicitud
-                                                    </button>
-                                                )}
-
-                                            {/* RECHAZAR */}
-
-                                            {puedeAprobar &&
-                                                viewingReq?.estado === "PENDIENTE" && (
-
-                                                    <button
-                                                        onClick={() =>
-                                                            setShowRejectModal(true)
-                                                        }
-                                                        className="rounded-2xl bg-red-600 hover:bg-red-700 px-5 py-3 text-xs font-black uppercase tracking-wide text-white"
-                                                    >
-                                                        Rechazar
-                                                    </button>
-                                                )}
-
-                                            {/* PAGAR ADELANTO */}
-
-                                            {puedePagar &&
-                                                viewingReq?.tipo === "ADELANTO" &&
-                                                viewingReq?.estado === "APROBADO" && (
-
-                                                    <button
-                                                        onClick={() =>
-                                                            setShowPagoModal(true)
-                                                        }
-                                                        className="rounded-2xl bg-amber-500 hover:bg-amber-600 px-5 py-3 text-xs font-black uppercase tracking-wide text-white"
-                                                    >
-                                                        Registrar Pago
-                                                    </button>
-                                                )}
-
-                                            {puedePagar &&
-                                                viewingReq?.estado === "POR_REEMBOLSAR" && (
-
-                                                    <button
-                                                        onClick={() =>
-                                                            setShowPagoModal(true)
-                                                        }
-                                                        className="rounded-2xl bg-emerald-600 hover:bg-emerald-700 px-5 py-3 text-xs font-black uppercase tracking-wide text-white"
-                                                    >
-                                                        Registrar Reembolso
-                                                    </button>
-                                                )}
-
-                                            {/* RENDICION ADELANTO */}
-
-                                            {Number(currentUserId) === Number(viewingReq?.solicitante_id)
-                                                && viewingReq?.tipo === "ADELANTO" &&
-                                                viewingReq?.estado === "PAGADO" && (
-
-                                                    <button onClick={() => setShowRendicionModal(true)}
-                                                        className="rounded-2xl bg-slate-800 text-white px-5 py-3 text-xs font-black uppercase tracking-wide"
-                                                    >
-                                                        Subir Rendición
-                                                    </button>
-                                                )}
-
-                                            {(viewingReq?.tipo === "REEMBOLSO" || viewingReq?.tipo === "VIATICOS")
-                                                && Number(currentUserId) === Number(viewingReq?.solicitante_id)
-                                                && viewingReq?.estado === "APROBADO" && (
-
-                                                    <button onClick={() => setShowRendicionModal(true)}
-                                                        className="rounded-2xl bg-indigo-700 text-white px-5 py-3 text-xs font-black uppercase tracking-wide"
-                                                    >
-                                                        Subir Sustento
-                                                    </button>
-                                                )}
-                                            {/* TESORERIA CIERRA */}
-
-                                            {esTesoreria &&
-                                                (
-                                                    viewingReq?.estado === "POR_DEVOLVER"
-                                                    ||
-                                                    viewingReq?.estado === "POR_REEMBOLSAR"
-                                                ) && (
-
-                                                    <button
-                                                        onClick={() =>
-                                                            setShowCerrarModal(true)
-                                                        }
-                                                        className="rounded-2xl bg-black text-white px-5 py-3 text-xs font-black uppercase tracking-wide"
-                                                    >
-                                                        Finalizar Rendición
-                                                    </button>
-                                                )}
-
-                                        </div>
-                                    </div>
-
-                                    {viewingReq.estado === "RECHAZADO" ? (
-
-                                        <div className="rounded-2xl border border-red-100 bg-red-50/60 p-6">
-
-                                            <div className="flex items-start gap-4">
-
-                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-600">
-                                                    <AlertTriangle className="h-5 w-5" />
-                                                </div>
-
-                                                <div>
-
-                                                    <h4 className="text-sm font-black uppercase tracking-wide text-red-700">
-                                                        Solicitud Rechazada
-                                                    </h4>
-
-                                                    <p className="mt-1 text-xs leading-relaxed text-red-600">
-                                                        La solicitud fue rechazada por ADMINISTRACION.
-                                                    </p>
-
-                                                    {viewingReq.observaciones && (
-                                                        <div className="mt-4 rounded-xl border border-red-100 bg-white/70 p-4">
-                                                            <p className="text-[10px] font-black uppercase tracking-widest text-red-500">
-                                                                Observaciones
-                                                            </p>
-
-                                                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                                                                {viewingReq.observaciones}
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODALES DE GASTOS, PAGO, CIERRE, RECHAZO, VER GASTOS */}
+            {showGastoModal && (
+                <div className="fixed inset-0 z-[999] bg-black/60 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-5xl rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-xl font-black mb-4">{editandoGasto ? "Editar Gasto" : "Nuevo Gasto"}</h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm border-collapse">
+                                <thead className="bg-slate-100"><tr><th className="border p-2">ITEM</th><th className="border p-2">FECHA</th><th className="border p-2">TIPO</th><th className="border p-2">N° DOC</th><th className="border p-2">DETALLE</th><th className="border p-2">MONTO</th><th className="border p-2">ARCHIVO</th><th className="border p-2">ACCIONES</th></tr></thead>
+                                <tbody>
+                                    {editandoGasto ? (
+                                        <tr><td className="border p-2 text-center">Editar</td><td className="border p-2"><input type="date" value={gastoForm.fecha} onChange={e => setGastoForm({ ...gastoForm, fecha: e.target.value })} className="border rounded p-1 w-full" /></td><td className="border p-2"><select value={gastoForm.tipo_comprobante} onChange={e => setGastoForm({ ...gastoForm, tipo_comprobante: e.target.value })} className="border rounded p-1 w-full"><option value="">Seleccionar</option><option>Factura</option><option>Boleta</option><option>Ticket</option><option>RXH</option><option>Otro</option></select></td><td className="border p-2"><input type="text" value={gastoForm.numero_comprobante} onChange={e => setGastoForm({ ...gastoForm, numero_comprobante: e.target.value })} className="border rounded p-1 w-full" /></td><td className="border p-2"><textarea rows="2" value={gastoForm.descripcion} onChange={e => setGastoForm({ ...gastoForm, descripcion: e.target.value })} className="border rounded p-1 w-full" /></td><td className="border p-2"><input type="number" step="0.01" value={gastoForm.monto} onChange={e => setGastoForm({ ...gastoForm, monto: e.target.value })} className="border rounded p-1 w-full text-right" /></td><td className="border p-2"><input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setGastoForm({ ...gastoForm, archivo: e.target.files[0] })} className="text-xs" /></td><td className="border p-2 text-center"><button onClick={actualizarGasto} className="bg-green-600 text-white px-2 py-1 rounded text-xs">Guardar</button></td></tr>
                                     ) : (
-
-                                        <div className="relative pl-2 space-y-7">
-                                            {pasosFlujo.map((paso, idx, arr) => {
-
-                                                const flujoOrden = {
-                                                    PENDIENTE: 0,
-                                                    APROBADO: 1,
-                                                    PAGADO: 2,
-                                                    EN_RENDICION: 3,
-                                                    POR_DEVOLVER: 3,
-                                                    POR_REEMBOLSAR: 3,
-                                                    CERRADO: 4
-                                                };
-
-                                                const actual =
-                                                    flujoOrden[viewingReq.estado] ?? 0;
-
-                                                const completado =
-                                                    idx <= actual;
-
-                                                const ultimo =
-                                                    idx === arr.length - 1;
-
-                                                return (
-
-                                                    <div
-                                                        key={paso.key}
-                                                        className="relative flex gap-4"
-                                                    >
-
-                                                        {/* LADO IZQUIERDO */}
-                                                        <div className="flex flex-col items-center">
-
-                                                            <div
-                                                                className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-2xl border-2 text-xs font-black transition-all ${completado
-                                                                    ? "border-emerald-100 bg-emerald-600 text-white shadow-lg shadow-emerald-200"
-                                                                    : "border-slate-200 bg-slate-50 text-slate-400"
-                                                                    }`}
-                                                            >
-                                                                {completado
-                                                                    ? <Check className="h-4 w-4 stroke-[3]" />
-                                                                    : idx + 1}
-                                                            </div>
-
-                                                            {!ultimo && (
-                                                                <div
-                                                                    className={`absolute top-10 left-[19px] w-[2px] h-[calc(100%+12px)] rounded-full ${idx < actual
-                                                                        ? "bg-emerald-500"
-                                                                        : "bg-slate-200"
-                                                                        }`}
-                                                                />
-                                                            )}
-                                                        </div>
-
-                                                        {/* TEXTO */}
-                                                        <div className="pt-1 pb-3">
-
-                                                            <h4
-                                                                className={`text-xs font-black uppercase tracking-wide ${completado
-                                                                    ? "text-slate-800"
-                                                                    : "text-slate-400"
-                                                                    }`}
-                                                            >
-                                                                {paso.title}
-                                                            </h4>
-
-                                                            <p
-                                                                className={`mt-1 text-xs leading-relaxed ${completado
-                                                                    ? "text-slate-500"
-                                                                    : "text-slate-400/80"
-                                                                    }`}
-                                                            >
-                                                                {paso.desc}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                        <tr><td className="border p-2 text-center">Nuevo</td><td className="border p-2"><input type="date" value={gastoForm.fecha} onChange={e => setGastoForm({ ...gastoForm, fecha: e.target.value })} className="border rounded p-1 w-full" /></td><td className="border p-2"><select value={gastoForm.tipo_comprobante} onChange={e => setGastoForm({ ...gastoForm, tipo_comprobante: e.target.value })} className="border rounded p-1 w-full"><option value="">Seleccionar</option><option>Factura</option><option>Boleta</option><option>Ticket</option><option>RXH</option><option>Otro</option></select></td><td className="border p-2"><input type="text" value={gastoForm.numero_comprobante} onChange={e => setGastoForm({ ...gastoForm, numero_comprobante: e.target.value })} className="border rounded p-1 w-full" /></td><td className="border p-2"><textarea rows="2" value={gastoForm.descripcion} onChange={e => setGastoForm({ ...gastoForm, descripcion: e.target.value })} className="border rounded p-1 w-full" /></td><td className="border p-2"><input type="number" step="0.01" value={gastoForm.monto} onChange={e => setGastoForm({ ...gastoForm, monto: e.target.value })} className="border rounded p-1 w-full text-right" /></td><td className="border p-2"><input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setGastoForm({ ...gastoForm, archivo: e.target.files[0] })} className="text-xs" /></td><td className="border p-2 text-center"><button onClick={agregarGasto} className="bg-[#800000] text-white px-2 py-1 rounded text-xs">Guardar</button></td></tr>
                                     )}
-                                </div>
-
-                                {/* ========================================= */}
-                                {/* RENDICIONES */}
-                                {/* ========================================= */}
-
-                                {(rendiciones.length > 0 ||
-                                    archivosTesoreria.length > 0) && (
-
-                                        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-
-                                            <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-4">
-
-                                                <div>
-
-                                                    <h3 className="text-xs font-black uppercase tracking-[0.15em] text-slate-700">
-                                                        Rendición Documentaria
-                                                    </h3>
-
-                                                    <p className="mt-1 text-xs text-slate-400">
-                                                        Archivos subidos por el solicitante
-                                                    </p>
-
-                                                </div>
-
-                                                <div className="rounded-xl bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                                                    {rendiciones.length} archivos
-                                                </div>
-
-                                            </div>
-
-                                            <div className="space-y-4">
-
-                                                {rendiciones.map((archivo) => (
-
-                                                    <div
-                                                        key={archivo.id}
-                                                        className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/50 p-4"
-                                                    >
-
-                                                        <div className="flex items-center gap-4">
-
-                                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-[#800000]">
-                                                                <FileText className="h-5 w-5" />
-                                                            </div>
-
-                                                            <div>
-
-                                                                <p className="text-sm font-bold text-slate-700">
-                                                                    {archivo.nombre_original}
-                                                                </p>
-
-                                                                <p className="mt-1 text-[11px] uppercase tracking-wide text-slate-400">
-                                                                    SUBIDO POR {archivo.usuario}
-                                                                </p>
-
-                                                                <p className="text-[11px] text-slate-400">
-                                                                    {archivo.created_at}
-                                                                </p>
-
-                                                            </div>
-
-                                                        </div>
-
-                                                        <a
-                                                            href={`${API}${archivo.ruta}`}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="rounded-xl bg-[#800000] px-4 py-2 text-xs font-black uppercase tracking-wide text-white hover:bg-[#650000]"
-                                                        >
-                                                            VER ARCHIVO
-                                                        </a>
-
-                                                    </div>
-
-                                                ))}
-
-                                            </div>
-
-                                        </div>
-
-                                    )}
-
-                                {/* TESORERIA */}
-
-                                {archivosTesoreria.length > 0 && (
-
-                                    <div className="mt-8">
-
-                                        <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-4">
-
-                                            <div>
-
-                                                <h3 className="text-xs font-black uppercase tracking-[0.15em] text-slate-700">
-                                                    Archivos Tesorería
-                                                </h3>
-
-                                                <p className="mt-1 text-xs text-slate-400">
-                                                    Comprobantes de pago, devolución y reembolso
-                                                </p>
-
-                                            </div>
-
-                                            <div className="rounded-xl bg-amber-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-700">
-                                                {archivosTesoreria.length} archivos
-                                            </div>
-
-                                        </div>
-
-                                        <div className="space-y-4">
-
-                                            {archivosTesoreria.map((archivo) => (
-
-                                                <div
-                                                    key={archivo.id}
-                                                    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/50 p-4"
-                                                >
-
-                                                    <div className="flex items-center gap-4">
-
-                                                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
-                                                            <FileText className="h-5 w-5" />
-                                                        </div>
-
-                                                        <div>
-
-                                                            <p className="text-sm font-bold text-slate-700">
-                                                                {archivo.nombre_original}
-                                                            </p>
-
-                                                            <p className="mt-1 text-[11px] uppercase tracking-wide text-slate-400">
-                                                                {archivo.tipo}
-                                                            </p>
-
-                                                            <p className="text-[11px] text-slate-400">
-                                                                {archivo.created_at}
-                                                            </p>
-
-                                                        </div>
-
-                                                    </div>
-
-                                                    <a
-                                                        href={`${API}${archivo.ruta}`}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="rounded-xl bg-black px-4 py-2 text-xs font-black uppercase tracking-wide text-white"
-                                                    >
-                                                        VER ARCHIVO
-                                                    </a>
-
-                                                </div>
-
-                                            ))}
-
-                                        </div>
-
-                                    </div>
-
-                                )}
-                            </div>
+                                </tbody>
+                            </table>
                         </div>
-
+                        <div className="flex justify-end gap-3 mt-6"><button onClick={() => { setShowGastoModal(false); limpiarFormGasto(); }} className="px-4 py-2 border rounded-xl">Cancelar</button></div>
                     </div>
                 </div>
             )}
-
-            {showRendicionModal && (
-
-                <div className="fixed inset-0 z-[999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-2xl border border-slate-200">
-                        {/* HEADER */}
-                        <div className="bg-gradient-to-r from-[#800000] via-[#650000] to-black px-8 py-7 text-white">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-2xl font-black uppercase tracking-tight">
-                                        Subir Rendición
-                                    </h3>
-                                    <p className="mt-2 text-sm text-red-100">
-                                        Adjunta boletas, facturas y comprobantes
-                                    </p>
-                                </div>
-
-                                <button
-                                    onClick={() => {
-                                        setShowRendicionModal(false);
-                                        setArchivosRendicion([]);
-                                    }}
-                                    className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 transition"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
-
-                            </div>
-                        </div>
-
-                        {/* BODY */}
-                        <div className="p-8">
-                            {/* DROPZONE */}
-                            <label className="group relative flex cursor-pointer flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-slate-300 bg-slate-50/70 px-8 py-14 transition hover:border-[#800000] hover:bg-red-50/40">
-                                <UploadCloud className="h-14 w-14 text-slate-400 group-hover:text-[#800000]" />
-                                <h4 className="mt-5 text-lg font-black text-slate-700">
-                                    Arrastra archivos aquí
-                                </h4>
-                                <p className="mt-2 text-sm text-slate-500 text-center">
-                                    o haz click para seleccionar múltiples archivos
-                                </p>
-                                <p className="mt-4 text-[11px] uppercase tracking-widest text-slate-400">
-                                    PDF · JPG · PNG
-                                </p>
-                                <input
-                                    type="file"
-                                    multiple
-                                    accept=".pdf,.jpg,.jpeg,.png"
-                                    onChange={(e) => {
-
-                                        const files = Array.from(
-                                            e.target.files || []
-                                        );
-
-                                        setArchivosRendicion(files);
-                                    }}
-                                />
-                            </label>
-
-                            {/* LISTA */}
-                            {archivosRendicion.length > 0 && (
-                                <div className="mt-8">
-                                    <div className="mb-4 flex items-center justify-between">
-                                        <h4 className="text-sm font-black uppercase tracking-wider text-slate-700">
-                                            Archivos Seleccionados
-                                        </h4>
-                                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">
-                                            {archivosRendicion.length} archivos
-                                        </span>
-                                    </div>
-
-                                    <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
-                                        {archivosRendicion.map((file, index) => (
-                                            <div
-                                                key={index}
-                                                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm"
-                                            >
-                                                <div className="flex items-center gap-4">
-                                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-[#800000]">
-                                                        <FileText className="h-5 w-5" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-bold text-slate-700">
-                                                            {file.name}
-                                                        </p>
-                                                        <p className="text-xs text-slate-400">
-                                                            {(file.size / 1024).toFixed(1)} KB
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <button
-                                                    onClick={() => {
-                                                        const nuevos =
-                                                            archivosRendicion.filter(
-                                                                (_, i) => i !== index
-                                                            );
-                                                        setArchivosRendicion(nuevos);
-                                                    }}
-                                                    className="rounded-xl p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            {/* ACTIONS */}
-                            <div className="mt-8 flex gap-4">
-                                <button
-                                    onClick={enviarRendicion}
-                                    className="flex-1 rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-black uppercase tracking-wide text-white transition hover:bg-emerald-700"
-                                >
-                                    Enviar Rendición
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setShowRendicionModal(false);
-                                        setArchivosRendicion([]);
-                                    }}
-                                    className="rounded-2xl border border-slate-200 px-6 py-4 text-sm font-black uppercase tracking-wide text-slate-600 hover:bg-slate-100"
-                                >
-                                    Cancelar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ===================================== */}
-            {/* MODAL CERRAR RENDICION */}
-            {/* ===================================== */}
 
             {showCerrarModal && (
-
                 <div className="fixed inset-0 z-[999] bg-black/60 flex items-center justify-center p-4">
-
-                    <div className="bg-white w-full max-w-xl rounded-[2rem] p-8">
-
-                        <h3 className="text-xl font-black mb-2">
-
-                            {viewingReq?.estado === "POR_DEVOLVER"
-                                ? "Registrar Devolución"
-                                : "Registrar Reembolso"}
-
-                        </h3>
-
-                        <p className="text-sm text-slate-500 mb-6">
-
-                            {viewingReq?.estado === "POR_DEVOLVER"
-                                ? "Sube el voucher de devolución del dinero sobrante."
-                                : "Sube el comprobante del reembolso realizado."}
-
-                        </p>
-
-                        {/* DIFERENCIA */}
-
-                        <div className="mb-6 rounded-2xl bg-slate-100 p-5">
-
-                            <p className="text-xs font-black uppercase text-slate-500 mb-2">
-                                Diferencia
-                            </p>
-
-                            <h2 className="text-3xl font-black text-slate-800">
-
-                                {formatearMoneda(
-                                    Math.abs(
-                                        viewingReq?.diferencia || 0
-                                    )
-                                )}
-
-                            </h2>
-                        </div>
-
-                        {/* FILE */}
-
-                        <input
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={(e) =>
-                                setArchivoCierre(
-                                    e.target.files[0]
-                                )
-                            }
-                            className="w-full border p-4 rounded-2xl"
-                        />
-
-                        {/* PREVIEW */}
-
-                        {archivoCierre && (
-
-                            <div className="mt-4 rounded-xl bg-slate-100 p-3 text-sm">
-
-                                📎 {archivoCierre.name}
-
-                            </div>
-                        )}
-
-                        {/* ACTIONS */}
-
-                        <div className="flex gap-3 mt-8">
-
-                            <button
-                                onClick={cerrarRendicion}
-                                className="flex-1 bg-black text-white py-3 rounded-2xl font-black"
-                            >
-                                FINALIZAR PROCESO
-                            </button>
-
-                            <button
-                                onClick={() => {
-
-                                    setShowCerrarModal(false);
-
-                                    setArchivoCierre(null);
-
-                                }}
-                                className="px-6 py-3 border rounded-2xl"
-                            >
-                                CANCELAR
-                            </button>
-
-                        </div>
-
+                    <div className="bg-white w-full max-w-xl rounded-2xl p-8">
+                        <h3 className="text-xl font-black mb-2">{viewingReq?.estado === "POR_DEVOLVER" ? "Registrar Devolución" : "Registrar Reembolso"}</h3>
+                        <p className="text-sm text-slate-500 mb-6">{viewingReq?.estado === "POR_DEVOLVER" ? "Sube el voucher de devolución del dinero sobrante." : "Sube el comprobante del reembolso realizado."}</p>
+                        <div className="mb-6 rounded-2xl bg-slate-100 p-5"><p className="text-xs font-black uppercase text-slate-500">Diferencia</p><h2 className="text-3xl font-black">{formatearMoneda(Math.abs(viewingReq?.diferencia || 0))}</h2></div>
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setArchivoCierre(e.target.files[0])} className="w-full border p-4 rounded-2xl" />
+                        {archivoCierre && <div className="mt-4 rounded-xl bg-slate-100 p-3 text-sm">📎 {archivoCierre.name}</div>}
+                        <div className="flex gap-3 mt-8"><button onClick={cerrarRendicion} className="flex-1 bg-black text-white py-3 rounded-2xl font-black">Finalizar</button><button onClick={() => { setShowCerrarModal(false); setArchivoCierre(null); }} className="px-6 py-3 border rounded-2xl">Cancelar</button></div>
                     </div>
-
                 </div>
             )}
 
             {showPagoModal && (
-
                 <div className="fixed inset-0 z-[999] bg-black/60 flex items-center justify-center p-4">
-
-                    <div className="bg-white w-full max-w-xl rounded-[2rem] p-8">
-
-                        <h3 className="text-xl font-black mb-2">
-                            Registrar Pago
-                        </h3>
-
-                        <p className="text-sm text-slate-500 mb-6">
-                            Suba el comprobante de transferencia
-                        </p>
-
-                        <input
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={(e) =>
-                                setArchivoPago(
-                                    e.target.files[0]
-                                )
-                            }
-                            className="w-full border p-4 rounded-2xl"
-                        />
-
-                        {archivoPago && (
-
-                            <div className="mt-4 rounded-xl bg-slate-100 p-3 text-sm">
-                                📎 {archivoPago.name}
-                            </div>
-                        )}
-
-                        <div className="flex gap-3 mt-8">
-
-                            <button
-                                onClick={ejecutarPago}
-                                className="flex-1 bg-emerald-600 text-white py-3 rounded-2xl font-black"
-                            >
-                                REGISTRAR PAGO
-                            </button>
-
-                            <button
-                                onClick={() => {
-
-                                    setShowPagoModal(false);
-
-                                    setArchivoPago(null);
-
-                                }}
-                                className="px-6 py-3 border rounded-2xl"
-                            >
-                                CANCELAR
-                            </button>
-
-                        </div>
-
+                    <div className="bg-white w-full max-w-xl rounded-2xl p-8">
+                        <h3 className="text-xl font-black mb-2">Registrar Pago</h3>
+                        <p className="text-sm text-slate-500 mb-6">Suba el comprobante de transferencia</p>
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setArchivoPago(e.target.files[0])} className="w-full border p-4 rounded-2xl" />
+                        {archivoPago && <div className="mt-4 rounded-xl bg-slate-100 p-3 text-sm">📎 {archivoPago.name}</div>}
+                        <div className="flex gap-3 mt-8"><button onClick={ejecutarPago} className="flex-1 bg-emerald-600 text-white py-3 rounded-2xl font-black">Registrar</button><button onClick={() => { setShowPagoModal(false); setArchivoPago(null); }} className="px-6 py-3 border rounded-2xl">Cancelar</button></div>
                     </div>
+                </div>
+            )}
 
+            {showVerGastosModal && (
+                <div className="fixed inset-0 z-[999] bg-black/60 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-4xl rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black">Lista de Gastos</h3><button onClick={() => setShowVerGastosModal(false)} className="text-slate-500">✕</button></div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm border-collapse">
+                                <thead className="bg-slate-100"><tr><th className="border p-2">#</th><th className="border p-2">FECHA</th><th className="border p-2">TIPO</th><th className="border p-2">N° DOC</th><th className="border p-2">DETALLE</th><th className="border p-2">MONTO</th></tr></thead>
+                                <tbody>{gastos.map((g, idx) => <tr key={g.id}><td className="border p-2 text-center">{idx + 1}</td><td className="border p-2">{g.fecha}</td><td className="border p-2">{g.tipo_comprobante}</td><td className="border p-2">{g.numero_comprobante}</td><td className="border p-2">{g.descripcion}</td><td className="border p-2 text-right font-bold">{formatearMoneda(g.monto)}</td></tr>)}</tbody>
+                                <tfoot className="bg-slate-50"><tr><td colSpan="5" className="border p-2 text-right font-black">TOTAL:</td><td className="border p-2 text-right font-black text-emerald-600">{formatearMoneda(montoRendidoReal)}</td></tr></tfoot>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             )}
 
             {showRejectModal && (
-
                 <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-
-                    <div
-                        onClick={() => setShowRejectModal(false)}
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                    />
-
-                    <div className="relative w-full max-w-lg rounded-[30px] bg-white shadow-2xl overflow-hidden">
-
-                        <div className="bg-gradient-to-r from-red-700 to-red-900 px-8 py-6 text-white">
-
-                            <h2 className="text-xl font-black uppercase tracking-wide">
-                                Rechazar Solicitud
-                            </h2>
-
-                            <p className="mt-1 text-sm text-red-100">
-                                Indique el motivo del rechazo
-                            </p>
-                        </div>
-
-                        <div className="p-8">
-
-                            <textarea
-                                value={rejectReason}
-                                onChange={(e) =>
-                                    setRejectReason(e.target.value)
-                                }
-                                rows={5}
-                                className="w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none focus:border-red-500"
-                                placeholder="Escriba las observaciones..."
-                            />
-
-                            <div className="mt-6 flex justify-end gap-3">
-
-                                <button
-                                    onClick={() =>
-                                        setShowRejectModal(false)
-                                    }
-                                    className="rounded-2xl border border-slate-200 px-5 py-3 text-xs font-black uppercase"
-                                >
-                                    Cancelar
-                                </button>
-
-                                <button
-                                    onClick={async () => {
-
-                                        if (!rejectReason.trim()) {
-                                            alert("Ingrese observaciones");
-                                            return;
-                                        }
-
-                                        await ejecutarFlujo(
-                                            "RECHAZAR",
-                                            viewingReq.id,
-                                            rejectReason
-                                        );
-
-                                        setRejectReason("");
-
-                                        setShowRejectModal(false);
-                                    }}
-                                    className="rounded-2xl bg-red-600 hover:bg-red-700 px-5 py-3 text-xs font-black uppercase text-white"
-                                >
-                                    Confirmar Rechazo
-                                </button>
-                            </div>
-                        </div>
+                    <div onClick={() => setShowRejectModal(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                    <div className="relative w-full max-w-lg bg-white rounded-2xl overflow-hidden">
+                        <div className="bg-gradient-to-r from-red-700 to-red-900 px-8 py-6 text-white"><h2 className="text-xl font-black">Rechazar Solicitud</h2><p className="text-sm text-red-100">Indique el motivo del rechazo</p></div>
+                        <div className="p-8"><textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={5} className="w-full border rounded-2xl p-4" placeholder="Escriba las observaciones..." /><div className="mt-6 flex justify-end gap-3"><button onClick={() => setShowRejectModal(false)} className="border rounded-2xl px-5 py-3 text-xs font-black">Cancelar</button><button onClick={async () => { if (!rejectReason.trim()) return alert("Ingrese observaciones"); await ejecutarFlujo("RECHAZAR", viewingReq.id, rejectReason); setRejectReason(""); setShowRejectModal(false); }} className="bg-red-600 text-white rounded-2xl px-5 py-3 text-xs font-black">Confirmar</button></div></div>
                     </div>
                 </div>
             )}
-
         </div>
     );
-}
+};
 
 export default Fondos;
