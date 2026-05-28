@@ -456,13 +456,16 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
                                     <tr className="bg-gray-50/80 border-t border-gray-200">
                                       <td colSpan="4" className="px-6 py-4">
                                         <div className="flex items-center justify-between">
-                                          <div className="font-bold text-sm text-gray-700">Grupo #{grupo.grupo_id} {grupo.incluye_igv === 1 ? "(IGV incluido)" : "(Sin IGV)"}</div>
+                                          <div className="font-bold text-sm text-gray-700">
+                                            Grupo #{grupo.grupo_id}
+                                            {grupo.incluye_igv === 1 ? " (IGV incluido)" : " (Sin IGV)"}
+                                          </div>
                                           <div className="font-black text-base text-gray-800 bg-white px-4 py-1.5 rounded-lg shadow-sm">Total: S/ {grupo.montoTotal.toFixed(2)}</div>
                                         </div>
                                         <div className="mt-3 flex flex-wrap items-center gap-3">
                                           {comprobantesUrls.map((url, idx) => (
                                             <a key={idx} href={API + `descargar_comprobante.php?file=${url.trim()}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-blue-700 text-[11px] font-bold bg-blue-50 px-3 py-1.5 rounded-md hover:underline">
-                                              <FileDown size={12} /> Comprobante {idx+1}
+                                              <FileDown size={12} /> Comprobante {idx + 1}
                                             </a>
                                           ))}
                                           <FileUploader grupoId={grupo.grupo_id} tipo="comprobante" onUpload={async (id, files) => { for (const f of files) await subirComprobanteGrupo(id, f); fetchPagos(); }} />
@@ -478,7 +481,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
                                           <div className="flex flex-wrap items-center gap-3">
                                             {guiasUrls.map((url, idx) => (
                                               <a key={idx} href={API + `descargar_guia.php?file=${url.trim()}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-emerald-700 text-[11px] font-bold bg-emerald-50 px-3 py-1.5 rounded-md hover:underline">
-                                                <Download size={12} /> Guía {idx+1}
+                                                <Download size={12} /> Guía {idx + 1}
                                               </a>
                                             ))}
                                             <FileUploader grupoId={grupo.grupo_id} tipo="guia" onUpload={async (id, files) => { for (const f of files) await subirGuiaGrupo(id, f); fetchPagos(); }} />
@@ -496,7 +499,7 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
                                         <td className="px-6 py-3.5"><span className="font-black text-gray-800 text-sm bg-gray-50 px-2 py-1 rounded">S/ {item.monto.toFixed(2)}</span></td>
                                         <td className="px-6 py-3.5 text-center">
                                           {item.estado_pago === "Pagado" ? <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-[10px] font-black"><CheckCircle2 size={12} /> Pagado</span>
-                                          : <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-full text-[10px] font-black"><AlertCircle size={12} /> Pendiente</span>}
+                                            : <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-full text-[10px] font-black"><AlertCircle size={12} /> Pendiente</span>}
                                         </td>
                                       </tr>
                                     ))}

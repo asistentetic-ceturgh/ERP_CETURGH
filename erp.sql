@@ -3681,3 +3681,17 @@ CREATE TABLE rendicion_items (
     archivo VARCHAR(255) NULL
 );
  
+INSERT INTO correlativos (tipo, anio, numero_actual) VALUES ('REND', YEAR(CURDATE()), 0);
+
+ALTER TABLE solicitudes_caja 
+ADD COLUMN codigo_solicitado VARCHAR(100) NULL AFTER motivo;
+ALTER TABLE solicitudes_caja 
+ADD COLUMN codigo_solicitado VARCHAR(100) NULL AFTER motivo;
+
+ALTER TABLE `items` 
+ADD COLUMN `comentario_solicitante` TEXT DEFAULT NULL AFTER `comentario_estado`,
+ADD COLUMN `archivo_adjunto` VARCHAR(500) DEFAULT NULL AFTER `comentario_solicitante`;
+ALTER TABLE `items` ADD COLUMN `incluye_igv` TINYINT(1) NOT NULL DEFAULT 0;
+
+INSERT INTO `correlativos` (`tipo`, `anio`, `numero_actual`) VALUES ('FND', 2026, 0) 
+ON DUPLICATE KEY UPDATE numero_actual = numero_actual;

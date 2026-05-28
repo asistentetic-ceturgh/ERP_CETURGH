@@ -13,7 +13,10 @@ import {
     Search,
     X,
     ArrowUp,
-    ArrowDown
+    ArrowDown,
+    MessageSquare,
+    Eye,
+    FileText
 } from "lucide-react";
 
 import { API_BASE } from "../../config/api";
@@ -25,6 +28,7 @@ const Administracion = () => {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalObs, setModalObs] = useState(false);
+    const [modalDetails, setModalDetails] = useState(false);
     const [itemSeleccionado, setItemSeleccionado] = useState(null);
     const [comentario, setComentario] = useState("");
     const [filtroEstado, setFiltroEstado] = useState("ADMINISTRACION");
@@ -39,8 +43,8 @@ const Administracion = () => {
     const [departamentoFilter, setDepartamentoFilter] = useState("");
 
     // Estados para ordenamiento
-    const [fechaOrder, setFechaOrder] = useState(null); // 'asc' o 'desc'
-    const [precioOrder, setPrecioOrder] = useState(null); // 'asc' o 'desc'
+    const [fechaOrder, setFechaOrder] = useState(null);
+    const [precioOrder, setPrecioOrder] = useState(null);
 
     // Estados para paginación
     const [currentPage, setCurrentPage] = useState(1);
@@ -55,7 +59,7 @@ const Administracion = () => {
     const getPrecioVisual = (item) => {
         const precioBase = Number(item.precio_unitario) || 0;
         const incluyeIgv = Number(item.incluye_igv) === 1;
-        return incluyeIgv ? precioBase * (1 + IGV_RATE) : precioBase;
+        return incluyeIgv ? precioBase : precioBase * (1 + IGV_RATE);
     };
 
     const fetchItems = async () => {
@@ -75,11 +79,10 @@ const Administracion = () => {
         fetchItems();
     }, []);
 
-    // Filtro por estado (original)
+    // Filtro por estado
     const itemsFiltrados = items.filter(it => {
         if (filtroEstado === "TODOS") return true;
         if (filtroEstado === "ADMINISTRACION") {
-            // Debe estar en flujo ADMINISTRACION y su estado_administracion sea PENDIENTE
             return (it.flujo_estado || "") === "ADMINISTRACION" &&
                 (it.estado_administracion || "PENDIENTE").toUpperCase() === "PENDIENTE";
         }
@@ -87,7 +90,7 @@ const Administracion = () => {
         return estadoAdmin === filtroEstado;
     });
 
-    // Agrupación por requerimiento (base)
+    // Agrupación por requerimiento
     const requerimientosBase = useMemo(() => {
         return Object.values(
             itemsFiltrados.reduce((acc, item) => {
@@ -160,18 +163,12 @@ const Administracion = () => {
     const requerimientosOrdenados = useMemo(() => {
         let ordenados = [...requerimientosConFiltros];
 
-        // Orden por fecha
         if (fechaOrder === 'asc') {
             ordenados.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
         } else if (fechaOrder === 'desc') {
             ordenados.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
         }
 
-        // Orden por precio (sobrescribe orden por fecha si ambos están activos? El usuario puede elegir uno a la vez o permitir ambos?
-        // Según la lógica típica, se ordena por el último seleccionado. Vamos a permitir que solo uno esté activo a la vez.
-        // Para evitar conflictos, al hacer clic en precio, se resetea fechaOrder, y viceversa.
-        // Pero como el usuario pide botones separados, implementaré que al hacer clic en uno se desactive el otro.
-        // Esto lo haremos en los handlers.
         if (precioOrder === 'asc') {
             ordenados.sort((a, b) => {
                 const totalA = a.items.reduce((acc, i) => acc + (getPrecioVisual(i) * (Number(i.cantidad) || 0)), 0);
@@ -189,7 +186,7 @@ const Administracion = () => {
         return ordenados;
     }, [requerimientosConFiltros, fechaOrder, precioOrder]);
 
-    // Resetear página al cambiar filtros u ordenamiento
+    // Resetear página al cambiar filtros
     useEffect(() => {
         setCurrentPage(1);
     }, [minPrice, maxPrice, startDate, endDate, proveedorFilter, departamentoFilter, filtroEstado, itemsPerPage, fechaOrder, precioOrder]);
@@ -228,15 +225,19 @@ const Administracion = () => {
         setPrecioOrder(null);
     };
 
-    // Handlers para ordenamiento con exclusión mutua
     const handleFechaOrder = (order) => {
-        setPrecioOrder(null);  // desactivar orden por precio
-        setFechaOrder(order === fechaOrder ? null : order); // toggle si se hace clic en el mismo
+        setPrecioOrder(null);
+        setFechaOrder(order === fechaOrder ? null : order);
     };
 
     const handlePrecioOrder = (order) => {
-        setFechaOrder(null);   // desactivar orden por fecha
+        setFechaOrder(null);
         setPrecioOrder(order === precioOrder ? null : order);
+    };
+
+    const verDetallesItem = (item) => {
+        setItemSeleccionado(item);
+        setModalDetails(true);
     };
 
     const Badge = ({ children, variant }) => {
@@ -289,7 +290,6 @@ const Administracion = () => {
                 {/* Panel de filtros avanzados */}
                 <div className="max-w-7xl mx-auto">
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-sm mb-8 overflow-hidden">
-                        {/* HEADER DEL PANEL */}
                         <div className="bg-slate-50/50 px-8 py-4 border-b border-slate-100 flex items-center justify-between">
                             <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                 <Filter size={14} className="text-slate-400" />
@@ -297,9 +297,7 @@ const Administracion = () => {
                             </h2>
                         </div>
 
-                        {/* CUERPO DEL PANEL */}
                         <div className="p-8">
-                            {/* GRID DE INPUTS (Simplificado a una sola malla orgánica de 3 columnas en LG) */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                                 {/* Rango de Precios */}
                                 <div className="space-y-2">
@@ -342,7 +340,7 @@ const Administracion = () => {
                                     </select>
                                 </div>
 
-                                {/* Botón de Limpieza integrado orgánicamente */}
+                                {/* Botón de Limpieza */}
                                 <div className="flex items-end lg:col-span-2">
                                     <button onClick={limpiarFiltros} className="px-5 py-2.5 border border-dashed border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-slate-800 transition-all flex items-center gap-2 text-sm font-bold">
                                         <X size={15} /> Limpiar todos los filtros
@@ -350,51 +348,34 @@ const Administracion = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN DE ORDENAMIENTO DE BOTONES */}
+                            {/* SECCIÓN DE ORDENAMIENTO */}
                             <div className="border-t border-slate-100 pt-6 mt-4 flex flex-col md:flex-row md:items-center gap-4 justify-between">
                                 <div>
                                     <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2.5">Ordenar registros por</p>
                                     <div className="flex flex-wrap gap-3">
-                                        {/* Fecha */}
                                         <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                                            <button
-                                                onClick={() => handleFechaOrder('desc')}
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${fechaOrder === 'desc' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                            >
+                                            <button onClick={() => handleFechaOrder('desc')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${fechaOrder === 'desc' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
                                                 <ArrowDown size={13} /> Reciente
                                             </button>
-                                            <button
-                                                onClick={() => handleFechaOrder('asc')}
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${fechaOrder === 'asc' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                            >
+                                            <button onClick={() => handleFechaOrder('asc')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${fechaOrder === 'asc' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
                                                 <ArrowUp size={13} /> Antigua
                                             </button>
                                         </div>
-
-                                        {/* Precio */}
                                         <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                                            <button
-                                                onClick={() => handlePrecioOrder('desc')}
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${precioOrder === 'desc' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                            >
+                                            <button onClick={() => handlePrecioOrder('desc')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${precioOrder === 'desc' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
                                                 <ArrowDown size={13} /> Precio Mayor
                                             </button>
-                                            <button
-                                                onClick={() => handlePrecioOrder('asc')}
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${precioOrder === 'asc' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                            >
+                                            <button onClick={() => handlePrecioOrder('asc')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${precioOrder === 'asc' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
                                                 <ArrowUp size={13} /> Precio Menor
                                             </button>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* RESUMEN Y PAGINACIÓN INTEGRADO EN EL PIE DE LOS FILTROS */}
                                 <div className="flex flex-row items-center gap-6 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100 justify-between md:justify-end w-full md:w-auto">
                                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                                         Total: <span className="text-slate-700 font-black normal-case text-sm ml-1">{paginatedReqs.length} de {requerimientosOrdenados.length}</span>
                                     </div>
-
                                     <div className="flex items-center gap-2">
                                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Filas:</label>
                                         <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 focus:bg-white outline-none cursor-pointer">
@@ -405,7 +386,6 @@ const Administracion = () => {
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -453,6 +433,7 @@ const Administracion = () => {
                                                                     <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-right">Unitario</th>
                                                                     <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider">Proveedor</th>
                                                                     <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-center">Estado Admin</th>
+                                                                    <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-center">Comentario</th>
                                                                     <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-center">Gestión</th>
                                                                 </tr>
                                                             </thead>
@@ -464,6 +445,19 @@ const Administracion = () => {
                                                                         <td className="px-4 py-3 text-sm text-right font-bold">S/ {getPrecioVisual(it).toFixed(2)}</td>
                                                                         <td className="px-4 py-3 text-sm">{it.proveedor || "-"}</td>
                                                                         <td className="px-4 py-3 text-center"><Badge variant={(it.estado_administracion || "PENDIENTE").toUpperCase()}>{it.estado_administracion || "PENDIENTE"}</Badge></td>
+                                                                        <td className="px-4 py-3 text-center">
+                                                                            {(it.comentario_solicitante || it.archivo_adjunto) ? (
+                                                                                <button
+                                                                                    onClick={(e) => { e.stopPropagation(); verDetallesItem(it); }}
+                                                                                    className="p-2 rounded-lg transition-all border bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100"
+                                                                                    title="Ver comentario y archivo"
+                                                                                >
+                                                                                    <MessageSquare size={16} />
+                                                                                </button>
+                                                                            ) : (
+                                                                                <span className="text-[10px] text-slate-300">-</span>
+                                                                            )}
+                                                                        </td>
                                                                         <td className="px-4 py-3">
                                                                             <div className="flex justify-center gap-2">
                                                                                 {it.flujo_estado === "ADMINISTRACION" && (it.estado_administracion || "PENDIENTE") === "PENDIENTE" ? (
@@ -522,7 +516,7 @@ const Administracion = () => {
                 </div>
             </div>
 
-            {/* Modal observación (sin cambios) */}
+            {/* Modal observación */}
             {modalObs && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
@@ -537,6 +531,114 @@ const Administracion = () => {
                         <div className="px-6 py-4 border-t bg-slate-50 flex justify-end gap-3">
                             <button onClick={() => { setModalObs(false); setComentario(""); setItemSeleccionado(null); }} className="px-5 py-2 rounded-xl border font-semibold hover:bg-slate-100 transition">Cancelar</button>
                             <button onClick={async () => { if (!comentario.trim()) { alert("Ingrese un comentario"); return; } await cambiarEstado(itemSeleccionado.id, "OBSERVADO", comentario); setModalObs(false); setComentario(""); setItemSeleccionado(null); }} className="px-5 py-2 rounded-xl text-white font-bold transition hover:opacity-90" style={{ backgroundColor: colors.granate }}>Guardar Observación</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL DETALLES DEL ITEM (COMENTARIO Y ARCHIVO) */}
+            {modalDetails && itemSeleccionado && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b" style={{ backgroundColor: colors.granate }}>
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <MessageSquare className="text-amber-400" size={20} />
+                                    <h3 className="text-white font-bold text-lg">Detalles del Ítem</h3>
+                                </div>
+                                <button
+                                    onClick={() => { setModalDetails(false); setItemSeleccionado(null); }}
+                                    className="text-white/70 hover:text-white transition-colors"
+                                >
+                                    <X size={22} />
+                                </button>
+                            </div>
+                            <p className="text-white/60 text-xs mt-1">Comentario y archivo adjunto</p>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-5">
+                            {/* Información básica */}
+                            <div className="grid grid-cols-2 gap-4 pb-3 border-b border-slate-100">
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Item ID</p>
+                                    <p className="text-sm font-bold text-slate-800">{itemSeleccionado.id}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Requerimiento</p>
+                                    <p className="text-sm font-bold text-slate-800">REQ-{itemSeleccionado.requerimiento_id}</p>
+                                </div>
+                            </div>
+
+                            {/* Descripción */}
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Descripción</p>
+                                <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    {itemSeleccionado.descripcion}
+                                </p>
+                            </div>
+
+                            {/* Comentario del solicitante */}
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-2">
+                                    <MessageSquare size={12} /> Comentario del Solicitante
+                                </p>
+                                <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r-xl">
+                                    <p className="text-sm text-amber-800 italic">
+                                        {itemSeleccionado.comentario_solicitante || "Sin comentarios"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Archivo adjunto */}
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-2">
+                                    <FileText size={12} /> Archivo Adjunto
+                                </p>
+                                {itemSeleccionado.archivo_adjunto ? (
+                                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                        {itemSeleccionado.archivo_adjunto.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                            <img
+                                                src={`${API_BASE}${itemSeleccionado.archivo_adjunto}`}
+                                                alt="Adjunto"
+                                                className="w-16 h-16 object-cover rounded-lg border border-slate-200"
+                                            />
+                                        ) : (
+                                            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                                                <FileText size={24} className="text-red-600" />
+                                            </div>
+                                        )}
+                                        <div className="flex-1">
+                                            <p className="text-xs font-medium text-slate-700 truncate max-w-[200px]">
+                                                {itemSeleccionado.archivo_adjunto.split('/').pop()}
+                                            </p>
+                                            <a
+                                                href={`${API_BASE}${itemSeleccionado.archivo_adjunto}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                                            >
+                                                <Eye size={14} /> Ver archivo
+                                            </a>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-slate-400 italic bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                        No hay archivo adjunto
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 border-t bg-slate-50 flex justify-end">
+                            <button
+                                onClick={() => { setModalDetails(false); setItemSeleccionado(null); }}
+                                className="px-5 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-100 transition"
+                            >
+                                Cerrar
+                            </button>
                         </div>
                     </div>
                 </div>

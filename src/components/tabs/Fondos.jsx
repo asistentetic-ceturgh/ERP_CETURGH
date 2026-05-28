@@ -2,12 +2,33 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
     Coins, RefreshCw, FileText, Users, Plus, Inbox, Eye, Pencil, Trash2, X,
     DollarSign, Calendar, Info, AlertTriangle, Check, UploadCloud, Search,
-    ArrowUp, ArrowDown, Building2, ChevronDown, Receipt, Send
+    ArrowUp, ArrowDown, Building2, ChevronDown, Receipt, Send, Package, Edit3
 } from 'lucide-react';
 import { API_BASE } from "../../config/api";
 
 const API = API_BASE;
 const FONDO_ASIGNADO = 10000;
+
+const StatusBadge = ({ estado }) => {
+    const badgeColors = {
+        "SIN_FIRMAR": "bg-slate-50 text-slate-600 border-slate-200",
+        "PENDIENTE": "bg-amber-50 text-amber-700 border-amber-200/60",
+        "APROBADO": "bg-blue-50 text-blue-700 border-blue-200/60",
+        "PAGADO": "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+        "CERRADO": "bg-slate-100 text-slate-700 border-slate-300/50",
+        "RECHAZADO": "bg-red-50 text-red-600 border-red-200/60",
+    };
+
+    const colorClass = badgeColors[estado] || "bg-slate-50 text-slate-600 border-slate-200";
+
+    return (
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-semibold ${colorClass}`}>
+            <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-current opacity-80" />
+            {estado || 'PENDIENTE'}
+        </span>
+    );
+};
+
 
 const Fondos = ({ user }) => {
     const currentUser = user || null;
@@ -22,12 +43,18 @@ const Fondos = ({ user }) => {
     const [loadingSedes, setLoadingSedes] = useState(false);
     const [empresaSeleccionada, setEmpresaSeleccionada] = useState("");
     const [sedeSeleccionada, setSedeSeleccionada] = useState("");
+    const [showDevolucionModal, setShowDevolucionModal] = useState(false);
+    const [archivoDevolucion, setArchivoDevolucion] = useState(null);
 
     // ===================== FILTROS =====================
     const [searchText, setSearchText] = useState('');
     const [fechaOrder, setFechaOrder] = useState('desc');
     const [selTipo, setSelTipo] = useState('todos');
     const [selEstado, setSelEstado] = useState('todos');
+
+    // ===================== PAGINACIÓN =====================
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     // ===================== ESTADOS PRINCIPALES =====================
     const [registros, setRegistros] = useState([]);
@@ -89,8 +116,45 @@ const Fondos = ({ user }) => {
 
     // Los gastos NO se pueden editar si la solicitud ya fue enviada a rendición o pagada
     const puedeEditarGasto = () => {
-        const estadosBloqueados = ["EN_RENDICION", "POR_REEMBOLSAR", "POR_DEVOLVER", "CERRADO", "PAGADO"];
+        const estadosBloqueados = ["POR_DEVOLVER", "POR_REEMBOLSAR", "CERRADO", "RECHAZADO"];
         return !estadosBloqueados.includes(viewingReq?.estado);
+    };
+
+    const registrarDevolucion = async () => {
+        if (!archivoDevolucion) {
+            alert("Debe subir el comprobante de devolución");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("solicitud_id", viewingReq.id);
+        formData.append("usuario_id", currentUserId);
+        formData.append("comprobante", archivoDevolucion);
+        formData.append("tipo", "DEVOLUCION_SOLICITANTE");
+
+        try {
+            const res = await fetch(`${API}registrar_devolucion.php`, {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+            if (!data.success) {
+                alert(data.message);
+                return;
+            }
+
+            alert("Devolución registrada correctamente. Tesorería finalizará el proceso.");
+            setShowDevolucionModal(false);
+            setArchivoDevolucion(null);
+
+            // Actualizar estado a POR_DEVOLVER_PENDIENTE o similar
+            await obtenerSolicitudes();
+            await obtenerArchivosSolicitud(viewingReq.id);
+            setViewingReq(prev => ({ ...prev, estado: data.estado || "CERRADO" }));
+        } catch (error) {
+            console.error(error);
+            alert("Error al registrar devolución");
+        }
     };
 
     // ===================== CARGAR EMPRESAS Y SEDES =====================
@@ -165,11 +229,25 @@ const Fondos = ({ user }) => {
             const res = await fetch(`${API}listar_archivos_solicitud.php?id=${id}`);
             const data = await res.json();
             if (!data.success) return;
+
+            // Archivos subidos por el solicitante (RENDICION)
             const rend = data.archivos.filter(a => a.tipo === "RENDICION");
-            const tes = data.archivos.filter(a => ["DEVOLUCION", "REEMBOLSO", "PAGO_TESORERIA"].includes(a.tipo));
+
+            // Archivos subidos por tesorería (PAGO_TESORERIA, DEVOLUCION, REEMBOLSO)
+            const tes = data.archivos.filter(a =>
+                a.tipo === "PAGO_TESORERIA" ||
+                a.tipo === "DEVOLUCION" ||
+                a.tipo === "REEMBOLSO"
+            );
+
             setRendiciones(rend);
             setArchivosTesoreria(tes);
-        } catch (err) { console.error(err); }
+
+            console.log("Archivos de rendición:", rend);
+            console.log("Archivos de tesorería:", tes);
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     // CRUD Gastos (solo si se puede editar)
@@ -372,23 +450,42 @@ const Fondos = ({ user }) => {
     const enviarRendicionATesoreria = async () => {
         if (!viewingReq?.id) return alert("Solicitud inválida");
         if (gastos.length === 0) return alert("Debe registrar al menos un gasto antes de enviar");
-        const confirmar = confirm("¿Está seguro que desea enviar la rendición a tesorería? Ya no podrá modificar los gastos.");
+
+        // Calcular monto rendido y diferencia
+        const montoRendidoCalc = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
+        const montoSolicitadoVal = Number(viewingReq.monto_solicitado || 0);
+        const diferenciaCalc = montoSolicitadoVal - montoRendidoCalc;
+
+        const confirmar = confirm(`¿Está seguro que desea enviar la rendición a tesorería?\n\nTotal rendido: ${formatearMoneda(montoRendidoCalc)}\nDiferencia: ${formatearMoneda(Math.abs(diferenciaCalc))}\n\nYa no podrá modificar los gastos.`);
         if (!confirmar) return;
+
         try {
             const res = await fetch(`${API}flujo_fondos.php`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ accion: "ENVIAR_RENDICION", solicitud_id: viewingReq.id, usuario_id: currentUserId })
+                body: JSON.stringify({
+                    accion: "ENVIAR_RENDICION",
+                    solicitud_id: viewingReq.id,
+                    usuario_id: currentUserId,
+                    monto_rendido: montoRendidoCalc,
+                    diferencia: diferenciaCalc
+                })
             });
             const data = await res.json();
-            if (!data.success) { alert(data.message); return; }
+            if (!data.success) {
+                alert(data.message);
+                return;
+            }
+
             alert(data.message);
             await obtenerSolicitudes();
             await obtenerGastos(viewingReq.id);
             setViewingReq(prev => ({ ...prev, estado: data.estado }));
-        } catch (error) { alert("Error al enviar rendición"); }
+        } catch (error) {
+            console.error(error);
+            alert("Error al enviar rendición");
+        }
     };
-
     const cerrarRendicion = async () => {
         if (!archivoCierre) { alert("Debe subir comprobante"); return; }
         const formData = new FormData();
@@ -412,7 +509,7 @@ const Fondos = ({ user }) => {
     const montoRendidoReal = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
     const diferenciaMonto = montoSolicitado - montoRendidoReal;
 
-    // ===================== FILTRADO =====================
+    // ===================== FILTRADO Y PAGINACIÓN =====================
     const registrosFiltrados = useMemo(() => {
         if (!Array.isArray(registros)) return [];
 
@@ -455,6 +552,24 @@ const Fondos = ({ user }) => {
         return sorted;
     }, [registros, activeTab, currentUserId, puedeVerGeneral, searchText, selTipo, selEstado, fechaOrder]);
 
+    // Resetear página cuando cambian los filtros o el tamaño de página
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchText, selTipo, selEstado, fechaOrder, activeTab, pageSize]);
+
+    // Datos paginados
+    const totalItems = registrosFiltrados.length;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const paginatedRegistros = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        return registrosFiltrados.slice(start, end);
+    }, [registrosFiltrados, currentPage, pageSize]);
+
+    const goToPage = (page) => {
+        if (page >= 1 && page <= totalPages) setCurrentPage(page);
+    };
+
     // ===================== CARGA INICIAL =====================
     useEffect(() => { obtenerSolicitudes(); }, []);
     useEffect(() => {
@@ -475,6 +590,305 @@ const Fondos = ({ user }) => {
     };
 
     const formatearMoneda = (monto) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(monto);
+
+    // ===================== GENERAR PDF =====================
+    const generarPDF = async () => {
+        if (!viewingReq) return;
+
+        // ==========================================
+        // 1. IMPORTACIONES DINÁMICAS Y CONFIGURACIÓN
+        // ==========================================
+        const { default: jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
+
+        const doc = new jsPDF();
+
+        // Paleta de colores institucional
+        const COLOR_VINO = { r: 128, g: 0, b: 0 };
+        const COLOR_ORO = { r: 212, g: 175, b: 55 };
+        const COLOR_TEXTO = { r: 40, g: 40, b: 40 };
+
+        // Mapeo dinámico de títulos por tipo de solicitud
+        const TITULOS_SOLICITUD = {
+            "ADELANTO": "SOLICITUD DE ANTICIPO",
+            "VIATICOS": "SOLICITUD DE VIÁTICOS",
+            "REEMBOLSO": "SOLICITUD DE REEMBOLSO"
+        };
+        const titulo = TITULOS_SOLICITUD[viewingReq.tipo] || "SOLICITUD DE REEMBOLSO";
+
+        // Función utilitaria auxiliar para cargar firmas asíncronas desde la API
+        const obtenerFirmaBase64 = async (rutaFirma) => {
+            if (!rutaFirma) return null;
+            try {
+                const response = await fetch(`${API}${rutaFirma}`);
+                const blob = await response.blob();
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+            } catch (error) {
+                console.error(`Error procesando firma en ruta [${rutaFirma}]:`, error);
+                return null;
+            }
+        };
+
+        // ==========================================
+        // 2. DISEÑO ESTRUCTURAL DE CAPAS (MARCO Y HEADER)
+        // ==========================================
+        // Marco exterior de la página
+        doc.setDrawColor(COLOR_VINO.r, COLOR_VINO.g, COLOR_VINO.b);
+        doc.setLineWidth(0.5);
+        doc.rect(10, 10, 190, 277);
+
+        // Bloque sólido superior (Header institucional)
+        doc.setFillColor(COLOR_VINO.r, COLOR_VINO.g, COLOR_VINO.b);
+        doc.rect(10, 10, 190, 15, 'F');
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(255, 255, 255);
+        doc.text("SISTEMA DE GESTIÓN DE FONDOS", 105, 20, { align: "center" });
+
+        // Título de la Solicitud
+        doc.setTextColor(COLOR_TEXTO.r, COLOR_TEXTO.g, COLOR_TEXTO.b);
+        doc.setFontSize(14);
+        doc.text(titulo, 105, 35, { align: "center" });
+
+        // Subrayado decorativo oro
+        doc.setDrawColor(COLOR_ORO.r, COLOR_ORO.g, COLOR_ORO.b);
+        doc.setLineWidth(1);
+        doc.line(70, 38, 140, 38);
+
+        // ==========================================
+        // 3. INFORMACIÓN GENERAL DE CABECERA
+        // ==========================================
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("Solicitud N°:", 14, 48);
+        doc.setFont("helvetica", "normal");
+        doc.text(viewingReq.codigo || "S/N", 40, 48);
+
+        doc.setFont("helvetica", "bold");
+        doc.text("Fecha:", 150, 48);
+        doc.setFont("helvetica", "normal");
+        doc.text(viewingReq.created_at?.slice(0, 10) || "-", 165, 48);
+
+        // ==========================================
+        // 4. INFORMACIÓN COMPLETA DEL SOLICITANTE
+        // ==========================================
+        doc.setFillColor(245, 245, 245);
+        doc.rect(14, 55, 182, 25, 'F');
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(COLOR_VINO.r, COLOR_VINO.g, COLOR_VINO.b);
+        doc.text("1. INFORMACIÓN DEL SOLICITANTE", 18, 62);
+
+        doc.setFontSize(9);
+        doc.setTextColor(COLOR_TEXTO.r, COLOR_TEXTO.g, COLOR_TEXTO.b);
+
+        doc.text("SOLICITANTE:", 18, 70);
+        doc.setFont("helvetica", "normal");
+        doc.text(viewingReq.solicitante || "-", 45, 70);
+
+        doc.setFont("helvetica", "bold");
+        doc.text("CATEGORÍA:", 18, 76);
+        doc.setFont("helvetica", "normal");
+        doc.text(viewingReq.categoria || "-", 45, 76);
+
+        doc.setFont("helvetica", "bold");
+        const etiquetaEmpresa = "EMPRESA / SEDE: ";
+        doc.text(etiquetaEmpresa, 110, 70);
+        const anchoEtiqueta = doc.getTextWidth(etiquetaEmpresa);
+        const coordenadaValorX = 110 + anchoEtiqueta;
+
+        doc.setFont("helvetica", "normal");
+        doc.text(`${viewingReq.empresa || ""} - ${viewingReq.sede || ""}`, coordenadaValorX, 70);
+
+        // ==========================================
+        // 5. CONCEPTO
+        // ==========================================
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(COLOR_VINO.r, COLOR_VINO.g, COLOR_VINO.b);
+        doc.text("2. CONCEPTO DE LA SOLICITUD", 14, 90);
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(COLOR_TEXTO.r, COLOR_TEXTO.g, COLOR_TEXTO.b);
+
+        const conceptoLines = doc.splitTextToSize(viewingReq.concepto || "Sin especificar", 180);
+        doc.text(conceptoLines, 14, 97);
+
+        // Cálculo dinámico de altura inicial para secciones posteriores
+        let finalY = 97 + (conceptoLines.length * 5) + 10;
+
+        // ==========================================
+        // 6. TABLA DINÁMICA DE GASTOS
+        // ==========================================
+        if (gastos.length > 0) {
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(COLOR_VINO.r, COLOR_VINO.g, COLOR_VINO.b);
+            doc.text("3. DETALLE DE GASTOS", 14, finalY);
+
+            const tableRows = gastos.map((g, idx) => [
+                idx + 1,
+                g.fecha?.slice(0, 10) || "-",
+                g.tipo_comprobante || "-",
+                g.numero_comprobante || "-",
+                g.descripcion?.slice(0, 30) || "-",
+                `S/ ${parseFloat(g.monto).toFixed(2)}`
+            ]);
+
+            autoTable(doc, {
+                startY: finalY + 5,
+                head: [["#", "FECHA", "TIPO DOC", "N° DOC", "DESCRIPCIÓN", "MONTO"]],
+                body: tableRows,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [COLOR_VINO.r, COLOR_VINO.g, COLOR_VINO.b],
+                    textColor: [255, 255, 255],
+                    fontSize: 8
+                },
+                styles: { fontSize: 7, cellPadding: 2 },
+                columnStyles: {
+                    0: { cellWidth: 10, halign: 'center' },
+                    1: { cellWidth: 20 },
+                    2: { cellWidth: 20 },
+                    3: { cellWidth: 25 },
+                    4: { cellWidth: 60 },
+                    5: { cellWidth: 25, halign: 'right' }
+                }
+            });
+
+            finalY = doc.lastAutoTable.finalY + 10;
+        }
+
+        // ==========================================
+        // 7. BALANCES Y RESUMEN ECONÓMICO
+        // ==========================================
+        const montoSolicitadoNum = Number(viewingReq.monto_solicitado || 0);
+        const montoRendidoNum = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
+        const diferenciaNum = montoSolicitadoNum - montoRendidoNum;
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(COLOR_VINO.r, COLOR_VINO.g, COLOR_VINO.b);
+        doc.text("4. RESUMEN ECONÓMICO", 14, finalY);
+
+        finalY += 8;
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(COLOR_TEXTO.r, COLOR_TEXTO.g, COLOR_TEXTO.b);
+        doc.text(`Monto Solicitado:`, 14, finalY);
+        doc.setFont("helvetica", "bold");
+        doc.text(`S/ ${montoSolicitadoNum.toFixed(2)}`, 55, finalY);
+
+        finalY += 6;
+        doc.setFont("helvetica", "normal");
+        doc.text(`Total Rendido:`, 14, finalY);
+        doc.setFont("helvetica", "bold");
+        doc.text(`S/ ${montoRendidoNum.toFixed(2)}`, 55, finalY);
+
+        finalY += 6;
+        doc.setFont("helvetica", "normal");
+        doc.text(`Diferencia:`, 14, finalY);
+
+        // Determinación de color e indicador textual por saldo de diferencia
+        let textoDiferencia = "(CUADRADO)";
+        let colorDiferencia = { r: 40, g: 40, b: 40 }; // Gris por defecto
+
+        if (diferenciaNum < 0) {
+            textoDiferencia = "(A FAVOR DEL SOLICITANTE)";
+            colorDiferencia = { r: 34, g: 139, b: 34 }; // Verde
+        } else if (diferenciaNum > 0) {
+            textoDiferencia = "(A FAVOR DE LA COOPERATIVA)";
+            colorDiferencia = { r: 220, g: 80, b: 34 }; // Naranja/Rojo
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(colorDiferencia.r, colorDiferencia.g, colorDiferencia.b);
+        doc.text(`S/ ${Math.abs(diferenciaNum).toFixed(2)} ${textoDiferencia}`, 55, finalY);
+
+        // ==========================================
+        // 8. DECLARACIÓN JURADA
+        // ==========================================
+        finalY += 15;
+        doc.setTextColor(COLOR_TEXTO.r, COLOR_TEXTO.g, COLOR_TEXTO.b);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8);
+
+        const declaracion = `Declaro Bajo Juramento haber realizado los gastos detallados anteriormente, con cargo al importe recibido de ${viewingReq.empresa || "la Cooperativa"} - ${viewingReq.sede || ""}, en fe de lo cual confirmo la presente en la fecha que se indica.`;
+        const declaracionLines = doc.splitTextToSize(declaracion, 180);
+        doc.text(declaracionLines, 14, finalY);
+
+        // ==========================================
+        // 9. PROCESAMIENTO Y RENDERIZADO DE FIRMAS
+        // ==========================================
+        const firmaY = 265;
+        doc.setDrawColor(150, 150, 150);
+        doc.setLineWidth(0.5);
+
+        // Líneas guías de las firmas base
+        doc.line(14, firmaY, 70, firmaY);
+        doc.line(140, firmaY, 196, firmaY);
+
+        // Inyección asíncrona: Firma Solicitante
+        if (viewingReq.solicitante_firma) {
+            const imgSolicitante = await obtenerFirmaBase64(viewingReq.solicitante_firma);
+            if (imgSolicitante) {
+                try { doc.addImage(imgSolicitante, 'PNG', 20, firmaY - 18, 45, 15); }
+                catch (e) { console.error("Error insertando imagen de firma solicitante:", e); }
+            }
+        }
+
+        // Inyección asíncrona: Firma del Jefe Autorizador
+        if (viewingReq.firmador_firma) {
+            const imgFirmador = await obtenerFirmaBase64(viewingReq.firmador_firma);
+            if (imgFirmador) {
+                try { doc.addImage(imgFirmador, 'PNG', 146, firmaY - 18, 45, 15); }
+                catch (e) { console.error("Error insertando imagen de firma autorizador:", e); }
+            }
+        }
+
+        // Identificadores de pie de firma
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+
+        // Datos descriptivos debajo de bloques primarios de firma
+        doc.text(viewingReq.solicitante || "SOLICITANTE", 42, firmaY + 5, { align: "center" });
+        doc.text("FIRMA SOLICITANTE", 42, firmaY + 10, { align: "center" });
+
+        const nombreFirmador = viewingReq.firmador_nombre || (viewingReq.firmado_por ? "JEFE DE DEPARTAMENTO" : "PENDIENTE DE FIRMA");
+        doc.text(nombreFirmador, 168, firmaY + 5, { align: "center" });
+        doc.text("FIRMA DEL JEFE", 168, firmaY + 10, { align: "center" });
+
+        // Bloque Opcional: Aprobación final por Gerencia/Administración
+        if (viewingReq.aprobado_por) {
+            const aprobadorY = firmaY + 20;
+            doc.line(14, aprobadorY, 70, aprobadorY);
+            doc.line(140, aprobadorY, 196, aprobadorY);
+
+            if (viewingReq.aprobador_firma) {
+                const imgAprobador = await obtenerFirmaBase64(viewingReq.aprobador_firma);
+                if (imgAprobador) {
+                    try { doc.addImage(imgAprobador, 'PNG', 20, aprobadorY - 18, 45, 15); }
+                    catch (e) { console.error("Error insertando imagen de firma aprobador:", e); }
+                }
+            }
+
+            doc.text(viewingReq.aprobador_nombre || "ADMINISTRACIÓN", 42, aprobadorY + 5, { align: "center" });
+            doc.text("APROBACIÓN", 42, aprobadorY + 10, { align: "center" });
+
+            if (viewingReq.fecha_aprobacion) {
+                doc.setFontSize(7);
+                doc.text(`Fecha: ${viewingReq.fecha_aprobacion.slice(0, 10)}`, 168, aprobadorY + 5, { align: "center" });
+            }
+        }
+
+        // ==========================================
+        // 10. EMISIÓN Y DESCARGA DEL DOCUMENTO
+        // ==========================================
+        const nombreArchivo = `${titulo.replace(/ /g, "_")}_${viewingReq.codigo || "001"}.pdf`;
+        doc.save(nombreArchivo);
+    };
 
     // Pasos del flujo - ANTICIPO y VIATICOS tienen el mismo flujo (pago antes)
     const esAnticipoOViaticos = viewingReq?.tipo === "ADELANTO" || viewingReq?.tipo === "VIATICOS";
@@ -593,51 +1007,119 @@ const Fondos = ({ user }) => {
     // ===================== RENDER =====================
     return (
         <div className="bg-slate-50 min-h-screen font-sans text-slate-800">
-            <header className="bg-white border-b sticky top-0 z-30">
-                <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-5 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-gradient-to-br from-[#800000] to-black p-3 rounded-2xl"><Coins className="w-7 h-7 text-white" /></div>
-                        <div><h1 className="text-2xl font-black">Gestión de Fondos</h1><p className="text-[10px] font-bold text-slate-400">Solicitudes · Rendiciones · Fondos</p></div>
+            {/* HEADER */}
+            <header className="bg-white border-b border-slate-100 sticky top-0 z-30 shadow-sm/50 backdrop-blur-md bg-white/95">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="flex items-center gap-3.5">
+                        <div className="bg-gradient-to-br from-[#800000] to-slate-900 p-2.5 rounded-xl shadow-md shadow-[#800000]/10">
+                            <Coins className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold tracking-tight text-slate-900">Gestión de Fondos</h1>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">Solicitudes · Rendiciones · Fondos</p>
+                        </div>
                     </div>
-                    <div className="flex gap-3">
-                        <button onClick={obtenerSolicitudes} className="h-11 px-4 rounded-xl border bg-white hover:bg-slate-50 flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Actualizar</button>
-                        <div className="bg-slate-100 rounded-2xl px-4 py-3"><div className="text-[10px] font-black">Solicitudes Totales</div><div className="text-2xl font-black">{registros.length}</div></div>
+
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                        <button
+                            onClick={obtenerSolicitudes}
+                            className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all flex items-center gap-2 active:scale-95"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            <span>Actualizar</span>
+                        </button>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-1.5 flex flex-col items-end min-w-[100px]">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</span>
+                            <span className="text-xl font-bold text-slate-800 leading-tight">{registros.length}</span>
+                        </div>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-[1400px] mx-auto px-4 md:px-8 py-8">
-                <div className="flex justify-between items-center mb-8">
-                    <div className="flex gap-2 bg-white border rounded-2xl p-2">
-                        <button onClick={() => setActiveTab("mis")} className={`px-5 py-3 rounded-xl text-[11px] font-black uppercase flex items-center gap-2 ${activeTab === "mis" ? "bg-[#800000] text-white" : "hover:bg-slate-100"}`}><FileText className="w-4 h-4" /> Mis Solicitudes</button>
+            {/* CONTENIDO PRINCIPAL */}
+            <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+                {/* ACCIONES TOP */}
+                <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-6">
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/40">
+                        <button
+                            onClick={() => setActiveTab("mis")}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === "mis"
+                                ? "bg-white text-[#800000] shadow-sm"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                                }`}
+                        >
+                            <FileText className="w-3.5 h-3.5" />
+                            Mis Solicitudes
+                        </button>
                         {puedeVerGeneral && (
-                            <button onClick={() => setActiveTab("general")} className={`px-5 py-3 rounded-xl text-[11px] font-black uppercase flex items-center gap-2 ${activeTab === "general" ? "bg-[#800000] text-white" : "hover:bg-slate-100"}`}><Users className="w-4 h-4" /> Vista General</button>
+                            <button
+                                onClick={() => setActiveTab("general")}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === "general"
+                                    ? "bg-white text-[#800000] shadow-sm"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                                    }`}
+                            >
+                                <Users className="w-3.5 h-3.5" />
+                                Vista General
+                            </button>
                         )}
                     </div>
-                    <button onClick={abrirModalCrear} className="bg-gradient-to-r from-[#800000] to-black text-white px-6 py-3 rounded-2xl flex items-center gap-2"><Plus className="w-5 h-5" /> Nueva Solicitud</button>
+
+                    <button
+                        onClick={abrirModalCrear}
+                        className="bg-gradient-to-r from-[#800000] to-slate-900 text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#800000]/10 hover:opacity-95 transition-all active:scale-95"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Nueva Solicitud
+                    </button>
                 </div>
 
-                {/* BARRA DE FILTROS */}
-                <div className="bg-white rounded-3xl border shadow-sm overflow-hidden mb-8">
-                    <div className="p-5 border-b bg-slate-50/40">
-                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2"><Search size={12} /> Buscar</label>
-                                <input type="text" placeholder="Código, concepto, empresa..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+                {/* BARRA DE FILTROS Y CONTENEDOR PRINCIPAL */}
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+
+                    {/* SECCIÓN FILTROS */}
+                    <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
+
+                            {/* Búsqueda */}
+                            <div className="lg:col-span-1">
+                                <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                    <Search size={12} className="text-slate-400" /> Buscar
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="Código, concepto..."
+                                    value={searchText}
+                                    onChange={(e) => setSearchText(e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm placeholder-slate-400 focus:outline-none focus:border-[#800000] focus:ring-1 focus:ring-[#800000] transition-all"
+                                />
                             </div>
+
+                            {/* Tipo */}
                             <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Tipo</label>
-                                <select value={selTipo} onChange={(e) => setSelTipo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm">
-                                    <option value="todos">Todos</option>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Tipo</label>
+                                <select
+                                    value={selTipo}
+                                    onChange={(e) => setSelTipo(e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-[#800000] transition-all"
+                                >
+                                    <option value="todos">Todos los tipos</option>
                                     <option value="ADELANTO">Anticipo</option>
                                     <option value="REEMBOLSO">Reembolso</option>
                                     <option value="VIATICOS">Viáticos</option>
                                 </select>
                             </div>
+
+                            {/* Estado */}
                             <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Estado</label>
-                                <select value={selEstado} onChange={(e) => setSelEstado(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm">
-                                    <option value="todos">Todos</option>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Estado</label>
+                                <select
+                                    value={selEstado}
+                                    onChange={(e) => setSelEstado(e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-[#800000] transition-all"
+                                >
+                                    <option value="todos">Todos los estados</option>
                                     <option value="SIN_FIRMAR">Sin Firmar</option>
                                     <option value="PENDIENTE">Pendiente</option>
                                     <option value="APROBADO">Aprobado</option>
@@ -649,64 +1131,242 @@ const Fondos = ({ user }) => {
                                     <option value="RECHAZADO">Rechazado</option>
                                 </select>
                             </div>
+
+                            {/* Orden */}
                             <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Orden por Fecha</label>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setFechaOrder('desc')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${fechaOrder === 'desc' ? 'bg-[#800000] text-white' : 'bg-slate-100'}`}><ArrowDown size={12} /> Reciente</button>
-                                    <button onClick={() => setFechaOrder('asc')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${fechaOrder === 'asc' ? 'bg-[#800000] text-white' : 'bg-slate-100'}`}><ArrowUp size={12} /> Antigua</button>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Fecha</label>
+                                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/60">
+                                    <button
+                                        onClick={() => setFechaOrder('desc')}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${fechaOrder === 'desc' ? 'bg-white text-[#800000] shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                                    >
+                                        <ArrowDown size={12} /> Reciente
+                                    </button>
+                                    <button
+                                        onClick={() => setFechaOrder('asc')}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${fechaOrder === 'asc' ? 'bg-white text-[#800000] shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                                    >
+                                        <ArrowUp size={12} /> Antigua
+                                    </button>
                                 </div>
                             </div>
-                            <div className="text-right text-[10px] font-bold text-slate-400 self-end pb-2">Mostrando {registrosFiltrados.length} de {registros.length}</div>
+
+                            {/* Contador */}
+                            <div className="text-left md:text-right text-xs font-medium text-slate-400 sm:col-span-2 md:col-span-4 lg:col-span-1 pb-2">
+                                Viendo <span className="font-bold text-slate-700">{registrosFiltrados.length}</span> de {registros.length}
+                            </div>
                         </div>
                     </div>
 
-                    {/* TABLA */}
+                    {/* TABLA DE RESULTADOS (con paginación) */}
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1100px]">
-                            <thead className="bg-slate-50">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black">Código</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black">Solicitante</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black">Concepto</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black">Estado</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-black">Monto</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-black">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {registrosFiltrados.length === 0 ? (
-                                    <tr><td colSpan="6" className="py-20 text-center">No hay solicitudes</td></tr>
-                                ) : (
-                                    registrosFiltrados.map(reg => {
-                                        const badge = reg.estado === "SIN_FIRMAR" ? "bg-gray-100 text-gray-700" :
-                                            reg.estado === "PENDIENTE" ? "bg-amber-50 text-amber-700" :
-                                                reg.estado === "APROBADO" ? "bg-blue-50 text-blue-700" :
-                                                    reg.estado === "PAGADO" ? "bg-emerald-50 text-emerald-700" :
-                                                        reg.estado === "CERRADO" ? "bg-slate-100 text-slate-700" :
-                                                            reg.estado === "RECHAZADO" ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-700";
-                                        return (
-                                            <tr key={reg.id} className="hover:bg-slate-50/70">
-                                                <td className="px-6 py-5"><div><span className="text-xs font-black text-[#800000]">{reg.codigo}</span><span className="text-[10px] text-slate-400 block">{reg.created_at?.slice(0, 10)}</span></div></td>
-                                                <td className="px-6 py-5"><p className="text-sm font-bold">{reg.solicitante || "Sin nombre"}</p><p className="text-[11px] text-slate-400">{reg.empresa} • {reg.sede}</p></td>
-                                                <td className="px-6 py-5"><span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-black bg-slate-100 mb-1">{traducirTipo(reg.tipo)}</span><p className="text-sm">{reg.concepto?.slice(0, 50)}</p></td>
-                                                <td className="px-6 py-5"><span className={`inline-flex px-3 py-1.5 rounded-full border text-[10px] font-black ${badge}`}>{reg.estado}</span></td>
-                                                <td className="px-6 py-5 text-right font-black">{formatearMoneda(reg.monto_solicitado)}</td>
-                                                <td className="px-6 py-5 text-right"><div className="flex justify-end gap-2">
-                                                    <button onClick={() => abrirModalVisualizar(reg.id)} className="w-10 h-10 rounded-xl border hover:border-[#800000]/20 hover:bg-[#800000]/5"><Eye className="w-4 h-4" /></button>
-                                                    {puedeEditarSolicitud(reg) && (
-                                                        <button onClick={() => abrirModalEditar(reg.id)} className="w-10 h-10 rounded-xl border border-amber-200 bg-amber-50"><Pencil className="w-4 h-4 text-amber-700" /></button>
-                                                    )}
-                                                    {puedeEditarSolicitud(reg) && (
-                                                        <button onClick={() => eliminarSolicitud(reg.id)} className="w-10 h-10 rounded-xl border hover:border-red-200 hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
-                                                    )}
-                                                </div></td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                        <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-sm">
+                            <table className="w-full text-left border-separate border-spacing-0 min-w-[1000px]">
+                                <thead>
+                                    <tr className="bg-slate-50/70">
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Requerimiento</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Solicitante</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-center">Tipo</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Seguimiento</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">Monto</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody className="divide-y divide-slate-100">
+                                    {paginatedRegistros.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan="6"
+                                                className="py-20 text-center text-slate-400 text-sm font-medium bg-white"
+                                            >
+                                                No se encontraron solicitudes con los filtros aplicados.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        paginatedRegistros.map((req) => {
+                                            const puedeEditar = puedeEditarSolicitud(req);
+
+                                            return (
+                                                <tr
+                                                    key={req?.id}
+                                                    className="hover:bg-blue-50/20 transition-colors group"
+                                                >
+                                                    {/* CÓDIGO Y FECHA */}
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-slate-900 leading-none">
+                                                                {req?.codigo || "SIN CÓDIGO"}
+                                                            </span>
+
+                                                            <span className="text-[11px] text-slate-400 mt-2 flex items-center gap-1 font-medium">
+                                                                <Calendar size={11} className="text-slate-400" />
+                                                                {req?.fecha ||
+                                                                    req?.created_at?.slice(0, 10) ||
+                                                                    "---"}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* USUARIO Y EMPRESA */}
+                                                    <td className="px-6 py-4">
+                                                        <p className="text-sm font-semibold text-slate-800 leading-tight">
+                                                            {req?.usuario ||
+                                                                req?.solicitante ||
+                                                                "Sin asignación"}
+                                                        </p>
+
+                                                        <div className="flex items-center gap-1.5 mt-1">
+                                                            <Building2
+                                                                size={11}
+                                                                className="text-slate-400"
+                                                            />
+
+                                                            <span className="text-[11px] font-medium text-slate-500 uppercase tracking-tight">
+                                                                {req?.empresa}
+
+                                                                <span className="text-slate-300"> • </span>
+
+                                                                <span className="text-slate-400">
+                                                                    {req?.sede}
+                                                                </span>
+                                                            </span>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* TIPO */}
+                                                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                        <div className="flex flex-col items-center gap-1.5">
+                                                            <span
+                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${req?.tipo === "ADELANTO"
+                                                                    ? "bg-blue-50 text-blue-600 border-blue-100"
+                                                                    : req?.tipo === "REEMBOLSO"
+                                                                        ? "bg-purple-50 text-purple-600 border-purple-100"
+                                                                        : "bg-green-50 text-green-600 border-green-100"
+                                                                    }`}
+                                                            >
+                                                                {traducirTipo(req?.tipo)}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* ESTADO */}
+                                                    <td className="px-6 py-4">
+                                                        <StatusBadge estado={req?.estado} />
+                                                    </td>
+
+                                                    {/* MONTO */}
+                                                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                        <span className="text-sm font-bold text-slate-900">
+                                                            {formatearMoneda(req?.monto_solicitado)}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* ACCIONES */}
+                                                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                        <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={() =>
+                                                                    abrirModalVisualizar(req?.id)
+                                                                }
+                                                                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-transparent hover:border-blue-100 transition-all"
+                                                                title="Ver detalle"
+                                                            >
+                                                                <Eye size={16} />
+                                                            </button>
+
+                                                            {puedeEditar && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            abrirModalEditar(req?.id)
+                                                                        }
+                                                                        className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg border border-transparent hover:border-amber-100 transition-all"
+                                                                        title="Editar"
+                                                                    >
+                                                                        <Pencil size={16} />
+                                                                    </button>
+
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            eliminarSolicitud(req?.id)
+                                                                        }
+                                                                        className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg border border-transparent hover:border-red-100 transition-all"
+                                                                        title="Eliminar"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
+
+                    {/* PAGINACIÓN */}
+                    {totalItems > 0 && (
+                        <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
+                            <div className="flex items-center gap-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Mostrar</label>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                                >
+                                    <option value={10}>10</option>
+                                    <option value={15}>15</option>
+                                    <option value={20}>20</option>
+                                </select>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">por página</span>
+                            </div>
+                            <div className="text-sm text-slate-500">
+                                Mostrando {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalItems)} de {totalItems} solicitudes
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => goToPage(currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-all text-sm font-bold"
+                                >
+                                    Anterior
+                                </button>
+                                <div className="flex items-center gap-1">
+                                    {(() => {
+                                        const pages = [];
+                                        const maxVisible = 5;
+                                        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                                        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                                        if (endPage - startPage + 1 < maxVisible) {
+                                            startPage = Math.max(1, endPage - maxVisible + 1);
+                                        }
+                                        for (let i = startPage; i <= endPage; i++) pages.push(i);
+                                        return pages.map(page => (
+                                            <button
+                                                key={page}
+                                                onClick={() => goToPage(page)}
+                                                className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${currentPage === page ? 'bg-[#800000] text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+                                            >
+                                                {page}
+                                            </button>
+                                        ));
+                                    })()}
+                                </div>
+                                <button
+                                    onClick={() => goToPage(currentPage + 1)}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-all text-sm font-bold"
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </main>
 
@@ -781,13 +1441,17 @@ const Fondos = ({ user }) => {
                                     <label className="block text-[11px] font-black text-[#800000]/60 uppercase tracking-[0.15em] ml-1">
                                         Categoría
                                     </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Ej: Logística, Operaciones..."
+                                    <select
                                         value={editingReq.categoria || ""}
                                         onChange={(e) => setEditingReq(prev => ({ ...prev, categoria: e.target.value }))}
-                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-sm outline-none focus:border-[#800000] focus:bg-white transition-all shadow-inner"
-                                    />
+                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-sm outline-none focus:border-[#800000] focus:bg-white transition-all shadow-inner appearance-none custom-select"
+                                    >
+                                        <option value="" disabled hidden>Selecciona una categoría...</option>
+                                        <option value="Transporte">Transporte</option>
+                                        <option value="Imprevisto">Imprevisto</option>
+                                        <option value="Viáticos">Viáticos</option>
+                                        <option value="Gasto Menor">Gasto Menor</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -909,14 +1573,17 @@ const Fondos = ({ user }) => {
                                         <h3 className="text-xl font-extrabold tracking-tight leading-tight">{viewingReq.concepto}</h3>
                                         <p className="text-xs text-slate-200 font-medium">Solicitado por: <span className="text-white font-semibold">{viewingReq.solicitante}</span></p>
                                     </div>
-                                    <button
-                                        onClick={() => setShowViewModal(false)}
-                                        className="p-1.5 hover:bg-white/10 rounded-xl transition-colors text-white/80 hover:text-white"
-                                    >
-                                        <X size={18} />
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setShowViewModal(false)}
+                                            className="p-1.5 hover:bg-white/10 rounded-xl transition-colors text-white/80 hover:text-white"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+
 
                             {/* CUERPO DEL MODAL */}
                             <div className="max-h-[calc(100vh-12rem)] overflow-y-auto p-6 space-y-6 bg-slate-50/40">
@@ -978,10 +1645,11 @@ const Fondos = ({ user }) => {
                                         <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
                                             Detalle de Gastos
                                         </h4>
-                                        {/* Botón condicional simplificado */}
-                                        {puedeEditarGasto() && (
-                                            ((viewingReq.tipo === "ADELANTO" || viewingReq.tipo === "VIATICOS") && viewingReq.estado === "PAGADO") ||
-                                            (viewingReq.tipo === "REEMBOLSO" && viewingReq.estado === "APROBADO")
+                                        {/* Botón Agregar Gasto - SOLO para el solicitante y según el tipo/estado */}
+                                        {Number(currentUserId) === Number(viewingReq?.solicitante_id) && puedeEditarGasto() && (
+                                            (viewingReq.tipo === "ADELANTO" && (viewingReq.estado === "PAGADO" || viewingReq.estado === "EN_RENDICION")) ||
+                                            (viewingReq.tipo === "VIATICOS" && (viewingReq.estado === "PAGADO" || viewingReq.estado === "EN_RENDICION")) ||
+                                            (viewingReq.tipo === "REEMBOLSO" && (viewingReq.estado === "APROBADO" || viewingReq.estado === "EN_RENDICION"))
                                         ) && (
                                                 <button
                                                     onClick={abrirModalNuevoGasto}
@@ -1081,44 +1749,73 @@ const Fondos = ({ user }) => {
                             {/* PIE DEL MODAL (BOTONES DE ACCIÓN) */}
                             <div className="bg-white border-t border-slate-100 px-6 py-4 flex flex-wrap items-center justify-end gap-2.5">
 
+                                {/* BOTÓN DESCARGAR PDF (Siempre visible si hay una solicitud cargada) */}
+                                <button
+                                    onClick={generarPDF}
+                                    className="mr-auto border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs"
+                                    title="Descargar documento en formato PDF"
+                                >
+                                    <FileText size={14} className="text-[#800000]" />
+                                    Descargar PDF
+                                </button>
+
+                                {/* FIRMAR - JEFE */}
                                 {puedeFirmar && viewingReq.estado === "SIN_FIRMAR" && (
-                                    <button onClick={() => ejecutarFlujo("FIRMAR", viewingReq.id)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">Firmar Solicitud</button>
+                                    <button onClick={() => ejecutarFlujo("FIRMAR", viewingReq.id)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">
+                                        Firmar Solicitud
+                                    </button>
                                 )}
 
+                                {/* APROBAR y RECHAZAR - ADMINISTRACION */}
                                 {puedeAprobar && viewingReq.estado === "PENDIENTE" && (
                                     <>
-                                        <button onClick={() => ejecutarFlujo("APROBAR", viewingReq.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">Aprobar</button>
-                                        <button onClick={() => setShowRejectModal(true)} className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-xl text-xs font-bold transition-colors">Rechazar</button>
+                                        <button onClick={() => ejecutarFlujo("APROBAR", viewingReq.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">
+                                            Aprobar
+                                        </button>
+                                        <button onClick={() => setShowRejectModal(true)} className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-xl text-xs font-bold transition-colors">
+                                            Rechazar
+                                        </button>
                                     </>
                                 )}
 
+                                {/* REGISTRAR PAGO - TESORERIA para ANTICIPO y VIATICOS (cuando está APROBADO) */}
                                 {puedePagar && (viewingReq.tipo === "ADELANTO" || viewingReq.tipo === "VIATICOS") && viewingReq.estado === "APROBADO" && (
-                                    <button onClick={() => setShowPagoModal(true)} className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">Registrar Pago</button>
+                                    <button onClick={() => setShowPagoModal(true)} className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">
+                                        Registrar Pago
+                                    </button>
                                 )}
 
-                                {puedePagar && viewingReq.tipo === "REEMBOLSO" && (viewingReq.estado === "POR_REEMBOLSAR" || viewingReq.estado === "EN_RENDICION") && (
-                                    <button onClick={() => setShowPagoModal(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">Registrar Reembolso</button>
-                                )}
+                                {/* ENVIAR RENDICIÓN A TESORERÍA - SOLICITANTE después de cargar gastos */}
+                                {gastos.length > 0 &&
+                                    Number(currentUserId) === Number(viewingReq?.solicitante_id) &&
+                                    (
+                                        ((viewingReq.tipo === "ADELANTO" || viewingReq.tipo === "VIATICOS") && viewingReq.estado === "PAGADO") ||
+                                        (viewingReq.tipo === "REEMBOLSO" && viewingReq.estado === "APROBADO")
+                                    ) && (
+                                        <button onClick={enviarRendicionATesoreria} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5">
+                                            <Send size={13} /> Enviar Rendición a Tesorería
+                                        </button>
+                                    )}
 
-                                {((viewingReq.tipo === "ADELANTO" || viewingReq.tipo === "VIATICOS") && Number(currentUserId) === Number(viewingReq.solicitante_id) && viewingReq.estado === "PAGADO") && (
-                                    <button onClick={() => setShowRendicionModal(true)} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">Subir Rendición</button>
-                                )}
+                                {viewingReq.estado === "POR_DEVOLVER" &&
+                                    Number(currentUserId) === Number(viewingReq.solicitante_id) && (
+                                        <button onClick={() => setShowDevolucionModal(true)} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5">
+                                            <UploadCloud size={13} /> Registrar Devolución
+                                        </button>
+                                    )}
 
-                                {viewingReq.tipo === "REEMBOLSO" && Number(currentUserId) === Number(viewingReq.solicitante_id) && viewingReq.estado === "APROBADO" && (
-                                    <button onClick={() => setShowRendicionModal(true)} className="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">Subir Sustento</button>
-                                )}
-
-                                {gastos.length > 0 && viewingReq.estado === "EN_RENDICION" && Number(currentUserId) === Number(viewingReq.solicitante_id) && (
-                                    <button onClick={enviarRendicionATesoreria} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5"><Send size={13} /> Enviar Rendición</button>
-                                )}
-
+                                {/* FINALIZAR RENDICIÓN - TESORERIA para POR_DEVOLVER y POR_REEMBOLSAR */}
                                 {esTesoreria && (viewingReq.estado === "POR_DEVOLVER" || viewingReq.estado === "POR_REEMBOLSAR") && (
-                                    <button onClick={() => setShowCerrarModal(true)} className="bg-slate-950 hover:bg-black text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">Finalizar Rendición</button>
+                                    <button onClick={() => setShowCerrarModal(true)} className="bg-slate-950 hover:bg-black text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">
+                                        Finalizar Rendición
+                                    </button>
                                 )}
 
-                                <button onClick={() => setShowViewModal(false)} className="border border-slate-200 hover:bg-slate-50 text-slate-500 px-4 py-2 rounded-xl text-xs font-bold transition-colors">Cerrar Vista</button>
+                                {/* CERRAR MODAL */}
+                                <button onClick={() => setShowViewModal(false)} className="border border-slate-200 hover:bg-slate-50 text-slate-500 px-4 py-2 rounded-xl text-xs font-bold transition-colors">
+                                    Cerrar Vista
+                                </button>
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -1172,6 +1869,35 @@ const Fondos = ({ user }) => {
                 </div>
             )}
 
+            {/* MODAL DEVOLUCIÓN (SOLICITANTE) */}
+            {showDevolucionModal && (
+                <div className="fixed inset-0 z-[999] bg-black/60 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-xl rounded-2xl p-6">
+                        <h3 className="text-xl font-black mb-2">Registrar Devolución</h3>
+                        <p className="text-sm text-slate-500 mb-4">
+                            Suba el comprobante del depósito o transferencia realizada a la cooperativa.
+                            <br />
+                            <span className="font-bold text-amber-600">Monto a devolver: {formatearMoneda(Math.abs(diferenciaMonto))}</span>
+                        </p>
+                        <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => setArchivoDevolucion(e.target.files[0])}
+                            className="w-full border p-3 rounded-xl"
+                        />
+                        {archivoDevolucion && <div className="mt-3 text-sm">📎 {archivoDevolucion.name}</div>}
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={registrarDevolucion} className="flex-1 bg-amber-600 text-white py-2 rounded-xl font-bold">
+                                Registrar Devolución
+                            </button>
+                            <button onClick={() => { setShowDevolucionModal(false); setArchivoDevolucion(null); }} className="px-6 py-2 border rounded-xl">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* MODAL CIERRE */}
             {showCerrarModal && (
                 <div className="fixed inset-0 z-[999] bg-black/60 flex items-center justify-center p-4">
@@ -1189,26 +1915,137 @@ const Fondos = ({ user }) => {
             )}
 
             {/* MODAL GASTOS */}
+            {/* MODAL GASTOS */}
             {showGastoModal && (
-                <div className="fixed inset-0 z-[999] bg-black/60 flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-4xl rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-black">{editandoGasto ? "Editar Gasto" : "Nuevo Gasto"}</h3>
-                            <button onClick={() => { setShowGastoModal(false); limpiarFormGasto(); }} className="text-slate-500">✕</button>
+                <div className="fixed inset-0 z-[999] bg-black/70 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-4xl rounded-xl border-2 border-[#800000] p-6 max-h-[95vh] overflow-y-auto shadow-2xl">
+
+                        {/* Cabecera del Modal */}
+                        <div className="flex justify-between items-center mb-6 pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                                <span className="w-1 h-6 bg-[#800000] rounded-full inline-block"></span>
+                                <h3 className="text-xl font-black text-[#800000] tracking-tight">
+                                    {editandoGasto ? "Editar Gasto" : "Nuevo Gasto"}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => { setShowGastoModal(false); limpiarFormGasto(); }}
+                                className="text-slate-400 hover:text-[#800000] font-bold text-lg transition-colors p-1"
+                            >
+                                ✕
+                            </button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label className="text-xs font-bold">Fecha</label><input type="date" value={gastoForm.fecha} onChange={e => setGastoForm({ ...gastoForm, fecha: e.target.value })} className="w-full border rounded-lg p-2" /></div>
-                            <div><label className="text-xs font-bold">Proveedor</label><input type="text" value={gastoForm.proveedor} onChange={e => setGastoForm({ ...gastoForm, proveedor: e.target.value })} className="w-full border rounded-lg p-2" /></div>
-                            <div><label className="text-xs font-bold">Tipo Comprobante</label><select value={gastoForm.tipo_comprobante} onChange={e => setGastoForm({ ...gastoForm, tipo_comprobante: e.target.value })} className="w-full border rounded-lg p-2"><option value="">Seleccionar</option><option>Factura</option><option>Boleta</option><option>Ticket</option><option>RXH</option></select></div>
-                            <div><label className="text-xs font-bold">Número Documento</label><input type="text" value={gastoForm.numero_comprobante} onChange={e => setGastoForm({ ...gastoForm, numero_comprobante: e.target.value })} className="w-full border rounded-lg p-2" /></div>
-                            <div className="md:col-span-2"><label className="text-xs font-bold">Descripción</label><textarea rows="2" value={gastoForm.descripcion} onChange={e => setGastoForm({ ...gastoForm, descripcion: e.target.value })} className="w-full border rounded-lg p-2" /></div>
-                            <div><label className="text-xs font-bold">Monto</label><input type="number" step="0.01" value={gastoForm.monto} onChange={e => setGastoForm({ ...gastoForm, monto: e.target.value })} className="w-full border rounded-lg p-2" /></div>
-                            <div><label className="text-xs font-bold">Archivo (opcional)</label><input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setGastoForm({ ...gastoForm, archivo: e.target.files[0] })} className="w-full border rounded-lg p-2" /></div>
+
+                        {/* Formulario en Rejilla */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+                            {/* Fecha */}
+                            <div>
+                                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Fecha</label>
+                                <input
+                                    type="date"
+                                    value={gastoForm.fecha}
+                                    onChange={e => setGastoForm({ ...gastoForm, fecha: e.target.value })}
+                                    className="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-[#800000] focus:ring-1 focus:ring-amber-500/50 transition-all"
+                                />
+                            </div>
+
+                            {/* Proveedor */}
+                            <div>
+                                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Proveedor</label>
+                                <input
+                                    type="text"
+                                    placeholder="Nombre o Razón Social"
+                                    value={gastoForm.proveedor}
+                                    onChange={e => setGastoForm({ ...gastoForm, proveedor: e.target.value })}
+                                    className="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-[#800000] focus:ring-1 focus:ring-amber-500/50 transition-all placeholder-slate-400"
+                                />
+                            </div>
+
+                            {/* Tipo Comprobante */}
+                            <div>
+                                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Tipo Comprobante</label>
+                                <select
+                                    value={gastoForm.tipo_comprobante}
+                                    onChange={e => setGastoForm({ ...gastoForm, tipo_comprobante: e.target.value })}
+                                    className="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-[#800000] focus:ring-1 focus:ring-amber-500/50 transition-all text-slate-800"
+                                >
+                                    <option value="">Seleccionar</option>
+                                    <option>Factura</option>
+                                    <option>Boleta</option>
+                                    <option>Ticket</option>
+                                    <option>RXH</option>
+                                </select>
+                            </div>
+
+                            {/* Número Documento */}
+                            <div>
+                                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Número Documento</label>
+                                <input
+                                    type="text"
+                                    placeholder="Ej: F001-001234"
+                                    value={gastoForm.numero_comprobante}
+                                    onChange={e => setGastoForm({ ...gastoForm, numero_comprobante: e.target.value })}
+                                    className="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-[#800000] focus:ring-1 focus:ring-amber-500/50 transition-all placeholder-slate-400"
+                                />
+                            </div>
+
+                            {/* Descripción */}
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Descripción</label>
+                                <textarea
+                                    rows="2"
+                                    placeholder="Detalle conceptual del gasto realizado..."
+                                    value={gastoForm.descripcion}
+                                    onChange={e => setGastoForm({ ...gastoForm, descripcion: e.target.value })}
+                                    className="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-[#800000] focus:ring-1 focus:ring-amber-500/50 transition-all resize-none placeholder-slate-400"
+                                />
+                            </div>
+
+                            {/* Monto */}
+                            <div>
+                                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Monto</label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        value={gastoForm.monto}
+                                        onChange={e => setGastoForm({ ...gastoForm, monto: e.target.value })}
+                                        className="w-full bg-white border-2 border-slate-200 focus:border-[#800000] focus:ring-1 focus:ring-amber-500/50 rounded-lg p-2.5 text-sm font-black text-slate-900 transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Archivo Sustento */}
+                            <div>
+                                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Archivo Digital <span className="text-slate-400 font-normal">(Opcional)</span></label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    onChange={e => setGastoForm({ ...gastoForm, archivo: e.target.files[0] })}
+                                    className="w-full bg-white border-2 border-slate-200 rounded-lg p-1.5 text-sm text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-black file:bg-[#800000]/10 file:text-[#800000] hover:file:bg-[#800000]/20 file:transition-colors focus:outline-none"
+                                />
+                            </div>
                         </div>
-                        <div className="flex gap-3 mt-6">
-                            <button onClick={editandoGasto ? actualizarGasto : agregarGasto} className="flex-1 bg-[#800000] text-white py-2 rounded-xl font-bold">Guardar</button>
-                            <button onClick={() => { setShowGastoModal(false); limpiarFormGasto(); }} className="px-6 py-2 border rounded-xl">Cancelar</button>
+
+                        {/* Botones de Acción */}
+                        <div className="flex gap-4 mt-8 pt-4 border-t border-slate-100">
+                            <button
+                                onClick={() => { setShowGastoModal(false); limpiarFormGasto(); }}
+                                className="px-6 py-3 border-2 border-slate-200 hover:border-slate-300 bg-white text-slate-700 font-bold text-sm rounded-xl transition-all active:scale-95"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={editandoGasto ? actualizarGasto : agregarGasto}
+                                className="flex-1 bg-[#800000] text-white py-3 rounded-xl font-black text-sm tracking-wide shadow-md shadow-[#800000]/20 hover:bg-[#660000] transition-all active:scale-[0.99] border-b-4 border-amber-600/70 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:shadow-none disabled:cursor-not-allowed"
+                                disabled={!gastoForm.descripcion || !gastoForm.monto || gastoForm.monto <= 0}
+                            >
+                                {editandoGasto ? "ACTUALIZAR GASTO" : "GUARDAR GASTO"}
+                            </button>
                         </div>
+
                     </div>
                 </div>
             )}
