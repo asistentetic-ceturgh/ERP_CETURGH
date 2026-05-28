@@ -3544,6 +3544,10 @@ MODIFY tipo ENUM('ADELANTO', 'REEMBOLSO', 'VIATICOS') NOT NULL DEFAULT 'ADELANTO
 ALTER TABLE solicitudes_fondo 
 ADD COLUMN departamento_solicitante VARCHAR(100) NULL AFTER solicitante_id;
 
+ALTER TABLE solicitud_gastos 
+ADD COLUMN tipo_proveedor ENUM('EMPRESA', 'PERSONA', 'OTROS') DEFAULT 'EMPRESA' AFTER proveedor,
+ADD COLUMN documento_proveedor VARCHAR(20) NULL AFTER proveedor;
+
 CREATE TABLE cajas_chicas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     empresa_id INT,
@@ -3695,3 +3699,6 @@ ALTER TABLE `items` ADD COLUMN `incluye_igv` TINYINT(1) NOT NULL DEFAULT 0;
 
 INSERT INTO `correlativos` (`tipo`, `anio`, `numero_actual`) VALUES ('FND', 2026, 0) 
 ON DUPLICATE KEY UPDATE numero_actual = numero_actual;
+
+
+

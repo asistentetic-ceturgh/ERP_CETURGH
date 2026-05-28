@@ -79,7 +79,9 @@ const Fondos = ({ user }) => {
     const [editandoGasto, setEditandoGasto] = useState(null);
     const [gastoForm, setGastoForm] = useState({
         fecha: new Date().toISOString().slice(0, 10),
+        tipo_proveedor: "EMPRESA",
         proveedor: "",
+        documento_proveedor: "",
         tipo_comprobante: "",
         numero_comprobante: "",
         descripcion: "",
@@ -147,7 +149,6 @@ const Fondos = ({ user }) => {
             setShowDevolucionModal(false);
             setArchivoDevolucion(null);
 
-            // Actualizar estado a POR_DEVOLVER_PENDIENTE o similar
             await obtenerSolicitudes();
             await obtenerArchivosSolicitud(viewingReq.id);
             setViewingReq(prev => ({ ...prev, estado: data.estado || "CERRADO" }));
@@ -230,10 +231,7 @@ const Fondos = ({ user }) => {
             const data = await res.json();
             if (!data.success) return;
 
-            // Archivos subidos por el solicitante (RENDICION)
             const rend = data.archivos.filter(a => a.tipo === "RENDICION");
-
-            // Archivos subidos por tesorería (PAGO_TESORERIA, DEVOLUCION, REEMBOLSO)
             const tes = data.archivos.filter(a =>
                 a.tipo === "PAGO_TESORERIA" ||
                 a.tipo === "DEVOLUCION" ||
@@ -242,9 +240,6 @@ const Fondos = ({ user }) => {
 
             setRendiciones(rend);
             setArchivosTesoreria(tes);
-
-            console.log("Archivos de rendición:", rend);
-            console.log("Archivos de tesorería:", tes);
         } catch (err) {
             console.error(err);
         }
@@ -260,16 +255,28 @@ const Fondos = ({ user }) => {
             alert("Complete descripción y monto válido");
             return;
         }
+        if (!gastoForm.proveedor) {
+            alert("Complete el nombre del proveedor");
+            return;
+        }
+        if (gastoForm.tipo_proveedor !== "OTROS" && !gastoForm.documento_proveedor) {
+            alert(`Complete el ${gastoForm.tipo_proveedor === "EMPRESA" ? "RUC" : "DNI"} del proveedor`);
+            return;
+        }
+
         const formData = new FormData();
         formData.append("solicitud_id", viewingReq.id);
         formData.append("fecha", gastoForm.fecha);
-        formData.append("proveedor", gastoForm.proveedor || "");
+        formData.append("tipo_proveedor", gastoForm.tipo_proveedor);
+        formData.append("proveedor", gastoForm.proveedor);
+        formData.append("documento_proveedor", gastoForm.documento_proveedor);
         formData.append("tipo_comprobante", gastoForm.tipo_comprobante || "");
         formData.append("numero_comprobante", gastoForm.numero_comprobante || "");
         formData.append("descripcion", gastoForm.descripcion);
         formData.append("monto", gastoForm.monto);
         formData.append("usuario_id", currentUserId);
         if (gastoForm.archivo) formData.append("archivo", gastoForm.archivo);
+
         try {
             const res = await fetch(`${API}gastos.php`, { method: "POST", body: formData });
             const data = await res.json();
@@ -291,7 +298,9 @@ const Fondos = ({ user }) => {
         const payload = {
             id: editandoGasto.id,
             fecha: gastoForm.fecha,
-            proveedor: gastoForm.proveedor || "",
+            tipo_proveedor: gastoForm.tipo_proveedor,
+            proveedor: gastoForm.proveedor,
+            documento_proveedor: gastoForm.documento_proveedor,
             tipo_comprobante: gastoForm.tipo_comprobante || "",
             numero_comprobante: gastoForm.numero_comprobante || "",
             descripcion: gastoForm.descripcion,
@@ -325,7 +334,9 @@ const Fondos = ({ user }) => {
         setEditandoGasto(null);
         setGastoForm({
             fecha: new Date().toISOString().slice(0, 10),
+            tipo_proveedor: "EMPRESA",
             proveedor: "",
+            documento_proveedor: "",
             tipo_comprobante: "",
             numero_comprobante: "",
             descripcion: "",
@@ -351,7 +362,9 @@ const Fondos = ({ user }) => {
         setEditandoGasto(gasto);
         setGastoForm({
             fecha: gasto.fecha.slice(0, 10),
+            tipo_proveedor: gasto.tipo_proveedor || "EMPRESA",
             proveedor: gasto.proveedor || "",
+            documento_proveedor: gasto.documento_proveedor || "",
             tipo_comprobante: gasto.tipo_comprobante || "",
             numero_comprobante: gasto.numero_comprobante || "",
             descripcion: gasto.descripcion,
@@ -406,7 +419,6 @@ const Fondos = ({ user }) => {
         const montoSolicitado = Number(viewingReq.monto_solicitado || 0);
         const montoRendidoReal = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
 
-        // Para ANTICIPO y VIATICOS: pagar el monto solicitado
         if (viewingReq.tipo === "ADELANTO" || viewingReq.tipo === "VIATICOS") {
             montoPagar = montoSolicitado;
         } else {
@@ -451,7 +463,6 @@ const Fondos = ({ user }) => {
         if (!viewingReq?.id) return alert("Solicitud inválida");
         if (gastos.length === 0) return alert("Debe registrar al menos un gasto antes de enviar");
 
-        // Calcular monto rendido y diferencia
         const montoRendidoCalc = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
         const montoSolicitadoVal = Number(viewingReq.monto_solicitado || 0);
         const diferenciaCalc = montoSolicitadoVal - montoRendidoCalc;
@@ -487,21 +498,42 @@ const Fondos = ({ user }) => {
         }
     };
     const cerrarRendicion = async () => {
-        if (!archivoCierre) { alert("Debe subir comprobante"); return; }
+        if (!archivoCierre) {
+            alert("Debe subir comprobante");
+            return;
+        }
+
         const formData = new FormData();
         formData.append("solicitud_id", viewingReq.id);
         formData.append("usuario_id", currentUserId);
         formData.append("comprobante", archivoCierre);
+
         try {
             const res = await fetch(`${API}cerrar_rendicion.php`, { method: "POST", body: formData });
             const data = await res.json();
-            if (!data.success) { alert(data.message); return; }
+
+            if (!data.success) {
+                alert(data.message);
+                return;
+            }
+
             alert(data.message);
+
+            // Cerrar ambos modales
             setShowCerrarModal(false);
+            setShowViewModal(false);  // Cerrar el modal de visualización
             setArchivoCierre(null);
+
+            // Recargar las solicitudes
             await obtenerSolicitudes();
-            setViewingReq(prev => ({ ...prev, estado: "CERRADO" }));
-        } catch (error) { alert("Error al cerrar rendición"); }
+
+            // Limpiar el viewingReq
+            setViewingReq(null);
+
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Error al cerrar rendición");
+        }
     };
 
     // ===================== CÁLCULOS =====================
@@ -552,12 +584,10 @@ const Fondos = ({ user }) => {
         return sorted;
     }, [registros, activeTab, currentUserId, puedeVerGeneral, searchText, selTipo, selEstado, fechaOrder]);
 
-    // Resetear página cuando cambian los filtros o el tamaño de página
     useEffect(() => {
         setCurrentPage(1);
     }, [searchText, selTipo, selEstado, fechaOrder, activeTab, pageSize]);
 
-    // Datos paginados
     const totalItems = registrosFiltrados.length;
     const totalPages = Math.ceil(totalItems / pageSize);
     const paginatedRegistros = useMemo(() => {
@@ -590,7 +620,6 @@ const Fondos = ({ user }) => {
     };
 
     const formatearMoneda = (monto) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(monto);
-
     // ===================== GENERAR PDF =====================
     const generarPDF = async () => {
         if (!viewingReq) return;
@@ -615,6 +644,15 @@ const Fondos = ({ user }) => {
             "REEMBOLSO": "SOLICITUD DE REEMBOLSO"
         };
         const titulo = TITULOS_SOLICITUD[viewingReq.tipo] || "SOLICITUD DE REEMBOLSO";
+
+        // Función para obtener el icono del tipo de proveedor
+        const getIconoProveedor = (tipo) => {
+            switch (tipo) {
+                case 'EMPRESA': return '🏢 ';
+                case 'PERSONA': return '👤 ';
+                default: return '📌 ';
+            }
+        };
 
         // Función utilitaria auxiliar para cargar firmas asíncronas desde la API
         const obtenerFirmaBase64 = async (rutaFirma) => {
@@ -722,40 +760,57 @@ const Fondos = ({ user }) => {
         let finalY = 97 + (conceptoLines.length * 5) + 10;
 
         // ==========================================
-        // 6. TABLA DINÁMICA DE GASTOS
+        // 6. TABLA DINÁMICA DE GASTOS (con proveedor y documento)
         // ==========================================
         if (gastos.length > 0) {
             doc.setFont("helvetica", "bold");
             doc.setTextColor(COLOR_VINO.r, COLOR_VINO.g, COLOR_VINO.b);
             doc.text("3. DETALLE DE GASTOS", 14, finalY);
 
-            const tableRows = gastos.map((g, idx) => [
-                idx + 1,
-                g.fecha?.slice(0, 10) || "-",
-                g.tipo_comprobante || "-",
-                g.numero_comprobante || "-",
-                g.descripcion?.slice(0, 30) || "-",
-                `S/ ${parseFloat(g.monto).toFixed(2)}`
-            ]);
+            // Construir filas con información del proveedor
+            const tableRows = gastos.map((g, idx) => {
+                // Formatear proveedor con tipo y documento
+                let proveedorTexto = "";
+                if (g.tipo_proveedor === "EMPRESA") {
+                    proveedorTexto = ` ${g.proveedor || "-"}`;
+                    if (g.documento_proveedor) proveedorTexto += ` (RUC: ${g.documento_proveedor})`;
+                } else if (g.tipo_proveedor === "PERSONA") {
+                    proveedorTexto = ` ${g.proveedor || "-"}`;
+                    if (g.documento_proveedor) proveedorTexto += ` (DNI: ${g.documento_proveedor})`;
+                } else {
+                    proveedorTexto = ` ${g.proveedor || "Otros"}`;
+                }
+
+                return [
+                    idx + 1,
+                    g.fecha?.slice(0, 10) || "-",
+                    proveedorTexto,
+                    g.tipo_comprobante || "-",
+                    g.numero_comprobante || "-",
+                    g.descripcion?.slice(0, 30) || "-",
+                    `S/ ${parseFloat(g.monto).toFixed(2)}`
+                ];
+            });
 
             autoTable(doc, {
                 startY: finalY + 5,
-                head: [["#", "FECHA", "TIPO DOC", "N° DOC", "DESCRIPCIÓN", "MONTO"]],
+                head: [["#", "FECHA", "PROVEEDOR", "TIPO DOC", "N° DOC", "DESCRIPCIÓN", "MONTO"]],
                 body: tableRows,
                 theme: 'grid',
                 headStyles: {
                     fillColor: [COLOR_VINO.r, COLOR_VINO.g, COLOR_VINO.b],
                     textColor: [255, 255, 255],
-                    fontSize: 8
+                    fontSize: 7
                 },
-                styles: { fontSize: 7, cellPadding: 2 },
+                styles: { fontSize: 6.5, cellPadding: 2 },
                 columnStyles: {
-                    0: { cellWidth: 10, halign: 'center' },
-                    1: { cellWidth: 20 },
-                    2: { cellWidth: 20 },
-                    3: { cellWidth: 25 },
-                    4: { cellWidth: 60 },
-                    5: { cellWidth: 25, halign: 'right' }
+                    0: { cellWidth: 8, halign: 'center' },
+                    1: { cellWidth: 18 },
+                    2: { cellWidth: 40 },
+                    3: { cellWidth: 18 },
+                    4: { cellWidth: 22 },
+                    5: { cellWidth: 50 },
+                    6: { cellWidth: 22, halign: 'right' }
                 }
             });
 
@@ -1451,6 +1506,7 @@ const Fondos = ({ user }) => {
                                         <option value="Imprevisto">Imprevisto</option>
                                         <option value="Viáticos">Viáticos</option>
                                         <option value="Gasto Menor">Gasto Menor</option>
+                                        <option value="Eventos">Eventos</option>
                                     </select>
                                 </div>
                             </div>
@@ -1951,16 +2007,57 @@ const Fondos = ({ user }) => {
                             </div>
 
                             {/* Proveedor */}
-                            <div>
+                            <div className="md:col-span-2">
                                 <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Proveedor</label>
-                                <input
-                                    type="text"
-                                    placeholder="Nombre o Razón Social"
-                                    value={gastoForm.proveedor}
-                                    onChange={e => setGastoForm({ ...gastoForm, proveedor: e.target.value })}
-                                    className="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-[#800000] focus:ring-1 focus:ring-amber-500/50 transition-all placeholder-slate-400"
-                                />
+                                <div className="flex gap-3">
+                                    {/* Tipo de proveedor */}
+                                    <div className="w-1/3">
+                                        <select
+                                            value={gastoForm.tipo_proveedor}
+                                            onChange={e => {
+                                                setGastoForm({
+                                                    ...gastoForm,
+                                                    tipo_proveedor: e.target.value,
+                                                    proveedor: "",
+                                                    documento_proveedor: ""
+                                                });
+                                            }}
+                                            className="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-[#800000] transition-all"
+                                        >
+                                            <option value="EMPRESA">Empresa / RUC</option>
+                                            <option value="PERSONA">Persona / DNI</option>
+                                            <option value="OTROS">Otros</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Nombre del proveedor */}
+                                    <div className="flex-1">
+                                        <input
+                                            type="text"
+                                            placeholder={gastoForm.tipo_proveedor === "EMPRESA" ? "Razón Social" : gastoForm.tipo_proveedor === "PERSONA" ? "Nombres y Apellidos" : "Descripción (Ej: Taxi, Comida, etc.)"}
+                                            value={gastoForm.proveedor}
+                                            onChange={e => setGastoForm({ ...gastoForm, proveedor: e.target.value })}
+                                            className="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-[#800000] transition-all placeholder-slate-400"
+                                        />
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Documento (RUC/DNI) - solo para EMPRESA o PERSONA */}
+                            {gastoForm.tipo_proveedor !== "OTROS" && (
+                                <div>
+                                    <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
+                                        {gastoForm.tipo_proveedor === "EMPRESA" ? "RUC" : "DNI"}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder={gastoForm.tipo_proveedor === "EMPRESA" ? "Ej: 20600652312" : "Ej: 40351565"}
+                                        value={gastoForm.documento_proveedor}
+                                        onChange={e => setGastoForm({ ...gastoForm, documento_proveedor: e.target.value })}
+                                        className="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-[#800000] transition-all placeholder-slate-400"
+                                    />
+                                </div>
+                            )}
 
                             {/* Tipo Comprobante */}
                             <div>
