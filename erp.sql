@@ -3381,6 +3381,599 @@ ADD COLUMN observaciones TEXT NULL;
 ALTER TABLE ordenes_compra
 ADD COLUMN grupo_id INT NULL;
 
+
+DELIMITER $$
+
+-- =========================================
+-- TRIGGER AFTER INSERT - NUEVA SOLICITUD
+-- =========================================
+DROP TRIGGER IF EXISTS trg_solicitudes_fondo_insert_notificaciones$$
+CREATE TRIGGER trg_solicitudes_fondo_insert_notificaciones 
+AFTER INSERT ON solicitudes_fondo 
+FOR EACH ROW 
+BEGIN
+
+    IF NEW.estado = 'SIN_FIRMAR' THEN
+        
+        -- NOTIFICACIONES para el JEFE del departamento
+        INSERT INTO notificaciones
+        (
+            usuario_id,
+            titulo,
+            mensaje,
+            tipo,
+            requerimiento_id,
+            referencia_estado
+        )
+        SELECT
+            u.id,
+            'Nueva solicitud de fondos',
+            CONCAT('La solicitud ', NEW.codigo, ' - ', LEFT(NEW.concepto, 50), ' requiere su firma'),
+            'FONDOS_FIRMA',
+            NEW.id,
+            CONCAT('FIRMA_', NEW.id)
+        FROM usuarios u
+        WHERE u.departamento_id = NEW.departamento_id
+        AND u.tipo = 'jefe';
+        
+        -- COLA CORREOS (sin cambios)
+        INSERT INTO cola_correos
+        (
+            usuario_id,
+            destinatario,
+            nombre,
+            asunto,
+            mensaje
+        )
+        SELECT
+            u.id,
+            u.usuario,
+            u.nombre,
+            CONCAT('Nueva solicitud de fondos - ', NEW.codigo),
+            CONCAT(
+                '<div style="font-family: ''Segoe UI'', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;">',
+                '  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;">',
+                '    <div style="background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;">',
+                '      <h2 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Gestión de Fondos</h2>',
+                '    </div>',
+                '    <div style="padding: 30px;">',
+                '      <p style="margin-top: 0; font-size: 16px;">Estimado(a) <strong>Jefe de Departamento</strong>,</p>',
+                '      <p style="color: #555555;">Se ha creado una nueva solicitud de fondos que requiere su firma para continuar con el flujo.</p>',
+                '      <table style="width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;">',
+                '        <thead>',
+                '          <tr style="background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;">',
+                '            <th style="padding: 12px; text-align: left; color: #800020; font-weight: bold;">Campo</th>',
+                '            <th style="padding: 12px; text-align: left; color: #800020; font-weight: bold;">Detalle</th>',
+                '           </td>',
+                '        </thead>',
+                '        <tbody>',
+                '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                '            <td style="padding: 12px; font-weight: bold; color: #555555; width: 35%;">Código Solicitud</td>',
+                '            <td style="padding: 12px; color: #333333;">', NEW.codigo, '</td>',
+                '           </tr>',
+                '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                '            <td style="padding: 12px; font-weight: bold; color: #555555;">Tipo</td>',
+                '            <td style="padding: 12px; color: #333333;">', 
+                    CASE NEW.tipo 
+                        WHEN 'ADELANTO' THEN 'ANTICIPO'
+                        WHEN 'REEMBOLSO' THEN 'REEMBOLSO'
+                        WHEN 'VIATICOS' THEN 'VIÁTICOS'
+                        ELSE NEW.tipo 
+                    END, 
+                '</td>',
+                '           </tr>',
+                '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                '            <td style="padding: 12px; font-weight: bold; color: #555555;">Concepto</td>',
+                '            <td style="padding: 12px; color: #333333;">', COALESCE(NEW.concepto, 'Sin concepto'), '</td>',
+                '           </tr>',
+                '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                '            <td style="padding: 12px; font-weight: bold; color: #555555;">Monto Solicitado</td>',
+                '            <td style="padding: 12px; color: #333333; font-weight: bold;">S/ ', FORMAT(NEW.monto_solicitado, 2), '</td>',
+                '           </tr>',
+                '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                '            <td style="padding: 12px; font-weight: bold; color: #555555;">Empresa / Sede</td>',
+                '            <td style="padding: 12px; color: #333333;">', COALESCE(NEW.empresa, '-'), ' - ', COALESCE(NEW.sede, '-'), '</td>',
+                '           </tr>',
+                '        </tbody>',
+                '      </table>',
+                '      <div style="text-align: center; margin-top: 30px;">',
+                '        <p style="font-size: 14px; color: #777777; margin-bottom: 15px;">Por favor, ingrese al sistema para firmar o rechazar la solicitud.</p>',
+                '      </div>',
+                '    </div>',
+                '    <div style="background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;">',
+                '      <p style="margin: 0; font-weight: bold; color: #800020;">Sistema de Gestión CETURGH</p>',
+                '      <p style="margin: 5px 0 0 0;">Este es un mensaje automático, por favor no responder a este correo.</p>',
+                '    </div>',
+                '  </div>',
+                '</div>'
+            )
+        FROM usuarios u
+        WHERE u.departamento_id = NEW.departamento_id
+        AND u.tipo = 'jefe';
+        
+    END IF;
+
+END$$
+
+-- =========================================
+-- TRIGGER AFTER UPDATE - CAMBIO DE ESTADO
+-- =========================================
+DROP TRIGGER IF EXISTS trg_solicitudes_fondo_update_notificaciones$$
+CREATE TRIGGER trg_solicitudes_fondo_update_notificaciones 
+AFTER UPDATE ON solicitudes_fondo 
+FOR EACH ROW 
+BEGIN
+
+    DECLARE depto_nombre VARCHAR(100);
+    DECLARE tipo_fondo VARCHAR(20);
+    
+    -- Obtener nombre del departamento solicitante
+    SELECT d.nombre INTO depto_nombre
+    FROM departamentos d
+    WHERE d.id = NEW.departamento_id;
+    
+    SET tipo_fondo = CASE NEW.tipo 
+        WHEN 'ADELANTO' THEN 'ANTICIPO'
+        WHEN 'REEMBOLSO' THEN 'REEMBOLSO'
+        WHEN 'VIATICOS' THEN 'VIÁTICOS'
+        ELSE NEW.tipo 
+    END;
+
+    -- =========================================
+    -- FIRMADO (cambia de SIN_FIRMAR a PENDIENTE)
+    -- =========================================
+    
+    IF NEW.estado = 'PENDIENTE' AND OLD.estado = 'SIN_FIRMAR' THEN
+        
+        INSERT INTO notificaciones
+        (
+            usuario_id,
+            titulo,
+            mensaje,
+            tipo,
+            requerimiento_id,
+            referencia_estado
+        )
+        SELECT
+            u.id,
+            'Solicitud firmada',
+            CONCAT('La solicitud ', NEW.codigo, ' está pendiente de aprobación'),
+            'FONDOS_APROBAR',
+            NEW.id,
+            CONCAT('APROBAR_', NEW.id)
+        FROM usuarios u
+        INNER JOIN departamentos d ON d.id = u.departamento_id
+        WHERE d.nombre IN ('ADMINISTRACION', 'ADMINISTRACIÓN');
+        
+        INSERT INTO cola_correos
+        (
+            usuario_id,
+            destinatario,
+            nombre,
+            asunto,
+            mensaje
+        )
+        SELECT
+            u.id,
+            u.usuario,
+            u.nombre,
+            CONCAT('Solicitud pendiente de aprobación - ', NEW.codigo),
+            CONCAT(
+                '<div style="font-family: ''Segoe UI'', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;">',
+                '  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;">',
+                '    <div style="background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;">',
+                '      <h2 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Aprobación de Solicitud</h2>',
+                '    </div>',
+                '    <div style="padding: 30px;">',
+                '      <p style="margin-top: 0; font-size: 16px;">Estimado equipo de <strong>Administración</strong>,</p>',
+                '      <p style="color: #555555;">La solicitud ha sido firmada por el jefe de departamento y se encuentra pendiente de su aprobación.</p>',
+                '      <table style="width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;">',
+                '        <thead>',
+                '          <tr style="background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;">',
+                '            <th style="padding: 12px; text-align: left; color: #800020; font-weight: bold;">Campo</th>',
+                '            <th style="padding: 12px; text-align: left; color: #800020; font-weight: bold;">Detalle</th>',
+                '           </td>',
+                '        </thead>',
+                '        <tbody>',
+                '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                '            <td style="padding: 12px; font-weight: bold; color: #555555; width: 35%;">Código Solicitud</td>',
+                '            <td style="padding: 12px; color: #333333;">', NEW.codigo, '</td>',
+                '           </tr>',
+                '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                '            <td style="padding: 12px; font-weight: bold; color: #555555;">Departamento</td>',
+                '            <td style="padding: 12px; color: #333333;">', COALESCE(depto_nombre, '-'), '</td>',
+                '           </tr>',
+                '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                '            <td style="padding: 12px; font-weight: bold; color: #555555;">Tipo</td>',
+                '            <td style="padding: 12px; color: #333333;">', tipo_fondo, '</td>',
+                '           </tr>',
+                '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                '            <td style="padding: 12px; font-weight: bold; color: #555555;">Monto</td>',
+                '            <td style="padding: 12px; color: #333333; font-weight: bold;">S/ ', FORMAT(NEW.monto_solicitado, 2), '</td>',
+                '           </tr>',
+                '        </tbody>',
+                '      </table>',
+                '      <div style="text-align: center; margin-top: 30px;">',
+                '        <p style="font-size: 14px; color: #777777; margin-bottom: 15px;">Por favor, ingrese al sistema para aprobar o rechazar la solicitud.</p>',
+                '      </div>',
+                '    </div>',
+                '    <div style="background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;">',
+                '      <p style="margin: 0; font-weight: bold; color: #800020;">Sistema de Gestión CETURGH</p>',
+                '      <p style="margin: 5px 0 0 0;">Este es un mensaje automático, por favor no responder a este correo.</p>',
+                '    </div>',
+                '  </div>',
+                '</div>'
+            )
+        FROM usuarios u
+        INNER JOIN departamentos d ON d.id = u.departamento_id
+        WHERE d.nombre IN ('ADMINISTRACION', 'ADMINISTRACIÓN');
+        
+    END IF;
+
+    -- =========================================
+    -- APROBADO
+    -- =========================================
+    
+    IF NEW.estado = 'APROBADO' AND OLD.estado = 'PENDIENTE' THEN
+        
+        IF NEW.tipo IN ('ADELANTO', 'VIATICOS') THEN
+            
+            INSERT INTO notificaciones
+            (
+                usuario_id,
+                titulo,
+                mensaje,
+                tipo,
+                requerimiento_id,
+                referencia_estado
+            )
+            SELECT
+                u.id,
+                'Solicitud aprobada - Pendiente de pago',
+                CONCAT('La solicitud ', NEW.codigo, ' está aprobada y espera pago de tesorería'),
+                'FONDOS_PAGAR',
+                NEW.id,
+                CONCAT('PAGAR_', NEW.id)
+            FROM usuarios u
+            INNER JOIN departamentos d ON d.id = u.departamento_id
+            WHERE d.nombre IN ('TESORERIA', 'TESORERÍA');
+            
+            INSERT INTO cola_correos
+            (
+                usuario_id,
+                destinatario,
+                nombre,
+                asunto,
+                mensaje
+            )
+            SELECT
+                u.id,
+                u.usuario,
+                u.nombre,
+                CONCAT('Solicitud aprobada - Pago pendiente - ', NEW.codigo),
+                CONCAT(
+                    '<div style="font-family: ''Segoe UI'', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;">',
+                    '  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;">',
+                    '    <div style="background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;">',
+                    '      <h2 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Pago Pendiente - Tesorería</h2>',
+                    '    </div>',
+                    '    <div style="padding: 30px;">',
+                    '      <p style="margin-top: 0; font-size: 16px;">Estimado equipo de <strong>Tesorería</strong>,</p>',
+                    '      <p style="color: #555555;">La solicitud ha sido aprobada y requiere el desembolso correspondiente.</p>',
+                    '      <table style="width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;">',
+                    '        <thead>',
+                    '          <tr style="background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;">',
+                    '            <th style="padding: 12px; text-align: left; color: #800020; font-weight: bold;">Campo</th>',
+                    '            <th style="padding: 12px; text-align: left; color: #800020; font-weight: bold;">Detalle</th>',
+                    '           </td>',
+                    '        </thead>',
+                    '        <tbody>',
+                    '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                    '            <td style="padding: 12px; font-weight: bold; color: #555555; width: 35%;">Código Solicitud</td>',
+                    '            <td style="padding: 12px; color: #333333;">', NEW.codigo, '</td>',
+                    '           </tr>',
+                    '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                    '            <td style="padding: 12px; font-weight: bold; color: #555555;">Tipo</td>',
+                    '            <td style="padding: 12px; color: #333333;">', tipo_fondo, '</td>',
+                    '           </tr>',
+                    '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                    '            <td style="padding: 12px; font-weight: bold; color: #555555;">Monto a Pagar</td>',
+                    '            <td style="padding: 12px; color: #333333; font-weight: bold;">S/ ', FORMAT(NEW.monto_solicitado, 2), '</td>',
+                    '           </tr>',
+                    '          <tr style="border-bottom: 1px solid #eeeeee;">',
+                    '            <td style="padding: 12px; font-weight: bold; color: #555555;">Concepto</td>',
+                    '            <td style="padding: 12px; color: #333333;">', COALESCE(NEW.concepto, '-'), '</td>',
+                    '           </tr>',
+                    '        </tbody>',
+                    '      </table>',
+                    '      <div style="text-align: center; margin-top: 30px;">',
+                    '        <p style="font-size: 14px; color: #777777; margin-bottom: 15px;">Por favor, proceda con el pago y suba el comprobante al sistema.</p>',
+                    '      </div>',
+                    '    </div>',
+                    '    <div style="background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;">',
+                    '      <p style="margin: 0; font-weight: bold; color: #800020;">Sistema de Gestión CETURGH</p>',
+                    '      <p style="margin: 5px 0 0 0;">Este es un mensaje automático, por favor no responder a este correo.</p>',
+                    '    </div>',
+                    '  </div>',
+                    '</div>'
+                )
+            FROM usuarios u
+            INNER JOIN departamentos d ON d.id = u.departamento_id
+            WHERE d.nombre IN ('TESORERIA', 'TESORERÍA');
+            
+        END IF;
+        
+        IF NEW.tipo = 'REEMBOLSO' THEN
+            
+            INSERT INTO notificaciones
+            (
+                usuario_id,
+                titulo,
+                mensaje,
+                tipo,
+                requerimiento_id,
+                referencia_estado
+            )
+            VALUES
+            (
+                NEW.solicitante_id,
+                'Solicitud aprobada',
+                CONCAT('Su solicitud ', NEW.codigo, ' ha sido aprobada. Puede proceder a registrar sus gastos.'),
+                'FONDOS_GASTOS',
+                NEW.id,
+                CONCAT('GASTOS_', NEW.id)
+            );
+            
+            INSERT INTO cola_correos
+            (
+                usuario_id,
+                destinatario,
+                nombre,
+                asunto,
+                mensaje
+            )
+            SELECT
+                u.id,
+                u.usuario,
+                u.nombre,
+                CONCAT('Solicitud aprobada - Registre sus gastos - ', NEW.codigo),
+                CONCAT(
+                    '<div style="font-family: ''Segoe UI'', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;">',
+                    '  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;">',
+                    '    <div style="background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;">',
+                    '      <h2 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Solicitud Aprobada - Reembolso</h2>',
+                    '    </div>',
+                    '    <div style="padding: 30px;">',
+                    '      <p style="margin-top: 0; font-size: 16px;">Estimado(a) colaborador(a),</p>',
+                    '      <p style="color: #555555;">Su solicitud de reembolso ha sido <strong>APROBADA</strong>. Por favor, proceda a registrar los gastos realizados.</p>',
+                    '      <p style="color: #555555; margin-top: 15px;">Una vez registrados los gastos, tesorería realizará el reembolso correspondiente.</p>',
+                    '      <div style="text-align: center; margin-top: 30px;">',
+                    '        <p style="font-size: 14px; color: #777777; margin-bottom: 15px;">Ingrese al sistema para registrar sus comprobantes de gasto.</p>',
+                    '      </div>',
+                    '    </div>',
+                    '    <div style="background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;">',
+                    '      <p style="margin: 0; font-weight: bold; color: #800020;">Sistema de Gestión CETURGH</p>',
+                    '      <p style="margin: 5px 0 0 0;">Este es un mensaje automático, por favor no responder a este correo.</p>',
+                    '    </div>',
+                    '  </div>',
+                    '</div>'
+                )
+            FROM usuarios u
+            WHERE u.id = NEW.solicitante_id;
+            
+        END IF;
+        
+    END IF;
+
+    -- =========================================
+    -- RECHAZADO
+    -- =========================================
+    
+    IF NEW.estado = 'RECHAZADO' AND OLD.estado != 'RECHAZADO' THEN
+        
+        INSERT INTO notificaciones
+        (
+            usuario_id,
+            titulo,
+            mensaje,
+            tipo,
+            requerimiento_id,
+            referencia_estado
+        )
+        VALUES
+        (
+            NEW.solicitante_id,
+            'Solicitud rechazada',
+            CONCAT('Su solicitud ', NEW.codigo, ' ha sido rechazada. Motivo: ', COALESCE(NEW.observaciones, 'No especificado')),
+            'FONDOS_RECHAZO',
+            NEW.id,
+            CONCAT('RECHAZO_', NEW.id)
+        );
+        
+        INSERT INTO cola_correos
+        (
+            usuario_id,
+            destinatario,
+            nombre,
+            asunto,
+            mensaje
+        )
+        SELECT
+            u.id,
+            u.usuario,
+            u.nombre,
+            CONCAT('Solicitud rechazada - ', NEW.codigo),
+            CONCAT(
+                '<div style="font-family: ''Segoe UI'', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;">',
+                '  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #dc3545;">',
+                '    <div style="background-color: #dc3545; padding: 25px; text-align: center; border-bottom: 3px solid #ffc107;">',
+                '      <h2 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Solicitud Rechazada</h2>',
+                '    </div>',
+                '    <div style="padding: 30px;">',
+                '      <p style="margin-top: 0; font-size: 16px;">Estimado(a) colaborador(a),</p>',
+                '      <p style="color: #555555;">Lamentamos informarle que su solicitud ha sido <strong>RECHAZADA</strong>.</p>',
+                '      <div style="background-color: #f8d7da; border-left: 4px solid #dc3545; padding: 15px; margin: 20px 0; border-radius: 4px;">',
+                '        <p style="margin: 0; font-size: 14px; color: #721c24;">',
+                '          <strong>Motivo del rechazo:</strong><br>',
+                '          ', COALESCE(NEW.observaciones, 'No se especificó un motivo'), '',
+                '        </p>',
+                '      </div>',
+                '      <div style="text-align: center; margin-top: 30px;">',
+                '        <p style="font-size: 14px; color: #777777; margin-bottom: 15px;">Puede crear una nueva solicitud corrigiendo las observaciones indicadas.</p>',
+                '      </div>',
+                '    </div>',
+                '    <div style="background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;">',
+                '      <p style="margin: 0; font-weight: bold; color: #800020;">Sistema de Gestión CETURGH</p>',
+                '      <p style="margin: 5px 0 0 0;">Este es un mensaje automático, por favor no responder a este correo.</p>',
+                '    </div>',
+                '  </div>',
+                '</div>'
+            )
+        FROM usuarios u
+        WHERE u.id = NEW.solicitante_id;
+        
+    END IF;
+
+    -- =========================================
+    -- PAGADO
+    -- =========================================
+    
+    IF NEW.estado = 'PAGADO' AND OLD.estado = 'APROBADO' AND NEW.tipo IN ('ADELANTO', 'VIATICOS') THEN
+        
+        INSERT INTO notificaciones
+        (
+            usuario_id,
+            titulo,
+            mensaje,
+            tipo,
+            requerimiento_id,
+            referencia_estado
+        )
+        VALUES
+        (
+            NEW.solicitante_id,
+            'Pago registrado - Pendiente de rendición',
+            CONCAT('El pago de su solicitud ', NEW.codigo, ' ha sido registrado. Debe presentar la rendición de gastos.'),
+            'FONDOS_RENDIR',
+            NEW.id,
+            CONCAT('RENDIR_', NEW.id)
+        );
+        
+        INSERT INTO cola_correos
+        (
+            usuario_id,
+            destinatario,
+            nombre,
+            asunto,
+            mensaje
+        )
+        SELECT
+            u.id,
+            u.usuario,
+            u.nombre,
+            CONCAT('Pago registrado - Rendición pendiente - ', NEW.codigo),
+            CONCAT(
+                '<div style="font-family: ''Segoe UI'', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;">',
+                '  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #28a745;">',
+                '    <div style="background-color: #28a745; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;">',
+                '      <h2 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Pago Registrado</h2>',
+                '    </div>',
+                '    <div style="padding: 30px;">',
+                '      <p style="margin-top: 0; font-size: 16px;">Estimado(a) colaborador(a),</p>',
+                '      <p style="color: #555555;">Se ha registrado el pago correspondiente a su solicitud de <strong>', tipo_fondo, '</strong>.</p>',
+                '      <div style="background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">',
+                '        <p style="margin: 0; font-size: 14px; color: #155724;">',
+                '          <strong>Monto entregado:</strong> S/ ', FORMAT(NEW.monto_solicitado, 2),
+                '        </p>',
+                '      </div>',
+                '      <p style="color: #555555; margin-top: 15px;"><strong>IMPORTANTE:</strong> Debe presentar la rendición documentaria de los gastos realizados dentro del plazo establecido.</p>',
+                '      <div style="text-align: center; margin-top: 30px;">',
+                '        <p style="font-size: 14px; color: #777777; margin-bottom: 15px;">Ingrese al sistema para subir sus comprobantes de gasto.</p>',
+                '      </div>',
+                '    </div>',
+                '    <div style="background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;">',
+                '      <p style="margin: 0; font-weight: bold; color: #800020;">Sistema de Gestión CETURGH</p>',
+                '      <p style="margin: 5px 0 0 0;">Este es un mensaje automático, por favor no responder a este correo.</p>',
+                '    </div>',
+                '  </div>',
+                '</div>'
+            )
+        FROM usuarios u
+        WHERE u.id = NEW.solicitante_id;
+        
+    END IF;
+
+    -- =========================================
+    -- CERRADO
+    -- =========================================
+    
+    IF NEW.estado = 'CERRADO' AND OLD.estado != 'CERRADO' THEN
+        
+        INSERT INTO notificaciones
+        (
+            usuario_id,
+            titulo,
+            mensaje,
+            tipo,
+            requerimiento_id,
+            referencia_estado
+        )
+        VALUES
+        (
+            NEW.solicitante_id,
+            'Proceso finalizado',
+            CONCAT('La solicitud ', NEW.codigo, ' ha sido cerrada exitosamente.'),
+            'FONDOS_CERRADO',
+            NEW.id,
+            CONCAT('CERRADO_', NEW.id)
+        );
+        
+        INSERT INTO cola_correos
+        (
+            usuario_id,
+            destinatario,
+            nombre,
+            asunto,
+            mensaje
+        )
+        SELECT
+            u.id,
+            u.usuario,
+            u.nombre,
+            CONCAT('Solicitud cerrada - ', NEW.codigo),
+            CONCAT(
+                '<div style="font-family: ''Segoe UI'', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;">',
+                '  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #6c757d;">',
+                '    <div style="background-color: #6c757d; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;">',
+                '      <h2 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Proceso Finalizado</h2>',
+                '    </div>',
+                '    <div style="padding: 30px;">',
+                '      <p style="margin-top: 0; font-size: 16px;">Estimado(a) colaborador(a),</p>',
+                '      <p style="color: #555555;">Le informamos que su solicitud de <strong>', tipo_fondo, '</strong> ha sido <strong>CERRADA EXITOSAMENTE</strong>.</p>',
+                '      <div style="background-color: #e9ecef; border-left: 4px solid #6c757d; padding: 15px; margin: 20px 0; border-radius: 4px;">',
+                '        <p style="margin: 0; font-size: 14px; color: #383d41;">',
+                '          <strong>Total rendido:</strong> S/ ', FORMAT(COALESCE(NEW.monto_rendido, 0), 2), '<br>',
+                '          <strong>Diferencia:</strong> S/ ', FORMAT(COALESCE(NEW.diferencia, 0), 2),
+                '        </p>',
+                '      </div>',
+                '      <p style="color: #555555;">Agradecemos su gestión y cumplimiento de los procedimientos establecidos.</p>',
+                '    </div>',
+                '    <div style="background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;">',
+                '      <p style="margin: 0; font-weight: bold; color: #800020;">Sistema de Gestión CETURGH</p>',
+                '      <p style="margin: 5px 0 0 0;">Este es un mensaje automático, por favor no responder a este correo.</p>',
+                '    </div>',
+                '  </div>',
+                '</div>'
+            )
+        FROM usuarios u
+        WHERE u.id = NEW.solicitante_id;
+        
+    END IF;
+
+END$$
+
+DELIMITER ;
+
 -------------------------------------------------------------------------------------
 
 DROP TABLE IF EXISTS caja_recargas;
@@ -3389,164 +3982,6 @@ DROP TABLE IF EXISTS caja_movimientos;
 DROP TABLE IF EXISTS caja_rendiciones;
 DROP TABLE IF EXISTS caja_solicitudes;
 DROP TABLE IF EXISTS cajas_chicas;
-
-CREATE TABLE solicitudes_fondo (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-
-    codigo VARCHAR(20) UNIQUE,
-
-    solicitante_id INT NOT NULL,
-
-    empresa VARCHAR(120),
-    sede VARCHAR(120),
-
-    tipo ENUM(
-        'ADELANTO',
-        'REEMBOLSO'
-    ) DEFAULT 'ADELANTO',
-
-    categoria VARCHAR(100),
-
-    concepto TEXT,
-
-    monto_solicitado DECIMAL(10,2),
-
-    monto_rendido DECIMAL(10,2) DEFAULT 0,
-
-    diferencia DECIMAL(10,2) DEFAULT 0,
-
-    estado ENUM(
-        'PENDIENTE',
-        'APROBADO',
-        'RECHAZADO',
-        'PAGADO',
-        'EN_RENDICION',
-        'POR_DEVOLVER',
-        'POR_REEMBOLSAR',
-        'CERRADO'
-    ) DEFAULT 'PENDIENTE',
-
-    firma_digital LONGTEXT,
-
-    aprobado_por INT NULL,
-    fecha_aprobacion DATETIME NULL,
-
-    pagado_por INT NULL,
-    fecha_pago DATETIME NULL,
-
-    observaciones TEXT,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE solicitud_gastos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-
-    solicitud_id INT NOT NULL,
-
-    fecha DATE,
-
-    proveedor VARCHAR(200),
-
-    tipo_comprobante VARCHAR(50),
-
-    numero_comprobante VARCHAR(100),
-
-    descripcion TEXT,
-
-    monto DECIMAL(10,2),
-
-    FOREIGN KEY (solicitud_id)
-    REFERENCES solicitudes_fondo(id)
-    ON DELETE CASCADE
-);
-
-CREATE TABLE solicitud_archivos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-
-    solicitud_id INT NOT NULL,
-
-    gasto_id INT NULL,
-
-    tipo ENUM(
-        'SOLICITUD',
-        'PAGO_TESORERIA',
-        'RENDICION',
-        'DEVOLUCION',
-        'REEMBOLSO'
-    ),
-
-    nombre_original VARCHAR(255),
-
-    nombre_guardado VARCHAR(255),
-
-    ruta VARCHAR(255),
-
-    subido_por INT,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (solicitud_id)
-    REFERENCES solicitudes_fondo(id)
-    ON DELETE CASCADE,
-
-    FOREIGN KEY (gasto_id)
-    REFERENCES solicitud_gastos(id)
-    ON DELETE CASCADE
-);
-
-CREATE TABLE solicitud_historial (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-
-    solicitud_id INT NOT NULL,
-
-    usuario_id INT,
-
-    accion VARCHAR(100),
-
-    descripcion TEXT,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (solicitud_id)
-    REFERENCES solicitudes_fondo(id)
-    ON DELETE CASCADE
-);
-
-ALTER TABLE solicitudes_fondo
-ADD firmado_por INT NULL AFTER firma_digital,
-ADD fecha_firma DATETIME NULL AFTER firmado_por;
-
-ALTER TABLE solicitudes_fondo
-ADD FOREIGN KEY (firmado_por)
-REFERENCES usuarios(id);
-
-ALTER TABLE solicitudes_fondo
-MODIFY estado ENUM(
-    'SIN_FIRMAR',
-    'PENDIENTE',
-    'APROBADO',
-    'RECHAZADO',
-    'PAGADO',
-    'EN_RENDICION',
-    'POR_DEVOLVER',
-    'POR_REEMBOLSAR',
-    'CERRADO'
-) DEFAULT 'SIN_FIRMAR';
-
-ALTER TABLE solicitudes_fondo
-ADD modo_pago ENUM('ANTICIPADO', 'REEMBOLSO')
-DEFAULT 'ANTICIPADO'
-AFTER tipo;
-ALTER TABLE solicitudes_fondo
-MODIFY tipo ENUM('ADELANTO', 'REEMBOLSO', 'VIATICOS') NOT NULL DEFAULT 'ADELANTO';
-
-ALTER TABLE solicitudes_fondo 
-ADD COLUMN departamento_solicitante VARCHAR(100) NULL AFTER solicitante_id;
-
-ALTER TABLE solicitud_gastos 
-ADD COLUMN tipo_proveedor ENUM('EMPRESA', 'PERSONA', 'OTROS') DEFAULT 'EMPRESA' AFTER proveedor,
-ADD COLUMN documento_proveedor VARCHAR(20) NULL AFTER proveedor;
 
 CREATE TABLE cajas_chicas (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -3684,21 +4119,13 @@ CREATE TABLE rendicion_items (
 
     archivo VARCHAR(255) NULL
 );
- 
+
+ALTER TABLE solicitudes_caja 
+ADD COLUMN codigo_solicitado VARCHAR(100) NULL AFTER motivo;
+ALTER TABLE solicitudes_caja 
+ADD COLUMN codigo_solicitado VARCHAR(100) NULL AFTER motivo;
 INSERT INTO correlativos (tipo, anio, numero_actual) VALUES ('REND', YEAR(CURDATE()), 0);
-
-ALTER TABLE solicitudes_caja 
-ADD COLUMN codigo_solicitado VARCHAR(100) NULL AFTER motivo;
-ALTER TABLE solicitudes_caja 
-ADD COLUMN codigo_solicitado VARCHAR(100) NULL AFTER motivo;
-
-ALTER TABLE `items` 
-ADD COLUMN `comentario_solicitante` TEXT DEFAULT NULL AFTER `comentario_estado`,
-ADD COLUMN `archivo_adjunto` VARCHAR(500) DEFAULT NULL AFTER `comentario_solicitante`;
-ALTER TABLE `items` ADD COLUMN `incluye_igv` TINYINT(1) NOT NULL DEFAULT 0;
-
-INSERT INTO `correlativos` (`tipo`, `anio`, `numero_actual`) VALUES ('FND', 2026, 0) 
-ON DUPLICATE KEY UPDATE numero_actual = numero_actual;
+ 
 
 
 
