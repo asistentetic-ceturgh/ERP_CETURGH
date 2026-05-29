@@ -57,65 +57,96 @@ if (!in_array($tipo, $tiposPermitidos)) {
 }
 
 /* ========================= */
-
-$codigo = "FND-" . date("YmdHis");
-
-$sql = "
-INSERT INTO solicitudes_fondo (
-    codigo,
-    solicitante_id,
-    departamento_id,
-    empresa,
-    sede,
-    tipo,
-    categoria,
-    concepto,
-    monto_solicitado,
-    estado,
-    firma_digital,
-    firmado_por,
-    fecha_firma,
-    aprobado_por,
-    fecha_aprobacion,
-    pagado_por,
-    fecha_pago,
-    observaciones
-) VALUES (
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SIN_FIRMAR',
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
-)
-";
-
-$stmt = $conn->prepare($sql);
-
-if (!$stmt) {
-    exit(json_encode([
-        "success" => false,
-        "message" => "SQL error: " . $conn->error
-    ]));
-}
-
-/* ========================= */
-/* BIND PARAMS (sin cambios) */
+/* GENERAR CORRELATIVO */
 /* ========================= */
 
-$stmt->bind_param(
-    "siisssssd",
-    $codigo,
-    $solicitante_id,
-    $departamento_id,
-    $empresa,
-    $sede,
-    $tipo,
-    $categoria,
-    $concepto,
-    $monto
-);
+$anio = date("Y");
+$tipoCorrelativo = 'FND';
 
-if ($stmt->execute()) {
+// Iniciar transacción
+$conn->begin_transaction();
 
+try {
+    // Bloquear la fila para evitar concurrencia
+    $stmtCorr = $conn->prepare("SELECT numero_actual FROM correlativos WHERE tipo = ? AND anio = ? FOR UPDATE");
+    $stmtCorr->bind_param("si", $tipoCorrelativo, $anio);
+    $stmtCorr->execute();
+    $result = $stmtCorr->get_result();
+    
+    if ($result->num_rows > 0) {
+        // Existe correlativo para este año, incrementar
+        $row = $result->fetch_assoc();
+        $numero = $row['numero_actual'] + 1;
+        
+        $stmtUpdate = $conn->prepare("UPDATE correlativos SET numero_actual = ? WHERE tipo = ? AND anio = ?");
+        $stmtUpdate->bind_param("isi", $numero, $tipoCorrelativo, $anio);
+        $stmtUpdate->execute();
+    } else {
+        // No existe correlativo para este año, crear con número 1
+        $numero = 1;
+        $stmtInsert = $conn->prepare("INSERT INTO correlativos (tipo, anio, numero_actual) VALUES (?, ?, ?)");
+        $stmtInsert->bind_param("sii", $tipoCorrelativo, $anio, $numero);
+        $stmtInsert->execute();
+    }
+    
+    // Formatear código: FND-00001 (5 dígitos)
+    $codigo = $tipoCorrelativo . "-" . str_pad($numero, 5, "0", STR_PAD_LEFT);
+    
+    /* ========================= */
+    /* INSERTAR SOLICITUD */
+    /* ========================= */
+    
+    $sql = "
+    INSERT INTO solicitudes_fondo (
+        codigo,
+        solicitante_id,
+        departamento_id,
+        empresa,
+        sede,
+        tipo,
+        categoria,
+        concepto,
+        monto_solicitado,
+        estado,
+        firma_digital,
+        firmado_por,
+        fecha_firma,
+        aprobado_por,
+        fecha_aprobacion,
+        pagado_por,
+        fecha_pago,
+        observaciones
+    ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SIN_FIRMAR',
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    )";
+    
+    $stmt = $conn->prepare($sql);
+    
+    if (!$stmt) {
+        throw new Exception("SQL error: " . $conn->error);
+    }
+    
+    $stmt->bind_param(
+        "siisssssd",
+        $codigo,
+        $solicitante_id,
+        $departamento_id,
+        $empresa,
+        $sede,
+        $tipo,
+        $categoria,
+        $concepto,
+        $monto
+    );
+    
+    if (!$stmt->execute()) {
+        throw new Exception($stmt->error);
+    }
+    
     $id = $stmt->insert_id;
-
+    
+    // Registrar historial
     $historial = $conn->prepare("
         INSERT INTO solicitud_historial (
             solicitud_id,
@@ -124,20 +155,16 @@ if ($stmt->execute()) {
             descripcion
         ) VALUES (?, ?, ?, ?)
     ");
-
+    
     $accion = "CREAR";
-    $descripcion = "Solicitud creada";
-
-    $historial->bind_param(
-        "iiss",
-        $id,
-        $solicitante_id,
-        $accion,
-        $descripcion
-    );
-
+    $descripcion = "Solicitud creada con código: " . $codigo;
+    
+    $historial->bind_param("iiss", $id, $solicitante_id, $accion, $descripcion);
     $historial->execute();
-
+    
+    // Confirmar transacción
+    $conn->commit();
+    
     echo json_encode([
         "success" => true,
         "message" => "Solicitud creada correctamente",
@@ -145,11 +172,14 @@ if ($stmt->execute()) {
         "codigo" => $codigo,
         "estado" => "SIN_FIRMAR"
     ]);
-
-} else {
+    
+} catch (Exception $e) {
+    // Revertir transacción en caso de error
+    $conn->rollback();
+    
     echo json_encode([
         "success" => false,
-        "message" => $stmt->error
+        "message" => $e->getMessage()
     ]);
 }
 

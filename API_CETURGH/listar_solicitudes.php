@@ -1,55 +1,72 @@
 <?php
-
-header("Content-Type: application/json");
+header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
 
 require_once "db.php";
 
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
+    http_response_code(200);
+    exit;
+}
+
 $sql = "
-SELECT
+SELECT 
     sf.id,
     sf.codigo,
-
     sf.solicitante_id,
-    u.nombre AS solicitante_nombre,
-    u.tipo AS solicitante_tipo,
-
-    d.nombre AS departamento_solicitante,
-
+    sf.departamento_solicitante,
     sf.empresa,
     sf.sede,
     sf.tipo,
     sf.categoria,
     sf.concepto,
-
     sf.monto_solicitado,
     sf.monto_rendido,
     sf.diferencia,
-
     sf.estado,
-
-    sf.firma_digital,
-    sf.firmado_por,
-    sf.fecha_firma,
-
-    sf.aprobado_por,
+    sf.created_at,
     sf.fecha_aprobacion,
-
-    sf.pagado_por,
     sf.fecha_pago,
-
+    sf.fecha_firma,
     sf.observaciones,
-    sf.created_at
-
+    
+    /* SOLICITANTE */
+    u.nombre AS solicitante,
+    u.documento AS solicitante_documento,
+    u.firma AS solicitante_firma,
+    
+    /* QUIEN FIRMÓ (JEFE) */
+    f.nombre AS firmador_nombre,
+    f.documento AS firmador_documento,
+    f.firma AS firmador_firma,
+    
+    /* QUIEN APROBÓ (ADMIN) */
+    a.nombre AS aprobador_nombre,
+    a.documento AS aprobador_documento,
+    a.firma AS aprobador_firma,
+    
+    /* QUIEN PAGÓ (TESORERIA) */
+    p.nombre AS pagador_nombre,
+    p.documento AS pagador_documento,
+    p.firma AS pagador_firma
+    
 FROM solicitudes_fondo sf
 
-LEFT JOIN usuarios u
-    ON u.id = sf.solicitante_id
+/* SOLICITANTE */
+LEFT JOIN usuarios u ON u.id = sf.solicitante_id
 
-LEFT JOIN departamentos d
-    ON d.id = u.departamento_id
+/* QUIEN FIRMÓ LA SOLICITUD (JEFE) */
+LEFT JOIN usuarios f ON f.id = sf.firmado_por
 
-ORDER BY sf.id DESC
+/* QUIEN APROBÓ (ADMINISTRACION) */
+LEFT JOIN usuarios a ON a.id = sf.aprobado_por
+
+/* QUIEN PAGÓ (TESORERIA) */
+LEFT JOIN usuarios p ON p.id = sf.pagado_por
+
+ORDER BY sf.created_at DESC
 ";
 
 $result = $conn->query($sql);
@@ -57,70 +74,16 @@ $result = $conn->query($sql);
 if (!$result) {
     echo json_encode([
         "success" => false,
-        "message" => $conn->error
+        "message" => "Error en la consulta: " . $conn->error
     ]);
     exit;
 }
 
-function limpiarTexto($texto)
-{
-    $texto = trim($texto ?? "");
-
-    $buscar = ['Á','É','Í','Ó','Ú','á','é','í','ó','ú'];
-    $reemplazar = ['A','E','I','O','U','A','E','I','O','U'];
-
-    return strtoupper(str_replace($buscar, $reemplazar, $texto));
-}
-
-$datos = [];
-
+$data = [];
 while ($row = $result->fetch_assoc()) {
-
-    $estado = strtoupper(trim($row["estado"]));
-
-    $estaFirmado = !empty($row["firmado_por"]);
-
-    $datos[] = [
-
-        "id" => intval($row["id"]),
-        "codigo" => $row["codigo"],
-
-        "solicitante_id" => intval($row["solicitante_id"]),
-        "solicitante" => $row["solicitante_nombre"],
-
-        "solicitante_tipo" => limpiarTexto($row["solicitante_tipo"]),
-        "departamento_solicitante" => limpiarTexto($row["departamento_solicitante"]),
-
-        "empresa" => limpiarTexto($row["empresa"]),
-        "sede" => limpiarTexto($row["sede"]),
-        "tipo" => limpiarTexto($row["tipo"]),
-        "categoria" => limpiarTexto($row["categoria"]),
-
-        "concepto" => $row["concepto"],
-
-        "monto_solicitado" => floatval($row["monto_solicitado"]),
-        "monto_rendido" => floatval($row["monto_rendido"]),
-        "diferencia" => floatval($row["diferencia"]),
-
-        "estado" => $estado,
-
-        "firmado_por" => $row["firmado_por"] ? intval($row["firmado_por"]) : null,
-        "fecha_firma" => $row["fecha_firma"],
-
-        "aprobado_por" => $row["aprobado_por"] ? intval($row["aprobado_por"]) : null,
-        "fecha_aprobacion" => $row["fecha_aprobacion"],
-
-        "pagado_por" => $row["pagado_por"] ? intval($row["pagado_por"]) : null,
-        "fecha_pago" => $row["fecha_pago"],
-
-        "observaciones" => $row["observaciones"],
-
-        "puede_editar" => ($estado === "SIN_FIRMAR"),
-
-        "created_at" => $row["created_at"]
-    ];
+    $data[] = $row;
 }
 
-echo json_encode($datos);
-
+echo json_encode($data);
 $conn->close();
+?>

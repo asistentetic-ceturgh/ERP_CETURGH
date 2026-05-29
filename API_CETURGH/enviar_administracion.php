@@ -1,159 +1,141 @@
 <?php
-
-// 🔥 CONFIGURACIÓN SEGURA (evita HTML en errores)
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
-// 🔥 CAPTURAR ERRORES COMO JSON
-set_exception_handler(function($e) {
-    echo json_encode([
-        "success" => false,
-        "error" => $e->getMessage()
-    ]);
-    exit();
-});
-
-require_once "db.php";
-
-// 🔥 PREFLIGHT
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-// =======================
-// 🔥 LEER FLAG IGV
-// =======================
-$incluye_igv = isset($_POST['incluye_igv']) ? (int)$_POST['incluye_igv'] : 0;
+header("Content-Type: application/json");
+require_once "db.php";
 
-// =======================
-// 🔥 VALIDAR ITEMS
-// =======================
-if (!isset($_POST['items'])) {
-    throw new Exception("No hay items");
+$items = isset($_POST['items']) ? json_decode($_POST['items'], true) : [];
+
+if (!$items || count($items) === 0) {
+    echo json_encode([
+        "success" => false,
+        "error" => "Sin items"
+    ]);
+    exit();
 }
 
-$items = json_decode($_POST['items'], true);
-
-if (!is_array($items) || count($items) === 0) {
-    throw new Exception("Items inválidos");
+foreach ($items as $it) {
+    if (!isset($it['id']) || !isset($it['proveedor_id'])) {
+        echo json_encode([
+            "success" => false,
+            "error" => "Falta proveedor_id o id en items"
+        ]);
+        exit();
+    }
 }
 
-// =======================
-// 📁 ARCHIVO OPCIONAL
-// =======================
-$ruta = null;
+$guia_url = null;
 
-if (
-    isset($_FILES['archivo']) &&
-    $_FILES['archivo']['error'] === UPLOAD_ERR_OK
-) {
+if (isset($_FILES['archivo']) && $_FILES['archivo']['error'] === 0) {
 
-    $file = $_FILES['archivo'];
+    $permitidos = ['pdf', 'jpg', 'jpeg', 'png'];
+    $ext = strtolower(pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION));
 
-    $ext = strtolower(
-        pathinfo($file['name'], PATHINFO_EXTENSION)
-    );
-
-    $allowed = ['pdf', 'jpg', 'jpeg', 'png'];
-
-    if (!in_array($ext, $allowed)) {
-        throw new Exception("Formato no permitido");
+    if (!in_array($ext, $permitidos)) {
+        echo json_encode([
+            "success" => false,
+            "error" => "Formato de archivo no permitido"
+        ]);
+        exit();
     }
 
-    // =======================
-    // 📁 ASEGURAR DIRECTORIO
-    // =======================
     $dir = "uploads/guias/";
-
     if (!is_dir($dir)) {
-
-        if (!mkdir($dir, 0777, true)) {
-            throw new Exception(
-                "No se pudo crear directorio uploads/guias"
-            );
-        }
+        mkdir($dir, 0777, true);
     }
 
-    // =======================
-    // 📁 GUARDAR ARCHIVO
-    // =======================
-    $nombre = time() . "_" .
-        preg_replace(
-            "/[^a-zA-Z0-9.]/",
-            "_",
-            $file['name']
-        );
-
+    $nombre = time() . "_" . uniqid() . "." . $ext;
     $ruta = $dir . $nombre;
 
-    if (
-        !move_uploaded_file(
-            $file['tmp_name'],
-            $ruta
-        )
-    ) {
-        throw new Exception("Error subiendo archivo");
+    if (!move_uploaded_file($_FILES['archivo']['tmp_name'], $ruta)) {
+        echo json_encode([
+            "success" => false,
+            "error" => "Error al guardar archivo"
+        ]);
+        exit();
     }
+
+    $guia_url = $ruta;
 }
 
-// =======================
-// 🔥 TRANSACCIÓN
-// =======================
 $conn->begin_transaction();
 
 try {
 
-    // 🔥 1. CREAR GRUPO CON IGV
-    $stmt = $conn->prepare("
+    $stmtGrupo = $conn->prepare("
         INSERT INTO grupos_tesoreria (guia_url, incluye_igv)
         VALUES (?, ?)
     ");
+    $incluye_igv = isset($_POST['incluye_igv']) ? (int)$_POST['incluye_igv'] : 0;
+    $stmtGrupo->bind_param("si", $guia_url, $incluye_igv);
+    $stmtGrupo->execute();
 
-    if (!$stmt) {
-        throw new Exception("Error prepare INSERT: " . $conn->error);
-    }
+    $grupo_id = $stmtGrupo->insert_id;
 
-    $stmt->bind_param("si", $ruta, $incluye_igv);
-
-    if (!$stmt->execute()) {
-        throw new Exception("Error execute INSERT: " . $stmt->error);
-    }
-
-    $grupo_id = $conn->insert_id;
-
-    // 🔥 2. ACTUALIZAR ITEMS
-    $stmtUpdate = $conn->prepare("
-        UPDATE items
-        SET 
+    // ✅ CORREGIDO: 4 parámetros (iiii) para 4 placeholders
+    $stmt = $conn->prepare("
+        UPDATE items 
+        SET grupo_id = ?, 
+            proveedor_id = ?,
+            incluye_igv = ?,
             flujo_estado = 'ADMINISTRACION',
             estado_logistica = 'ENVIADO',
-            estado_administracion = 'PENDIENTE',
-            grupo_id = ?
+            estado_administracion = 'PENDIENTE'
         WHERE id = ?
     ");
 
-    if (!$stmtUpdate) {
-        throw new Exception("Error prepare UPDATE: " . $conn->error);
+    foreach ($items as $it) {
+        $incluye_igv_item = isset($it['incluye_igv']) ? (int)$it['incluye_igv'] : $incluye_igv;
+        // 🔥 CORREGIDO: "iiii" en lugar de "iiiii"
+        $stmt->bind_param("iiii", $grupo_id, $it['proveedor_id'], $incluye_igv_item, $it['id']);
+        $stmt->execute();
     }
 
-    foreach ($items as $item) {
+    $req_ids = array_unique(array_column($items, 'requerimiento_id'));
 
-        if (!isset($item['id'])) {
-            throw new Exception("Item sin ID");
-        }
+    if (count($req_ids) > 0) {
 
-        $item_id = (int)$item['id'];
+        foreach ($req_ids as $req_id) {
 
-        $stmtUpdate->bind_param("ii", $grupo_id, $item_id);
+            $sqlCheck = "
+                SELECT 
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN precio_unitario IS NULL OR precio_unitario <= 0 THEN 1 ELSE 0 END) AS sin_precio
+                FROM items
+                WHERE requerimiento_id = ?
+            ";
 
-        if (!$stmtUpdate->execute()) {
-            throw new Exception("Error actualizando item ID {$item_id}: " . $stmtUpdate->error);
+            $stmtCheck = $conn->prepare($sqlCheck);
+            $stmtCheck->bind_param("i", $req_id);
+            $stmtCheck->execute();
+            $res = $stmtCheck->get_result()->fetch_assoc();
+
+            $total = $res['total'];
+            $sin_precio = $res['sin_precio'];
+
+            if ($total > 0 && $sin_precio == 0) {
+
+                $updateReq = "
+                    UPDATE requerimientos
+                    SET estado = 'Cotizado'
+                    WHERE id = ?
+                ";
+
+                $stmtUpd = $conn->prepare($updateReq);
+                $stmtUpd->bind_param("i", $req_id);
+                $stmtUpd->execute();
+            }
         }
     }
 
@@ -162,8 +144,7 @@ try {
     echo json_encode([
         "success" => true,
         "grupo_id" => $grupo_id,
-        "archivo" => $ruta,
-        "incluye_igv" => $incluye_igv
+        "guia_url" => $guia_url
     ]);
 
 } catch (Exception $e) {
@@ -172,6 +153,8 @@ try {
 
     echo json_encode([
         "success" => false,
-        "error" => $e->getMessage()
+        "error" => "Error en la transacción",
+        "detalle" => $e->getMessage()
     ]);
 }
+?>

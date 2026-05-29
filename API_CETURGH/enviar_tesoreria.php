@@ -92,10 +92,14 @@ try {
 
     $grupo_id = $stmtGrupo->insert_id;
 
-    // 2. ACTUALIZAR ITEMS
+    // 2. ACTUALIZAR ITEMS (PRESERVANDO comentario_solicitante y archivo_adjunto)
     $stmt = $conn->prepare("
         UPDATE items 
-        SET grupo_id = ?, proveedor_id = ?
+        SET grupo_id = ?, 
+            proveedor_id = ?,
+            flujo_estado = 'ADMINISTRACION',
+            estado_logistica = 'ENVIADO',
+            estado_administracion = 'PENDIENTE'
         WHERE id = ?
     ");
 
@@ -105,48 +109,48 @@ try {
     }
 
     // ==============================
-// 🚀 ACTUALIZAR ESTADO REQUERIMIENTO A "COTIZADO"
-// ==============================
+    // 🚀 ACTUALIZAR ESTADO REQUERIMIENTO A "COTIZADO"
+    // ==============================
 
-// obtener requerimientos afectados por los items enviados
-$req_ids = array_unique(array_column($items, 'requerimiento_id'));
+    // obtener requerimientos afectados por los items enviados
+    $req_ids = array_unique(array_column($items, 'requerimiento_id'));
 
-if (count($req_ids) > 0) {
+    if (count($req_ids) > 0) {
 
-    foreach ($req_ids as $req_id) {
+        foreach ($req_ids as $req_id) {
 
-        // validar si TODOS los items tienen precio
-        $sqlCheck = "
-            SELECT 
-                COUNT(*) AS total,
-                SUM(CASE WHEN precio_unitario IS NULL OR precio_unitario <= 0 THEN 1 ELSE 0 END) AS sin_precio
-            FROM items
-            WHERE requerimiento_id = ?
-        ";
-
-        $stmtCheck = $conn->prepare($sqlCheck);
-        $stmtCheck->bind_param("i", $req_id);
-        $stmtCheck->execute();
-        $res = $stmtCheck->get_result()->fetch_assoc();
-
-        $total = $res['total'];
-        $sin_precio = $res['sin_precio'];
-
-        // si todos tienen precio → Cotizado
-        if ($total > 0 && $sin_precio == 0) {
-
-            $updateReq = "
-                UPDATE requerimientos
-                SET estado = 'Cotizado'
-                WHERE id = ?
+            // validar si TODOS los items tienen precio
+            $sqlCheck = "
+                SELECT 
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN precio_unitario IS NULL OR precio_unitario <= 0 THEN 1 ELSE 0 END) AS sin_precio
+                FROM items
+                WHERE requerimiento_id = ?
             ";
 
-            $stmtUpd = $conn->prepare($updateReq);
-            $stmtUpd->bind_param("i", $req_id);
-            $stmtUpd->execute();
+            $stmtCheck = $conn->prepare($sqlCheck);
+            $stmtCheck->bind_param("i", $req_id);
+            $stmtCheck->execute();
+            $res = $stmtCheck->get_result()->fetch_assoc();
+
+            $total = $res['total'];
+            $sin_precio = $res['sin_precio'];
+
+            // si todos tienen precio → Cotizado
+            if ($total > 0 && $sin_precio == 0) {
+
+                $updateReq = "
+                    UPDATE requerimientos
+                    SET estado = 'Cotizado'
+                    WHERE id = ?
+                ";
+
+                $stmtUpd = $conn->prepare($updateReq);
+                $stmtUpd->bind_param("i", $req_id);
+                $stmtUpd->execute();
+            }
         }
     }
-}
 
     // ✅ TODO OK
     $conn->commit();
@@ -167,3 +171,4 @@ if (count($req_ids) > 0) {
         "detalle" => $e->getMessage()
     ]);
 }
+?>

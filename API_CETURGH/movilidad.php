@@ -78,7 +78,7 @@ if ($method === 'GET') {
 }
 
 /* =====================================================
-   POST FORM-DATA (PAGAR + COMPROBANTE)
+   POST FORM-DATA (PAGAR + COMPROBANTE + DESCONTAR PRESUPUESTO)
 ===================================================== */
 if (
     $method === 'POST'
@@ -93,6 +93,23 @@ if (
         if (!$id) {
             throw new Exception("ID inválido");
         }
+
+        // 🔥 OBTENER DATOS DE LA MOVILIDAD ANTES DE ACTUALIZAR
+        $queryMov = $conn->prepare("
+            SELECT departamento_id, monto_total 
+            FROM planilla_movilidad 
+            WHERE id = ?
+        ");
+        $queryMov->bind_param("i", $id);
+        $queryMov->execute();
+        $movData = $queryMov->get_result()->fetch_assoc();
+
+        if (!$movData) {
+            throw new Exception("Movilidad no encontrada");
+        }
+
+        $departamento_id = $movData['departamento_id'];
+        $monto_total = floatval($movData['monto_total']);
 
         $file = $_FILES['comprobante'];
 
@@ -111,9 +128,7 @@ if (
         }
 
         $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-
         $nombre = 'movilidad_' . time() . '_' . rand(1000,9999) . '.' . $ext;
-
         $carpeta = 'uploads/comprobantes_movilidad/';
 
         if (!file_exists($carpeta)) {
@@ -126,10 +141,12 @@ if (
             throw new Exception("No se pudo guardar archivo");
         }
 
-        $tipo = $file['type'] === 'application/pdf'
-            ? 'pdf'
-            : 'imagen';
+        $tipo = $file['type'] === 'application/pdf' ? 'pdf' : 'imagen';
 
+        // 🔥 INICIAR TRANSACCIÓN
+        $conn->begin_transaction();
+
+        // 1. Actualizar estado de movilidad a Pagado
         $stmt = $conn->prepare("
             UPDATE planilla_movilidad
             SET
@@ -141,23 +158,52 @@ if (
             WHERE id=?
         ");
 
-        $stmt->bind_param(
-            "ssii",
-            $ruta,
-            $tipo,
-            $pagado_por,
-            $id
-        );
+        $stmt->bind_param("ssii", $ruta, $tipo, $pagado_por, $id);
+        
+        if (!$stmt->execute()) {
+            throw new Exception("Error al actualizar movilidad: " . $stmt->error);
+        }
 
-        $stmt->execute();
+        // 2. 🔥 DESCONTAR DEL PRESUPUESTO DEL DEPARTAMENTO
+        $updateBudget = $conn->prepare("
+            UPDATE departamentos 
+            SET presupuesto = presupuesto - ? 
+            WHERE id = ? AND presupuesto >= ?
+        ");
+        $updateBudget->bind_param("did", $monto_total, $departamento_id, $monto_total);
+        $updateBudget->execute();
+
+        if ($updateBudget->affected_rows === 0) {
+            // Verificar si existe el presupuesto pero es insuficiente
+            $checkBudget = $conn->prepare("SELECT presupuesto FROM departamentos WHERE id = ?");
+            $checkBudget->bind_param("i", $departamento_id);
+            $checkBudget->execute();
+            $budgetResult = $checkBudget->get_result()->fetch_assoc();
+            
+            if ($budgetResult) {
+                throw new Exception("Presupuesto insuficiente. Disponible: S/ " . number_format($budgetResult['presupuesto'], 2) . ", Necesario: S/ " . number_format($monto_total, 2));
+            } else {
+                throw new Exception("Departamento no encontrado");
+            }
+        }
+
+        // 3. Registrar en tabla de movimientos (opcional)
+        $conn->query("
+            INSERT INTO movimientos (tipo, referencia_id, monto, departamento_id, fecha)
+            VALUES ('movilidad', $id, $monto_total, $departamento_id, NOW())
+        ");
+
+        $conn->commit();
 
         echo json_encode([
             "ok" => true,
-            "archivo" => $ruta
+            "archivo" => $ruta,
+            "presupuesto_descontado" => $monto_total,
+            "departamento_id" => $departamento_id
         ]);
 
     } catch (Exception $e) {
-
+        $conn->rollback();
         echo json_encode([
             "ok" => false,
             "msg" => $e->getMessage()
@@ -320,6 +366,8 @@ if ($method === 'PUT') {
 
             $conn->commit();
 
+            echo json_encode(["ok" => true]);
+
         } catch (Exception $e) {
 
             $conn->rollback();
@@ -337,14 +385,22 @@ if ($method === 'PUT') {
     ===================== */
     if ($action === "firmar") {
 
+        $firmado_por = intval($data['firmado_por'] ?? 0);
+
         $stmt = $conn->prepare("
             UPDATE planilla_movilidad 
             SET estado='Pendiente', firmado_por=?, fecha_firma=NOW()
             WHERE id=?
         ");
 
-        $stmt->bind_param("si", $data['firmado_por'], $id);
-        $stmt->execute();
+        $stmt->bind_param("ii", $firmado_por, $id);
+        
+        if ($stmt->execute()) {
+            echo json_encode(["ok" => true]);
+        } else {
+            echo json_encode(["ok" => false, "error" => $stmt->error]);
+        }
+        exit;
     }
 
     /* =====================
@@ -352,20 +408,26 @@ if ($method === 'PUT') {
     ===================== */
     if ($action === "aprobar") {
 
-    $aprobado_por = intval($data['aprobado_por'] ?? 0);
+        $aprobado_por = intval($data['aprobado_por'] ?? 0);
 
-    $stmt = $conn->prepare("
-        UPDATE planilla_movilidad 
-        SET 
-            estado='Aprobado',
-            aprobado_por=?,
-            fecha_aprobacion=NOW()
-        WHERE id=?
-    ");
+        $stmt = $conn->prepare("
+            UPDATE planilla_movilidad 
+            SET 
+                estado='Aprobado',
+                aprobado_por=?,
+                fecha_aprobacion=NOW()
+            WHERE id=?
+        ");
 
-    $stmt->bind_param("ii", $aprobado_por, $id);
-    $stmt->execute();
-}
+        $stmt->bind_param("ii", $aprobado_por, $id);
+        
+        if ($stmt->execute()) {
+            echo json_encode(["ok" => true]);
+        } else {
+            echo json_encode(["ok" => false, "error" => $stmt->error]);
+        }
+        exit;
+    }
 
     /* =====================
        DENEGAR
@@ -381,25 +443,92 @@ if ($method === 'PUT') {
         ");
 
         $stmt->bind_param("si", $estado, $id);
-        $stmt->execute();
+        
+        if ($stmt->execute()) {
+            echo json_encode(["ok" => true]);
+        } else {
+            echo json_encode(["ok" => false, "error" => $stmt->error]);
+        }
+        exit;
     }
 
     /* =====================
-       PAGAR
+       PAGAR (acción PUT - con descuento)
     ===================== */
     if ($action === "pagar") {
 
-        $conn->query("UPDATE planilla_movilidad SET estado='Pagado' WHERE id=$id");
+        try {
+            // Obtener datos de la movilidad
+            $queryMov = $conn->prepare("
+                SELECT departamento_id, monto_total 
+                FROM planilla_movilidad 
+                WHERE id = ?
+            ");
+            $queryMov->bind_param("i", $id);
+            $queryMov->execute();
+            $movData = $queryMov->get_result()->fetch_assoc();
 
-        $conn->query("
-            INSERT INTO movimientos (tipo, referencia_id, monto, departamento_id)
-            SELECT 'movilidad', id, monto_total, departamento_id
-            FROM planilla_movilidad WHERE id=$id
-        ");
+            if (!$movData) {
+                throw new Exception("Movilidad no encontrada");
+            }
+
+            $departamento_id = $movData['departamento_id'];
+            $monto_total = floatval($movData['monto_total']);
+
+            // Iniciar transacción
+            $conn->begin_transaction();
+
+            // 1. Actualizar estado
+            $stmt1 = $conn->prepare("
+                UPDATE planilla_movilidad 
+                SET estado='Pagado', fecha_pago=NOW() 
+                WHERE id=?
+            ");
+            $stmt1->bind_param("i", $id);
+            $stmt1->execute();
+
+            // 2. Descontar presupuesto
+            $stmt2 = $conn->prepare("
+                UPDATE departamentos 
+                SET presupuesto = presupuesto - ? 
+                WHERE id = ? AND presupuesto >= ?
+            ");
+            $stmt2->bind_param("did", $monto_total, $departamento_id, $monto_total);
+            $stmt2->execute();
+
+            if ($stmt2->affected_rows === 0) {
+                $checkBudget = $conn->prepare("SELECT presupuesto FROM departamentos WHERE id = ?");
+                $checkBudget->bind_param("i", $departamento_id);
+                $checkBudget->execute();
+                $budgetResult = $checkBudget->get_result()->fetch_assoc();
+                
+                if ($budgetResult) {
+                    throw new Exception("Presupuesto insuficiente. Disponible: S/ " . number_format($budgetResult['presupuesto'], 2));
+                } else {
+                    throw new Exception("Departamento no encontrado");
+                }
+            }
+
+            $conn->commit();
+
+            echo json_encode([
+                "ok" => true,
+                "presupuesto_descontado" => $monto_total
+            ]);
+
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode([
+                "ok" => false,
+                "error" => $e->getMessage()
+            ]);
+        }
+        exit;
     }
 
-    echo json_encode(["ok" => true]);
+    echo json_encode(["ok" => false, "error" => "Acción no válida"]);
     exit;
 }
 
 $conn->close();
+?>

@@ -34,7 +34,7 @@ if ($method === 'GET') {
         $id = (int)$row["id"];
 
         // ==========================
-        // 🔥 GASTO EN ITEMS
+        // 🔥 GASTO EN ITEMS (REQUERIMIENTOS)
         // ==========================
         $itemsSql = "
             SELECT COALESCE(SUM(i.total), 0) as total
@@ -48,7 +48,7 @@ if ($method === 'GET') {
         $gastado_items = (float)$itemsRes->fetch_assoc()["total"];
 
         // ==========================
-        // 🔥 GASTO EN MOVILIDAD
+        // 🔥 GASTO EN MOVILIDAD (SOLO PAGADOS)
         // ==========================
         $movSql = "
             SELECT COALESCE(SUM(monto_total), 0) as total
@@ -61,7 +61,7 @@ if ($method === 'GET') {
         $gastado_movilidad = (float)$movRes->fetch_assoc()["total"];
 
         // ==========================
-        // 🔥 TOTAL
+        // 🔥 TOTAL GASTADO
         // ==========================
         $gastado_total = $gastado_items + $gastado_movilidad;
 
@@ -81,7 +81,7 @@ if ($method === 'GET') {
 
             $subId = (int)$s["id"];
 
-            // ITEMS
+            // ITEMS del subdepartamento
             $subItemsSql = "
                 SELECT COALESCE(SUM(i.total), 0) as total
                 FROM items i
@@ -92,7 +92,7 @@ if ($method === 'GET') {
             $subItemsRes = $conn->query($subItemsSql);
             $sub_items = (float)$subItemsRes->fetch_assoc()["total"];
 
-            // MOVILIDAD
+            // MOVILIDAD del subdepartamento
             $subMovSql = "
                 SELECT COALESCE(SUM(monto_total), 0) as total
                 FROM planilla_movilidad
@@ -113,7 +113,7 @@ if ($method === 'GET') {
         }
 
         // ==========================================
-        // 🔹 HISTORIAL (ITEMS)
+        // 🔹 HISTORIAL DE COMPRAS (ITEMS)
         // ==========================================
         $comprasSql = "
             SELECT 
@@ -121,7 +121,7 @@ if ($method === 'GET') {
                 i.total as monto,
                 i.estado_pago as estado,
                 r.fecha,
-                sd.nombre as subdepartamento
+                COALESCE(sd.nombre, 'SIN ÁREA') as subdepartamento
             FROM items i
             JOIN requerimientos r ON r.id = i.requerimiento_id
             LEFT JOIN departamentos sd ON sd.id = i.area_costo_id
@@ -144,31 +144,62 @@ if ($method === 'GET') {
         }
 
         // ==========================================
+        // 🔹 HISTORIAL DE MOVILIDAD (PAGADAS)
+        // ==========================================
+        $movilidadSql = "
+            SELECT 
+                pm.motivo as descripcion,
+                pm.monto_total as monto,
+                pm.estado,
+                pm.fecha,
+                pm.origen,
+                pm.destino,
+                COALESCE(u.nombre, 'No asignado') as usuario
+            FROM planilla_movilidad pm
+            LEFT JOIN usuarios u ON pm.creador_id = u.id
+            WHERE pm.departamento_id = $id
+            AND pm.estado = 'Pagado'
+            ORDER BY pm.fecha DESC
+        ";
+
+        $movilidadRes = $conn->query($movilidadSql);
+        $movilidades = [];
+
+        while ($m = $movilidadRes->fetch_assoc()) {
+            $movilidades[] = [
+                "descripcion" => $m["descripcion"],
+                "monto" => (float)$m["monto"],
+                "estado" => $m["estado"],
+                "fecha" => $m["fecha"],
+                "origen" => $m["origen"],
+                "destino" => $m["destino"],
+                "usuario" => $m["usuario"]
+            ];
+        }
+
+        // ==========================================
         // RESPUESTA FINAL
         // ==========================================
         $departamentos[] = [
             "id" => $id,
             "nombre" => $row["nombre"],
             "presupuestoTotal" => (float)$row["presupuesto"],
-
-            // 🔥 CLAVE
             "gastado" => $gastado_total,
             "gastado_items" => $gastado_items,
             "gastado_movilidad" => $gastado_movilidad,
-
             "saldo" => (float)$row["presupuesto"] - $gastado_total,
-
             "subdepartamentos" => $subdepartamentos,
-            "compras" => $compras
+            "compras" => $compras,          // Historial de items
+            "movilidades" => $movilidades    // Historial de movilidades pagadas
         ];
     }
 
     echo json_encode($departamentos);
+    exit;
 }
 
-
 // ==========================================
-// POST → CREAR
+// POST → CREAR DEPARTAMENTO
 // ==========================================
 if ($method === 'POST') {
 
@@ -202,11 +233,11 @@ if ($method === 'POST') {
     }
 
     $stmt->close();
+    exit;
 }
 
-
 // ==========================================
-// PUT → EDITAR
+// PUT → EDITAR DEPARTAMENTO
 // ==========================================
 if ($method === 'PUT') {
 
@@ -256,11 +287,11 @@ if ($method === 'PUT') {
     }
 
     $stmt->close();
+    exit;
 }
 
-
 // ==========================================
-// DELETE
+// DELETE → ELIMINAR DEPARTAMENTO
 // ==========================================
 if ($method === 'DELETE') {
 
@@ -273,6 +304,7 @@ if ($method === 'DELETE') {
 
     $id = (int)$id;
 
+    // Verificar si tiene relaciones
     $res = $conn->query("SELECT COUNT(*) as total FROM area_departamento WHERE departamento_id = $id");
     $row = $res->fetch_assoc();
 
@@ -283,8 +315,10 @@ if ($method === 'DELETE') {
         exit();
     }
 
+    // Eliminar subdepartamentos primero
     $conn->query("DELETE FROM departamentos WHERE parent_id = $id");
 
+    // Eliminar el departamento principal
     $stmt = $conn->prepare("DELETE FROM departamentos WHERE id = ?");
     $stmt->bind_param("i", $id);
 
@@ -295,6 +329,7 @@ if ($method === 'DELETE') {
     }
 
     $stmt->close();
+    exit;
 }
 
 $conn->close();

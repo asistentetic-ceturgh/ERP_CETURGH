@@ -17,7 +17,12 @@ SELECT
     g.id as grupo_id,
     g.guia_url,
     g.comprobante_url,
-    g.incluye_igv,                -- 🔥 NUEVO: flag IGV del grupo
+    g.incluye_igv as grupo_incluye_igv,   
+    
+    i.incluye_igv as item_incluye_igv,
+    i.precio_unitario,                   
+    i.cantidad,
+    i.total,
 
     p.id AS proveedor_id,
     p.nombre AS proveedor,
@@ -32,8 +37,12 @@ SELECT
     i.id,
     i.requerimiento_id,
     i.descripcion,
-    i.cantidad,
-    COALESCE(i.total, i.cantidad * i.precio_unitario) as monto,
+
+    CASE 
+        WHEN i.incluye_igv = 1 THEN COALESCE(i.total, i.cantidad * i.precio_unitario)
+        ELSE COALESCE(i.cantidad * i.precio_unitario, 0) * 1.18
+    END as monto_calculado,
+
     i.estado_pago,
     i.centro_costo_id,
     i.area_costo_id,
@@ -95,13 +104,14 @@ while ($row = $res->fetch_assoc()) {
             "grupo_id" => $grupo_id,
             "guia_url" => $row["guia_url"] ?? null,
             "comprobante_url" => $row["comprobante_url"] ?? null,
-            "incluye_igv" => (int)($row["incluye_igv"] ?? 0),   // 🔥 NUEVO: incluye IGV
+            "incluye_igv" => (int)($row["grupo_incluye_igv"] ?? 0),   // Usar grupo_incluye_igv
             "items" => [],
             "montoTotal" => 0
         ];
     }
 
-    $monto = (float)$row["monto"];
+    // 🔥 USAR monto_calculado, que ya aplica el IGV correctamente según el flag del item
+    $monto = (float)($row["monto_calculado"] ?? 0);
 
     $agrupado[$key]["grupos"][$grupo_id]["items"][] = [
         "id" => $row["id"],
@@ -112,7 +122,8 @@ while ($row = $res->fetch_assoc()) {
         "estado_pago" => $row["estado_pago"],
         "fecha" => $row["fecha"],
         "centro_costo" => $row["centro_costo_id"],
-        "area_costo" => $row["area_costo_id"]
+        "area_costo" => $row["area_costo_id"],
+        "incluye_igv" => (int)($row["item_incluye_igv"] ?? 0)  // 🔥 Enviar también el flag por item
     ];
 
     $agrupado[$key]["grupos"][$grupo_id]["montoTotal"] += $monto;

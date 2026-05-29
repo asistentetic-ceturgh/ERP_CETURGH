@@ -25,4 +25,14 @@ if ($conn->connect_error) {
 
 // Forzar UTF-8
 $conn->set_charset("utf8");
+
+function getDBConnection() {
+    global $host, $user, $pass, $db;
+    $conn = new mysqli($host, $user, $pass, $db);
+    if ($conn->connect_error) {
+        return null;
+    }
+    $conn->set_charset("utf8");
+    return $conn;
+}
 ?>
