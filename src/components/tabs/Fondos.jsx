@@ -2072,6 +2072,8 @@ const Fondos = ({ user }) => {
                                     <option>Boleta</option>
                                     <option>Ticket</option>
                                     <option>RXH</option>
+                                    <option>Nota de Venta</option>
+                                    <option>Otros</option>
                                 </select>
                             </div>
 

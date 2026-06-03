@@ -13,24 +13,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-/**
- * Genera el siguiente número de rendición usando la tabla correlativos
- * Formato: REND-YYYY-XXXXX (ej: REND-2026-00001)
- */
 function getNextCorrelativoRendicion($conn) {
     $anio = date('Y');
     $tipo = 'REND';
     
     $conn->begin_transaction();
     try {
-        // Verificar si existe el registro para este año
         $check = $conn->prepare("SELECT numero_actual FROM correlativos WHERE tipo = ? AND anio = ? FOR UPDATE");
         $check->bind_param("si", $tipo, $anio);
         $check->execute();
         $res = $check->get_result();
         
         if ($res->num_rows == 0) {
-            // Insertar nuevo registro para el año actual
             $insert = $conn->prepare("INSERT INTO correlativos (tipo, anio, numero_actual) VALUES (?, ?, 1)");
             $insert->bind_param("si", $tipo, $anio);
             $insert->execute();
@@ -54,7 +48,9 @@ function getNextCorrelativoRendicion($conn) {
 if ($method === 'GET') {
     $caja_id = isset($_GET['caja_id']) ? intval($_GET['caja_id']) : 0;
     $rendicion_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+    $estado = isset($_GET['estado']) ? $_GET['estado'] : '';
     
+    // Caso 1: Obtener una rendición específica con sus items
     if ($rendicion_id > 0) {
         $sql = "SELECT * FROM rendiciones_caja WHERE id = ?";
         $stmt = $conn->prepare($sql);
@@ -75,28 +71,48 @@ if ($method === 'GET') {
         exit();
     }
     
-    if ($caja_id <= 0) {
-        echo json_encode(["ok" => false, "error" => "Se requiere caja_id"]);
+    // Caso 2: Listar rendiciones por estado (para tesorería)
+    if ($caja_id <= 0 && !empty($estado)) {
+        $sql = "SELECT r.*, 
+                       (SELECT COUNT(*) FROM rendicion_items WHERE rendicion_id = r.id) as items_count,
+                       c.codigo as caja_codigo
+                FROM rendiciones_caja r
+                JOIN cajas_chicas c ON r.caja_id = c.id
+                WHERE r.estado = ?
+                ORDER BY r.created_at DESC";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $estado);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rendiciones = [];
+        while ($row = $result->fetch_assoc()) {
+            $rendiciones[] = $row;
+        }
+        echo json_encode(["ok" => true, "data" => $rendiciones]);
         exit();
     }
     
-    $sql = "
-        SELECT r.*, 
+    // Caso 3: Listar SOLO rendiciones APROBADAS de una caja específica (historial)
+if ($caja_id <= 0) {
+    echo json_encode(["ok" => false, "error" => "Se requiere caja_id o estado"]);
+    exit();
+}
+
+$sql = "SELECT r.*, 
                (SELECT COUNT(*) FROM rendicion_items WHERE rendicion_id = r.id) as items_count
         FROM rendiciones_caja r
-        WHERE r.caja_id = ?
-        ORDER BY r.created_at DESC
-    ";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $caja_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $rendiciones = [];
-    while ($row = $result->fetch_assoc()) {
-        $rendiciones[] = $row;
-    }
-    echo json_encode(["ok" => true, "data" => $rendiciones]);
-    exit();
+        WHERE r.caja_id = ? AND r.estado = 'APROBADO'
+        ORDER BY r.created_at DESC";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $caja_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$rendiciones = [];
+while ($row = $result->fetch_assoc()) {
+    $rendiciones[] = $row;
+}
+echo json_encode(["ok" => true, "data" => $rendiciones]);
+exit();
 }
 
 // ==================== POST ====================
@@ -109,7 +125,6 @@ if ($method === 'POST') {
     }
     
     $caja_id = intval($input['caja_id']);
-    // GENERAR NÚMERO AUTOMÁTICAMENTE (ignorar lo que venga del frontend)
     try {
         $numero = getNextCorrelativoRendicion($conn);
     } catch (Exception $e) {
@@ -121,7 +136,6 @@ if ($method === 'POST') {
     $saldo_inicial = floatval($input['saldo_inicial']);
     $total_rendido = floatval($input['total_rendido']);
     $saldo_final = floatval($input['saldo_final']);
-    // Estados permitidos al crear: 'BORRADOR' o 'ENVIADO' (el usuario puede enviar directamente a tesorería)
     $estado = $input['estado'];
     if (!in_array($estado, ['BORRADOR', 'ENVIADO'])) {
         echo json_encode(["ok" => false, "error" => "Estado no válido. Use 'BORRADOR' o 'ENVIADO'"]);
@@ -140,26 +154,28 @@ if ($method === 'POST') {
         $stmtCab->execute();
         $rendicion_id = $conn->insert_id;
         
-        // Insertar items
+        // Insertar items (con adjunto opcional)
         $sqlItem = "INSERT INTO rendicion_items 
-                    (rendicion_id, fecha, proveedor, ruc_dni, tipo_documento, numero_documento, descripcion, monto)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                    (rendicion_id, fecha, proveedor, ruc_dni, tipo_documento, numero_documento, descripcion, monto, adjunto)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmtItem = $conn->prepare($sqlItem);
         foreach ($input['items'] as $item) {
-            $fecha = $item['fecha'];
-            $proveedor = $item['proveedor'];
-            $ruc_dni = $item['ruc_dni'];
-            $tipo_doc = $item['tipo_documento'];
-            $num_doc = $item['numero_documento'];
-            $descripcion = $item['descripcion'];
-            $monto = floatval($item['monto']);
-            $stmtItem->bind_param("issssssd", $rendicion_id, $fecha, $proveedor, $ruc_dni, $tipo_doc, $num_doc, $descripcion, $monto);
+            $fecha = $item['fecha'] ?? null;
+            $proveedor = $item['proveedor'] ?? '';
+            $ruc_dni = $item['ruc_dni'] ?? '';
+            $tipo_doc = $item['tipo_documento'] ?? 'FACTURA';
+            $num_doc = $item['numero_documento'] ?? '';
+            $descripcion = $item['descripcion'] ?? '';
+            $monto = floatval($item['monto'] ?? 0);
+            // CORRECCIÓN: leer adjunto del item, si no existe asignar null
+            $adjunto = isset($item['adjunto']) && !empty($item['adjunto']) ? $item['adjunto'] : null;
+            
+            $stmtItem->bind_param("issssssds", 
+                $rendicion_id, $fecha, $proveedor, $ruc_dni, $tipo_doc, $num_doc, $descripcion, $monto, $adjunto
+            );
             $stmtItem->execute();
         }
         $stmtItem->close();
-        
-        // NOTA: No se actualiza el saldo de la caja hasta que la rendición sea APROBADA (vía PUT)
-        // Si se crea como ENVIADO, solo se guarda; el flujo continuará con PUT.
         
         $conn->commit();
         echo json_encode(["ok" => true, "id" => $rendicion_id, "numero" => $numero, "message" => "Rendición guardada como {$estado}"]);
@@ -176,14 +192,13 @@ if ($method === 'PUT') {
     $input = json_decode(file_get_contents('php://input'), true);
     $rendicion_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $nuevo_estado = $input['estado'] ?? '';
-    $observacion = $input['observacion'] ?? null; // opcional para OBSERVADO
+    $observacion = $input['observacion'] ?? null;
     
     if (!$rendicion_id || !in_array($nuevo_estado, ['ENVIADO', 'OBSERVADO', 'APROBADO'])) {
         echo json_encode(["ok" => false, "error" => "Estado no válido. Use ENVIADO, OBSERVADO o APROBADO"]);
         exit();
     }
     
-    // Obtener datos actuales
     $sql = "SELECT caja_id, total_rendido, estado FROM rendiciones_caja WHERE id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $rendicion_id);
@@ -195,8 +210,6 @@ if ($method === 'PUT') {
     }
     
     $estado_actual = $rend['estado'];
-    
-    // Validar transiciones permitidas
     $transiciones = [
         'BORRADOR' => ['ENVIADO', 'OBSERVADO'],
         'ENVIADO'  => ['APROBADO', 'OBSERVADO'],
@@ -209,18 +222,21 @@ if ($method === 'PUT') {
     
     $conn->begin_transaction();
     try {
-        // Actualizar estado (y opcionalmente guardar observación en algún campo, por ejemplo en descripción o crear tabla observaciones)
         $sqlUp = "UPDATE rendiciones_caja SET estado = ? WHERE id = ?";
         $stmtUp = $conn->prepare($sqlUp);
         $stmtUp->bind_param("si", $nuevo_estado, $rendicion_id);
         $stmtUp->execute();
         
-        // Si se aprueba, actualizar saldo de la caja y registrar movimiento
+        // Guardar observación (si se necesita en una tabla aparte)
+        if ($observacion && $nuevo_estado === 'OBSERVADO') {
+            // Aquí puedes insertar en una tabla `rendiciones_observaciones` si la tienes
+            // Por ahora solo lo devolvemos en el JSON, pero no se guarda.
+        }
+        
         if ($nuevo_estado === 'APROBADO') {
             $caja_id = $rend['caja_id'];
             $total_rendido = $rend['total_rendido'];
             
-            // Bloquear la fila de la caja para actualización
             $sqlSaldo = "SELECT saldo_actual FROM cajas_chicas WHERE id = ? FOR UPDATE";
             $stmtSaldo = $conn->prepare($sqlSaldo);
             $stmtSaldo->bind_param("i", $caja_id);
@@ -235,7 +251,6 @@ if ($method === 'PUT') {
             $stmtUpdate->bind_param("dsi", $nuevo_saldo, $estado_caja, $caja_id);
             $stmtUpdate->execute();
             
-            // Registrar movimiento
             $sqlMov = "INSERT INTO movimientos_caja (caja_id, tipo, referencia_id, salida, saldo_resultante, descripcion)
                        VALUES (?, 'RENDICION', ?, ?, ?, 'Rendición aprobada')";
             $stmtMov = $conn->prepare($sqlMov);

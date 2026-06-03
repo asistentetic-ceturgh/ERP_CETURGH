@@ -3988,144 +3988,69 @@ CREATE TABLE cajas_chicas (
     empresa_id INT,
     sede_id INT,
     centro_costo_id INT,
-
     codigo VARCHAR(50),
-
     monto_base DECIMAL(10,2),
     saldo_actual DECIMAL(10,2),
-
-    estado ENUM(
-        'ACTIVA',
-        'AGOTADA',
-        'PENDIENTE_APERTURA',
-        'CERRADA'
-    ) DEFAULT 'PENDIENTE_APERTURA',
-
+    estado ENUM('ACTIVA','AGOTADA','PENDIENTE_APERTURA','CERRADA') DEFAULT 'PENDIENTE_APERTURA',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE solicitudes_caja (
     id INT AUTO_INCREMENT PRIMARY KEY,
-
     caja_id INT NULL,
-
-    tipo ENUM(
-        'APERTURA',
-        'RECARGA',
-        'CIERRE'
-    ),
-
+    tipo ENUM('APERTURA','RECARGA','CIERRE'),
     empresa_id INT,
     sede_id INT,
     centro_costo_id INT,
-
     monto DECIMAL(10,2),
-
     motivo TEXT,
-
-    estado ENUM(
-        'PENDIENTE_ADMIN',
-        'APROBADO_ADMIN',
-        'RECHAZADO_ADMIN',
-        'PENDIENTE_TESORERIA',
-        'PAGADO',
-        'ANULADO'
-    ) DEFAULT 'PENDIENTE_ADMIN',
-
+    codigo_solicitado VARCHAR(100) NULL,
+    estado ENUM('PENDIENTE_ADMIN','APROBADO_ADMIN','RECHAZADO_ADMIN','PENDIENTE_TESORERIA','PAGADO','ANULADO') DEFAULT 'PENDIENTE_ADMIN',
     aprobado_admin_por INT NULL,
     fecha_aprobacion_admin DATETIME NULL,
-
     pagado_por INT NULL,
     fecha_pago DATETIME NULL,
-
     voucher_pago VARCHAR(255) NULL,
-
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE movimientos_caja (
     id INT AUTO_INCREMENT PRIMARY KEY,
-
     caja_id INT,
-
-    tipo ENUM(
-        'APERTURA',
-        'RECARGA',
-        'GASTO',
-        'RENDICION',
-        'AJUSTE'
-    ),
-
+    tipo ENUM('APERTURA','RECARGA','GASTO','RENDICION','AJUSTE'),
     referencia_id INT NULL,
-
     descripcion TEXT,
-
     ingreso DECIMAL(10,2) DEFAULT 0,
     salida DECIMAL(10,2) DEFAULT 0,
-
     saldo_resultante DECIMAL(10,2),
-
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE rendiciones_caja (
     id INT AUTO_INCREMENT PRIMARY KEY,
-
     caja_id INT,
-
     numero VARCHAR(20),
-
     fecha_rendicion DATE,
-
     saldo_inicial DECIMAL(10,2),
     total_rendido DECIMAL(10,2),
     saldo_final DECIMAL(10,2),
-
-    estado ENUM(
-        'BORRADOR',
-        'ENVIADO',
-        'OBSERVADO',
-        'APROBADO'
-    ) DEFAULT 'BORRADOR',
-
+    estado ENUM('BORRADOR','ENVIADO','OBSERVADO','APROBADO') DEFAULT 'BORRADOR',
     created_by INT,
-
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE rendicion_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
-
     rendicion_id INT,
-
     fecha DATE,
-
     proveedor VARCHAR(255),
     ruc_dni VARCHAR(20),
-
-    tipo_documento ENUM(
-        'FACTURA',
-        'BOLETA',
-        'RXH',
-        'MOVILIDAD',
-        'OTROS'
-    ),
-
+    tipo_documento ENUM('FACTURA','BOLETA','RXH','MOVILIDAD','OTROS'),
     numero_documento VARCHAR(100),
-
     descripcion TEXT,
-
     monto DECIMAL(10,2),
-
     archivo VARCHAR(255) NULL
 );
-
-ALTER TABLE solicitudes_caja 
-ADD COLUMN codigo_solicitado VARCHAR(100) NULL AFTER motivo;
-ALTER TABLE solicitudes_caja 
-ADD COLUMN codigo_solicitado VARCHAR(100) NULL AFTER motivo;
-INSERT INTO correlativos (tipo, anio, numero_actual) VALUES ('REND', YEAR(CURDATE()), 0);
- 
-
+ALTER TABLE rendicion_items ADD COLUMN adjunto VARCHAR(255) NULL AFTER monto;
 
 

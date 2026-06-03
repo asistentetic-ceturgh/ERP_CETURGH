@@ -13,21 +13,25 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-$uploadDir = 'uploads/vouchers/';
+// Determinar subcarpeta según el campo (opcional)
+$campo = key($_FILES); // 'voucher', 'archivo', etc.
+$subDir = ($campo === 'voucher') ? 'vouchers/' : 'adjuntos_rendicion/';
+
+$uploadDir = 'uploads/' . $subDir;
 if (!file_exists($uploadDir)) {
     mkdir($uploadDir, 0777, true);
 }
 
-if (!isset($_FILES['voucher']) || $_FILES['voucher']['error'] !== UPLOAD_ERR_OK) {
+if (!isset($_FILES[$campo]) || $_FILES[$campo]['error'] !== UPLOAD_ERR_OK) {
     echo json_encode(["ok" => false, "error" => "Error al subir el archivo"]);
     exit();
 }
 
-$extension = pathinfo($_FILES['voucher']['name'], PATHINFO_EXTENSION);
-$nombreUnico = 'voucher_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
+$extension = pathinfo($_FILES[$campo]['name'], PATHINFO_EXTENSION);
+$nombreUnico = uniqid() . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
 $rutaDestino = $uploadDir . $nombreUnico;
 
-if (move_uploaded_file($_FILES['voucher']['tmp_name'], $rutaDestino)) {
+if (move_uploaded_file($_FILES[$campo]['tmp_name'], $rutaDestino)) {
     echo json_encode(["ok" => true, "filepath" => $rutaDestino]);
 } else {
     echo json_encode(["ok" => false, "error" => "No se pudo guardar el archivo"]);

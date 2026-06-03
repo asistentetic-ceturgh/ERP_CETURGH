@@ -1,16 +1,18 @@
 <?php
-ob_clean();
-header("Content-Type: application/json");
+// Configuración CORS mejorada
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Max-Age: 3600");
+header("Content-Type: application/json");
 
-require_once "db.php";
-
+// Manejar preflight requests (OPTIONS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+
+require_once "db.php";
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -62,6 +64,10 @@ if ($method === 'GET') {
         $result = $stmt->get_result();
         $solicitudes = [];
         while ($row = $result->fetch_assoc()) {
+            // Asegurar que el ID sea numérico
+            if ($row['id'] === null || $row['id'] === 0) {
+                continue; // Saltar registros con ID inválido
+            }
             $solicitudes[] = $row;
         }
         echo json_encode(["ok" => true, "data" => $solicitudes]);
@@ -88,7 +94,7 @@ if ($method === 'POST') {
         $motivo = $input['motivo'];
         $caja_id = isset($input['caja_id']) ? intval($input['caja_id']) : null;
         $created_by = isset($input['created_by']) ? intval($input['created_by']) : 1;
-        $codigo_solicitado = isset($input['codigo']) ? trim($input['codigo']) : null; // Nuevo campo
+        $codigo_solicitado = isset($input['codigo']) ? trim($input['codigo']) : null;
         
         if ($tipo === 'APERTURA') {
             if (!$empresa_id || !$sede_id || !$centro_costo_id) {
@@ -106,14 +112,30 @@ if ($method === 'POST') {
         $sql = "INSERT INTO solicitudes_caja 
                 (caja_id, tipo, empresa_id, sede_id, centro_costo_id, monto, motivo, estado, created_by, codigo_solicitado)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("isiiidssis", $caja_id, $tipo, $empresa_id, $sede_id, $centro_costo_id, $monto, $motivo, $estado, $created_by, $codigo_solicitado);
+        if (!$stmt) {
+            throw new Exception("Error preparando la consulta: " . $conn->error);
+        }
+        
+        $stmt->bind_param("isiiidssis", 
+            $caja_id, 
+            $tipo, 
+            $empresa_id, 
+            $sede_id, 
+            $centro_costo_id, 
+            $monto, 
+            $motivo, 
+            $estado, 
+            $created_by, 
+            $codigo_solicitado
+        );
         
         if ($stmt->execute()) {
             $id = $conn->insert_id;
             echo json_encode(["ok" => true, "id" => $id, "message" => "Solicitud creada"]);
         } else {
-            throw new Exception($stmt->error);
+            throw new Exception("Error ejecutando: " . $stmt->error);
         }
     } catch (Exception $e) {
         echo json_encode(["ok" => false, "error" => $e->getMessage()]);
@@ -125,28 +147,56 @@ if ($method === 'POST') {
 if ($method === 'PUT') {
     try {
         $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-        $input = json_decode(file_get_contents('php://input'), true);
-        $accion = $input['accion'] ?? '';
-        $usuario_id = intval($input['usuario_id'] ?? 1);
         
-        if (!$id || !in_array($accion, ['aprobar_admin', 'rechazar_admin', 'pagar'])) {
-            throw new Exception("Acción inválida");
+        // Validar ID
+        if ($id <= 0) {
+            throw new Exception("ID de solicitud inválido: " . $id);
+        }
+        
+        $raw_input = file_get_contents('php://input');
+        if (empty($raw_input)) {
+            throw new Exception("No se recibieron datos");
+        }
+        
+        $input = json_decode($raw_input, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("Error decodificando JSON: " . json_last_error_msg());
+        }
+        
+        $accion = isset($input['accion']) ? trim($input['accion']) : '';
+        $usuario_id = isset($input['usuario_id']) ? intval($input['usuario_id']) : 0;
+        $voucher = isset($input['voucher']) ? $input['voucher'] : null;
+        
+        // Normalizar acción
+        $accion = strtolower($accion);
+        $acciones_validas = ['aprobar_admin', 'rechazar_admin', 'pagar'];
+        
+        if (!in_array($accion, $acciones_validas)) {
+            throw new Exception("Acción inválida: '$accion'. Acciones válidas: " . implode(', ', $acciones_validas));
+        }
+        
+        if ($usuario_id <= 0) {
+            throw new Exception("Usuario no válido: " . $usuario_id);
         }
         
         $conn->begin_transaction();
         
+        // Verificar que la solicitud existe
         $sqlSel = "SELECT * FROM solicitudes_caja WHERE id = ? FOR UPDATE";
         $stmtSel = $conn->prepare($sqlSel);
         $stmtSel->bind_param("i", $id);
         $stmtSel->execute();
-        $solicitud = $stmtSel->get_result()->fetch_assoc();
+        $result = $stmtSel->get_result();
+        $solicitud = $result->fetch_assoc();
+        
         if (!$solicitud) {
-            throw new Exception("Solicitud no encontrada");
+            throw new Exception("Solicitud no encontrada con ID: " . $id);
         }
         
+        // Procesar según acción
         if ($accion === 'aprobar_admin') {
             if ($solicitud['estado'] !== 'PENDIENTE_ADMIN') {
-                throw new Exception("La solicitud no está pendiente de admin");
+                throw new Exception("La solicitud no está pendiente de admin. Estado actual: " . $solicitud['estado']);
             }
             $nuevo_estado = 'APROBADO_ADMIN';
             $sqlUp = "UPDATE solicitudes_caja SET estado = ?, aprobado_admin_por = ?, fecha_aprobacion_admin = NOW() WHERE id = ?";
@@ -156,7 +206,7 @@ if ($method === 'PUT') {
         } 
         elseif ($accion === 'rechazar_admin') {
             if ($solicitud['estado'] !== 'PENDIENTE_ADMIN') {
-                throw new Exception("La solicitud no está pendiente de admin");
+                throw new Exception("La solicitud no está pendiente de admin. Estado actual: " . $solicitud['estado']);
             }
             $nuevo_estado = 'RECHAZADO_ADMIN';
             $sqlUp = "UPDATE solicitudes_caja SET estado = ?, aprobado_admin_por = ?, fecha_aprobacion_admin = NOW() WHERE id = ?";
@@ -166,9 +216,11 @@ if ($method === 'PUT') {
         }
         elseif ($accion === 'pagar') {
             if (!in_array($solicitud['estado'], ['APROBADO_ADMIN', 'PENDIENTE_TESORERIA'])) {
-                throw new Exception("La solicitud no está lista para pago");
+                throw new Exception("La solicitud no está lista para pago. Estado actual: " . $solicitud['estado']);
             }
-            $voucher = $input['voucher'] ?? null;
+            if (!$voucher) {
+                throw new Exception("Se requiere voucher de pago");
+            }
             $nuevo_estado = 'PAGADO';
             $sqlUp = "UPDATE solicitudes_caja SET estado = ?, pagado_por = ?, fecha_pago = NOW(), voucher_pago = ? WHERE id = ?";
             $stmtUp = $conn->prepare($sqlUp);
@@ -212,7 +264,8 @@ if ($method === 'PUT') {
         }
         
         $conn->commit();
-        echo json_encode(["ok" => true, "message" => "Solicitud actualizada"]);
+        echo json_encode(["ok" => true, "message" => "Solicitud actualizada exitosamente"]);
+        
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(["ok" => false, "error" => $e->getMessage()]);

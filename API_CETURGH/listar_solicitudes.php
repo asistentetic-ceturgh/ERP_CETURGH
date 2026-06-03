@@ -54,16 +54,9 @@ SELECT
     
 FROM solicitudes_fondo sf
 
-/* SOLICITANTE */
 LEFT JOIN usuarios u ON u.id = sf.solicitante_id
-
-/* QUIEN FIRMÓ LA SOLICITUD (JEFE) */
 LEFT JOIN usuarios f ON f.id = sf.firmado_por
-
-/* QUIEN APROBÓ (ADMINISTRACION) */
 LEFT JOIN usuarios a ON a.id = sf.aprobado_por
-
-/* QUIEN PAGÓ (TESORERIA) */
 LEFT JOIN usuarios p ON p.id = sf.pagado_por
 
 ORDER BY sf.created_at DESC

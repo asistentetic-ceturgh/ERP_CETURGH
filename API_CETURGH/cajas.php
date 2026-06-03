@@ -14,6 +14,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
+
+if (isset($_GET['id'])) {
+        $id = intval($_GET['id']);
+        $sql = "SELECT c.*,
+                       e.nombre as empresa_nombre,
+                       s.nombre as sede_nombre,
+                       cc.nombre as centro_costo_nombre
+                FROM cajas_chicas c
+                LEFT JOIN empresas e ON c.empresa_id = e.id
+                LEFT JOIN sedes s ON c.sede_id = s.id
+                LEFT JOIN centros_costos cc ON c.centro_costo_id = cc.id
+                WHERE c.id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $caja = $result->fetch_assoc();
+        echo json_encode(["ok" => true, "data" => $caja]);
+        exit();
+    }
     $sql = "
         SELECT 
             c.*,
