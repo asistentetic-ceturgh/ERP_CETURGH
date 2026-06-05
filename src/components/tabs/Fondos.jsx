@@ -118,8 +118,15 @@ const Fondos = ({ user }) => {
 
     // Los gastos NO se pueden editar si la solicitud ya fue enviada a rendición o pagada
     const puedeEditarGasto = () => {
+        if (!viewingReq) return false;
         const estadosBloqueados = ["POR_DEVOLVER", "POR_REEMBOLSAR", "CERRADO", "RECHAZADO"];
-        return !estadosBloqueados.includes(viewingReq?.estado);
+        if (estadosBloqueados.includes(viewingReq.estado)) return false;
+
+        if (viewingReq.tipo === "REEMBOLSO") {
+            return viewingReq.estado === "PENDIENTE";
+        } else {
+            return viewingReq.estado === "PAGADO" || viewingReq.estado === "EN_RENDICION";
+        }
     };
 
     const registrarDevolucion = async () => {
@@ -540,21 +547,43 @@ const Fondos = ({ user }) => {
     const montoSolicitado = Number(viewingReq?.monto_solicitado || viewingReq?.monto || 0);
     const montoRendidoReal = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
     const diferenciaMonto = montoSolicitado - montoRendidoReal;
-
     // ===================== FILTRADO Y PAGINACIÓN =====================
     const registrosFiltrados = useMemo(() => {
         if (!Array.isArray(registros)) return [];
+
+        console.log("=== DEPURACIÓN ===");
+        console.log("activeTab:", activeTab);
+        console.log("departamentoActivoId:", currentUser?.departamento_id);
+        console.log("Total registros:", registros.length);
+
+        if (registros.length > 0) {
+            console.log("Primer registro - departamento_id:", registros[0]?.departamento_id);
+            console.log("Primer registro - solicitante_departamento_id:", registros[0]?.solicitante_departamento_id);
+        }
 
         let filtered = registros.filter(reg => {
             if (activeTab === 'general') {
                 return puedeVerGeneral;
             }
+
             if (activeTab === 'mis') {
-                return Number(reg.solicitante_id) === Number(currentUserId);
+                // Usar el departamento_id de la solicitud (el que guardaste al crear)
+                const departamentoUsuario = currentUser?.departamento_id;
+                const departamentoSolicitud = reg.departamento_id; // ← CAMBIA ESTO
+
+                console.log(`Comparando: Usuario Dept=${departamentoUsuario} vs Solicitud Dept=${departamentoSolicitud} - ${reg.codigo}`);
+
+                if (!departamentoSolicitud || !departamentoUsuario) return false;
+
+                return Number(departamentoUsuario) === Number(departamentoSolicitud);
             }
+
             return false;
         });
 
+        console.log("Registros filtrados:", filtered.length);
+
+        // Aplicar filtro de búsqueda por texto
         if (searchText.trim() !== '') {
             const term = searchText.toLowerCase();
             filtered = filtered.filter(reg =>
@@ -566,14 +595,17 @@ const Fondos = ({ user }) => {
             );
         }
 
+        // Aplicar filtro por tipo de solicitud
         if (selTipo !== 'todos') {
             filtered = filtered.filter(reg => reg.tipo === selTipo);
         }
 
+        // Aplicar filtro por estado
         if (selEstado !== 'todos') {
             filtered = filtered.filter(reg => reg.estado === selEstado);
         }
 
+        // Ordenar por fecha
         const sorted = [...filtered];
         sorted.sort((a, b) => {
             const dateA = new Date(a.created_at);
@@ -582,7 +614,7 @@ const Fondos = ({ user }) => {
         });
 
         return sorted;
-    }, [registros, activeTab, currentUserId, puedeVerGeneral, searchText, selTipo, selEstado, fechaOrder]);
+    }, [registros, activeTab, currentUser?.departamento_id, puedeVerGeneral, searchText, selTipo, selEstado, fechaOrder]);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -957,12 +989,11 @@ const Fondos = ({ user }) => {
             { key: "CERRADO", title: "Proceso Cerrado", desc: "Solicitud finalizada correctamente." }
         ]
         : [
-            { key: "SIN_FIRMAR", title: "Solicitud Registrada", desc: "Solicitud creada por el departamento solicitante." },
-            { key: "PENDIENTE", title: "Firma de Jefe", desc: "Jefe de departamento firmó la solicitud." },
-            { key: "APROBADO", title: "Aprobación Administrativa", desc: "ADMINISTRACION validó la solicitud." },
-            { key: "EN_RENDICION", title: "Sustento Enviado", desc: "El solicitante adjuntó los comprobantes de gastos." },
-            { key: "POR_REEMBOLSAR", title: "Pendiente de Pago", desc: "Tesorería debe realizar el reembolso." },
-            { key: "CERRADO", title: "Proceso Finalizado", desc: "Solicitud cerrada correctamente." }
+            { key: "SIN_FIRMAR", title: "Solicitud Registrada", desc: "Creada por el solicitante." },
+            { key: "PENDIENTE", title: "Firma de Jefe", desc: "Jefe de departamento firmó." },
+            { key: "EN_RENDICION", title: "Rendición Enviada", desc: "El solicitante adjuntó los comprobantes." },
+            { key: "APROBADO", title: "Aprobación Administrativa", desc: "Administración validó la rendición." },
+            { key: "CERRADO", title: "Proceso Finalizado", desc: "Tesorería realizó el pago." }
         ];
 
     // ===================== MODALES DE SOLICITUD =====================
@@ -1070,8 +1101,8 @@ const Fondos = ({ user }) => {
                             <Coins className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold tracking-tight text-slate-900">Gestión de Fondos</h1>
-                            <p className="text-xs text-slate-500 font-medium mt-0.5">Solicitudes · Rendiciones · Fondos</p>
+                            <h1 className="text-xl font-bold tracking-tight text-slate-900">Gestión de Reembolsos</h1>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">Solicitudes · Rendiciones · Reembolsos</p>
                         </div>
                     </div>
 
@@ -1703,17 +1734,12 @@ const Fondos = ({ user }) => {
                                         </h4>
                                         {/* Botón Agregar Gasto - SOLO para el solicitante y según el tipo/estado */}
                                         {Number(currentUserId) === Number(viewingReq?.solicitante_id) && puedeEditarGasto() && (
-                                            (viewingReq.tipo === "ADELANTO" && (viewingReq.estado === "PAGADO" || viewingReq.estado === "EN_RENDICION")) ||
-                                            (viewingReq.tipo === "VIATICOS" && (viewingReq.estado === "PAGADO" || viewingReq.estado === "EN_RENDICION")) ||
-                                            (viewingReq.tipo === "REEMBOLSO" && (viewingReq.estado === "APROBADO" || viewingReq.estado === "EN_RENDICION"))
-                                        ) && (
-                                                <button
-                                                    onClick={abrirModalNuevoGasto}
-                                                    className="bg-[#800000] hover:bg-[#650000] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
-                                                >
-                                                    <Plus size={13} /> Agregar Gasto
-                                                </button>
-                                            )}
+                                            <button onClick={abrirModalNuevoGasto}
+                                                className="bg-[#800000] hover:bg-[#650000] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                                            >
+                                                <Plus size={13} /> Agregar Gasto
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div className="overflow-x-auto">
@@ -1823,30 +1849,36 @@ const Fondos = ({ user }) => {
                                 )}
 
                                 {/* APROBAR y RECHAZAR - ADMINISTRACION */}
-                                {puedeAprobar && viewingReq.estado === "PENDIENTE" && (
-                                    <>
-                                        <button onClick={() => ejecutarFlujo("APROBAR", viewingReq.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">
-                                            Aprobar
-                                        </button>
-                                        <button onClick={() => setShowRejectModal(true)} className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-xl text-xs font-bold transition-colors">
-                                            Rechazar
-                                        </button>
-                                    </>
-                                )}
+                                {puedeAprobar && (
+                                    (viewingReq.tipo !== "REEMBOLSO" && viewingReq.estado === "PENDIENTE") ||
+                                    (viewingReq.tipo === "REEMBOLSO" && viewingReq.estado === "EN_RENDICION")
+                                ) && (
+                                        <>
+                                            <button onClick={() => ejecutarFlujo("APROBAR", viewingReq.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">
+                                                Aprobar
+                                            </button>
+                                            <button onClick={() => setShowRejectModal(true)} className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-xl text-xs font-bold transition-colors">
+                                                Rechazar
+                                            </button>
+                                        </>
+                                    )}
 
                                 {/* REGISTRAR PAGO - TESORERIA para ANTICIPO y VIATICOS (cuando está APROBADO) */}
-                                {puedePagar && (viewingReq.tipo === "ADELANTO" || viewingReq.tipo === "VIATICOS") && viewingReq.estado === "APROBADO" && (
-                                    <button onClick={() => setShowPagoModal(true)} className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">
-                                        Registrar Pago
-                                    </button>
-                                )}
+                                {puedePagar && (
+                                    ((viewingReq.tipo === "ADELANTO" || viewingReq.tipo === "VIATICOS") && viewingReq.estado === "APROBADO") ||
+                                    (viewingReq.tipo === "REEMBOLSO" && viewingReq.estado === "APROBADO")
+                                ) && (
+                                        <button onClick={() => setShowPagoModal(true)} className="bg-amber-500 ...">
+                                            Registrar Pago
+                                        </button>
+                                    )}
 
                                 {/* ENVIAR RENDICIÓN A TESORERÍA - SOLICITANTE después de cargar gastos */}
                                 {gastos.length > 0 &&
                                     Number(currentUserId) === Number(viewingReq?.solicitante_id) &&
                                     (
                                         ((viewingReq.tipo === "ADELANTO" || viewingReq.tipo === "VIATICOS") && viewingReq.estado === "PAGADO") ||
-                                        (viewingReq.tipo === "REEMBOLSO" && viewingReq.estado === "APROBADO")
+                                        (viewingReq.tipo === "REEMBOLSO" && viewingReq.estado === "PENDIENTE")   // ← Cambio aquí
                                     ) && (
                                         <button onClick={enviarRendicionATesoreria} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5">
                                             <Send size={13} /> Enviar Rendición a Tesorería
@@ -2168,6 +2200,8 @@ const Fondos = ({ user }) => {
                     </div>
                 </div>
             )}
+
+
         </div>
     );
 };

@@ -116,27 +116,12 @@ const Usuarios = () => {
     // DEPARTAMENTOS
     // =========================
     const fetchDepartamentos = async () => {
-
         try {
-
-            const res = await fetch(
-                API + "departamentos.php"
-            );
-
-            const text = await res.text();
-
-            if (!text) return;
-
-            const data = JSON.parse(text);
-
+            const res = await fetch(API + "departamentos.php?todos=1");
+            const data = await res.json();
             setDepartamentos(data);
-
         } catch (error) {
-
-            console.error(
-                "Error cargando departamentos:",
-                error
-            );
+            console.error("Error cargando departamentos:", error);
         }
     };
 
@@ -145,9 +130,9 @@ const Usuarios = () => {
     // =========================
     const filteredUsuarios = useMemo(() => {
         if (searchText.trim() === "") return usuarios;
-        
+
         const term = searchText.toLowerCase();
-        return usuarios.filter(u => 
+        return usuarios.filter(u =>
             u.nombre?.toLowerCase().includes(term) ||
             u.correo?.toLowerCase().includes(term)
         );
@@ -603,7 +588,7 @@ const Usuarios = () => {
                                     {/* TELÉFONO */}
                                     <td className="px-6 py-4 text-gray-600 text-center text-sm">
                                         {u.telefono || "-"}
-                                     </td>
+                                    </td>
 
                                     {/* DEPARTAMENTOS */}
                                     <td className="px-6 py-4 max-w-[220px]">
@@ -618,9 +603,9 @@ const Usuarios = () => {
                                                     <span className="truncate">{dep.nombre}</span>
                                                 </div>
                                             ))}
-                                            
+
                                             {u.departamentos && u.departamentos.length > 2 && (
-                                                <div 
+                                                <div
                                                     className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-[10px] font-bold text-blue-600 cursor-help"
                                                     title={u.departamentos.slice(2).map(d => d.nombre).join(', ')}
                                                 >
@@ -632,7 +617,7 @@ const Usuarios = () => {
                                                 <span className="text-xs text-gray-400 italic">Ninguno</span>
                                             )}
                                         </div>
-                                     </td>
+                                    </td>
 
                                     {/* ACCIONES */}
                                     <td className="px-6 py-4">
@@ -664,11 +649,11 @@ const Usuarios = () => {
                                                 <Trash2 size={18} />
                                             </button>
                                         </div>
-                                     </td>
-                                 </tr>
+                                    </td>
+                                </tr>
                             ))}
                         </tbody>
-                     </table>
+                    </table>
                 </div>
 
                 {filteredUsuarios.length === 0 && (

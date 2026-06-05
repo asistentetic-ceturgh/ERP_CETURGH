@@ -886,7 +886,23 @@ export default function CajaChica() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {cajas.map((c) => {
-                  const porcentajeGastado = ((c.monto_base - c.saldo_actual) / c.monto_base) * 100;
+                  const montoBase = parseFloat(c.monto_base);
+                  const saldoActual = parseFloat(c.saldo_actual);
+                  let porcentajeGastado = 0;
+
+                  if (saldoActual >= montoBase) {
+                    // Si el saldo es mayor o igual al base (después de recarga), porcentaje 0%
+                    porcentajeGastado = 0;
+                  } else if (saldoActual <= 0) {
+                    // Si el saldo es 0 o negativo, porcentaje 100%
+                    porcentajeGastado = 100;
+                  } else {
+                    // Cálculo normal
+                    porcentajeGastado = ((montoBase - saldoActual) / montoBase) * 100;
+                  }
+
+                  // Asegurar que el porcentaje esté entre 0 y 100
+                  porcentajeGastado = Math.max(0, Math.min(100, porcentajeGastado));
                   const esCritico = porcentajeGastado >= 90;
 
                   return (

@@ -4054,3 +4054,175 @@ CREATE TABLE rendicion_items (
 ALTER TABLE rendicion_items ADD COLUMN adjunto VARCHAR(255) NULL AFTER monto;
 
 
+----------------------------------------------------------------------------------------
+
+-- ==========================================
+-- PASO 1: RESPALDAR DATOS IMPORTANTES
+-- ==========================================
+-- EJECUTAR ESTO PRIMERO EN TU PHPMyAdmin O MySQL
+-- Crear tablas temporales de respaldo
+CREATE TABLE departamentos_backup_20260605 AS SELECT * FROM departamentos;
+CREATE TABLE requerimientos_backup_20260605 AS SELECT * FROM requerimientos;
+CREATE TABLE planilla_movilidad_backup_20260605 AS SELECT * FROM planilla_movilidad;
+
+-- ==========================================
+-- PASO 2: CREAR TABLA DE PRESUPUESTOS HISTÓRICOS
+-- ==========================================
+CREATE TABLE IF NOT EXISTS `presupuestos_historicos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `departamento_id` int(11) NOT NULL,
+  `mes` int(2) NOT NULL,
+  `anio` int(4) NOT NULL,
+  `presupuesto_asignado` decimal(10,2) DEFAULT 0.00,
+  `fecha_registro` datetime DEFAULT CURRENT_TIMESTAMP,
+  `registrado_por` int(11) DEFAULT NULL,
+  `nota` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_periodo` (`departamento_id`, `mes`, `anio`),
+  KEY `idx_departamento` (`departamento_id`),
+  KEY `idx_fecha` (`anio`, `mes`),
+  FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- ==========================================
+-- PASO 3: MIGRAR PRESUPUESTOS ACTUALES AL MES CORRIENTE (JUNIO 2026)
+-- ==========================================
+INSERT INTO presupuestos_historicos (departamento_id, mes, anio, presupuesto_asignado, registrado_por, nota)
+SELECT 
+  d.id,
+  6 as mes,  -- Junio
+  2026 as anio,
+  d.presupuesto as presupuesto_asignado,
+  1 as registrado_por,  -- Usuario administrador (ID 1)
+  'Presupuesto inicial migrado desde tabla departamentos'
+FROM departamentos d
+WHERE d.presupuesto > 0
+ON DUPLICATE KEY UPDATE 
+  presupuesto_asignado = VALUES(presupuesto_asignado),
+  nota = CONCAT(nota, ' - Actualizado: ', NOW());
+
+-- ==========================================
+-- PASO 4: MIGRAR PRESUPUESTOS PARA MESES ANTERIORES (MAYO 2026 y anteriores)
+-- ==========================================
+
+-- 4.1 Obtener meses con gastos en REQUERIMIENTOS
+INSERT INTO presupuestos_historicos (departamento_id, mes, anio, presupuesto_asignado, registrado_por, nota)
+SELECT DISTINCT
+  r.departamento_id,
+  MONTH(r.fecha) as mes,
+  YEAR(r.fecha) as anio,
+  d.presupuesto as presupuesto_asignado,
+  1 as registrado_por,
+  'Presupuesto histórico basado en gastos de requerimientos'
+FROM requerimientos r
+INNER JOIN departamentos d ON d.id = r.departamento_id
+WHERE r.fecha IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM presupuestos_historicos ph 
+    WHERE ph.departamento_id = r.departamento_id 
+    AND ph.mes = MONTH(r.fecha) 
+    AND ph.anio = YEAR(r.fecha)
+  )
+ON DUPLICATE KEY UPDATE 
+  presupuesto_asignado = VALUES(presupuesto_asignado);
+
+-- 4.2 Obtener meses con gastos en MOVILIDADES
+INSERT INTO presupuestos_historicos (departamento_id, mes, anio, presupuesto_asignado, registrado_por, nota)
+SELECT DISTINCT
+  pm.departamento_id,
+  MONTH(pm.fecha) as mes,
+  YEAR(pm.fecha) as anio,
+  d.presupuesto as presupuesto_asignado,
+  1 as registrado_por,
+  'Presupuesto histórico basado en gastos de movilidades'
+FROM planilla_movilidad pm
+INNER JOIN departamentos d ON d.id = pm.departamento_id
+WHERE pm.fecha IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM presupuestos_historicos ph 
+    WHERE ph.departamento_id = pm.departamento_id 
+    AND ph.mes = MONTH(pm.fecha) 
+    AND ph.anio = YEAR(pm.fecha)
+  )
+ON DUPLICATE KEY UPDATE 
+  presupuesto_asignado = VALUES(presupuesto_asignado);
+
+-- ==========================================
+-- PASO 5: VERIFICAR MIGRACIÓN
+-- ==========================================
+
+-- Ver cuántos registros se migraron
+SELECT 
+  'Total registros en presupuestos_historicos' as concepto,
+  COUNT(*) as cantidad 
+FROM presupuestos_historicos;
+
+-- Ver distribución por mes/año
+SELECT 
+  anio, 
+  mes, 
+  COUNT(*) as cantidad_departamentos,
+  SUM(presupuesto_asignado) as total_presupuesto
+FROM presupuestos_historicos
+GROUP BY anio, mes
+ORDER BY anio DESC, mes DESC;
+
+-- Ver departamentos que NO tienen presupuesto histórico
+SELECT d.id, d.nombre, d.presupuesto
+FROM departamentos d
+LEFT JOIN presupuestos_historicos ph ON ph.departamento_id = d.id
+WHERE ph.id IS NULL
+AND d.presupuesto > 0;
+
+-- ==========================================
+-- PASO 6: CREAR VISTA PARA REPORTE MENSUAL (OPCIONAL)
+-- ==========================================
+CREATE OR REPLACE VIEW vista_resumen_mensual AS
+SELECT 
+  d.id as departamento_id,
+  d.nombre as departamento_nombre,
+  ph.mes,
+  ph.anio,
+  ph.presupuesto_asignado,
+  COALESCE((
+    SELECT SUM(i.total) 
+    FROM items i
+    JOIN requerimientos r ON r.id = i.requerimiento_id
+    WHERE r.departamento_id = d.id
+    AND i.estado_pago = 'Pagado'
+    AND MONTH(r.fecha) = ph.mes
+    AND YEAR(r.fecha) = ph.anio
+  ), 0) as gastado_items,
+  COALESCE((
+    SELECT SUM(pm.monto_total)
+    FROM planilla_movilidad pm
+    WHERE pm.departamento_id = d.id
+    AND pm.estado = 'Pagado'
+    AND MONTH(pm.fecha) = ph.mes
+    AND YEAR(pm.fecha) = ph.anio
+  ), 0) as gastado_movilidad,
+  ph.presupuesto_asignado - (
+    COALESCE((
+      SELECT SUM(i.total) 
+      FROM items i
+      JOIN requerimientos r ON r.id = i.requerimiento_id
+      WHERE r.departamento_id = d.id
+      AND i.estado_pago = 'Pagado'
+      AND MONTH(r.fecha) = ph.mes
+      AND YEAR(r.fecha) = ph.anio
+    ), 0) +
+    COALESCE((
+      SELECT SUM(pm.monto_total)
+      FROM planilla_movilidad pm
+      WHERE pm.departamento_id = d.id
+      AND pm.estado = 'Pagado'
+      AND MONTH(pm.fecha) = ph.mes
+      AND YEAR(pm.fecha) = ph.anio
+    ), 0)
+  ) as saldo
+FROM departamentos d
+CROSS JOIN presupuestos_historicos ph
+WHERE ph.departamento_id = d.id;
+
+-- Mostrar resultados de la vista (verificación)
+SELECT * FROM vista_resumen_mensual ORDER BY anio DESC, mes DESC, departamento_nombre;
