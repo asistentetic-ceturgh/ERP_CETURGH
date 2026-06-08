@@ -61,7 +61,7 @@ const Movilidad = ({ user }) => {
     const [empresa, setEmpresa] = useState("EDUTUR");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [detalles, setDetalles] = useState([{ fecha: "", monto: "" }]);
+    const [detalles, setDetalles] = useState([{ fecha: "", monto: "", origen: "", destino: "" }]);
 
     // =====================
     // PERMISOS
@@ -179,9 +179,14 @@ const Movilidad = ({ user }) => {
             sede_id: sedeMap[sede],
             departamento_id: user?.departamento_id,
             motivo: form.get("motivo"),
-            origen: form.get("origen"),
-            destino: form.get("destino"),
-            detalles: detalles.filter(d => d.fecha && d.monto).map(d => ({ fecha: d.fecha, monto: Number(d.monto) })),
+            origen: form.get("origen"), // Este origen general aún se mantiene
+            destino: form.get("destino"), // Este destino general aún se mantiene
+            detalles: detalles.filter(d => d.fecha && d.monto && d.origen && d.destino).map(d => ({
+                fecha: d.fecha,
+                monto: Number(d.monto),
+                origen: d.origen,
+                destino: d.destino
+            })),
             creador_id: currentUser?.id
         };
 
@@ -204,7 +209,7 @@ const Movilidad = ({ user }) => {
                 setPlanillaMovilidad(prev => [nuevaMovilidad, ...prev]);
                 loadMovilidad();
                 setShowMovilidadModal(false);
-                setDetalles([{ fecha: "", monto: "" }]);
+                setDetalles([{ fecha: "", monto: "", origen: "", destino: "" }]);
             } else {
                 throw new Error(data.error || "Error al guardar");
             }
@@ -218,7 +223,7 @@ const Movilidad = ({ user }) => {
     // =====================
     // DETALLES
     // =====================
-    const addDetalle = () => setDetalles(prev => [...prev, { fecha: "", monto: "" }]);
+    const addDetalle = () => setDetalles(prev => [...prev, { fecha: "", monto: "", origen: "", destino: "" }]);
     const removeDetalle = (index) => setDetalles(prev => prev.filter((_, i) => i !== index));
     const updateDetalle = (index, field, value) => {
         const copy = [...detalles];
@@ -360,10 +365,10 @@ const Movilidad = ({ user }) => {
     };
 
     const generarPDF = async (movilidad) => {
- 
         const doc = new jsPDF();
         const mainColor = [128, 0, 0];
         const goldColor = [212, 175, 55];
+
         doc.setFillColor(...mainColor);
         doc.rect(0, 0, 210, 40, 'F');
         doc.setTextColor(255, 255, 255);
@@ -388,26 +393,99 @@ const Movilidad = ({ user }) => {
         doc.text("Fecha Emisión:", 140, 50);
         doc.setFont("helvetica", "normal");
         doc.text(String(movilidad.fecha || "-"), 170, 50);
+
         doc.setDrawColor(...goldColor);
         doc.line(14, 62, 196, 62);
-        const filas = (movilidad.detalles || []).map(d => ([
-            d.fecha,
-            movilidad.usuario_nombre || "Trabajador",
-            movilidad.usuario_dni || "-",
-            movilidad.motivo,
-            `${movilidad.origen} - ${movilidad.destino}`,
-            { content: `S/ ${Number(d.monto).toFixed(2)}`, styles: { fontStyle: 'bold', halign: 'right' } }
-        ]));
-        autoTable(doc, {
-            startY: 70,
-            head: [["Fecha", "Trabajador", "DNI", "Motivo", "Ruta", "Importe"]],
-            body: filas,
-            headStyles: { fillColor: mainColor, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
-            styles: { fontSize: 8, cellPadding: 4 },
-            alternateRowStyles: { fillColor: [245, 245, 245] }
+
+        // ============================================
+        // INFORMACIÓN GENERAL DE LA MOVILIDAD
+        // ============================================
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text("Motivo:", 14, 70);
+        doc.setFont("helvetica", "normal");
+        doc.text(movilidad.motivo || "-", 40, 70);
+
+        doc.setFont("helvetica", "bold");
+        doc.text("Ruta General:", 14, 76);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${movilidad.origen || "-"} → ${movilidad.destino || "-"}`, 50, 76);
+
+        // ============================================
+        // TABLA DE DETALLES POR DÍA
+        // ============================================
+        // Verificar si los detalles tienen origen/destino o usar los generales
+        const tieneDetallesConRuta = (movilidad.detalles || []).some(d => d.origen || d.destino);
+
+        let headColumns = ["Fecha", "Importe", "Trabajador"];
+        let columnStyles = {
+            0: { cellWidth: 30 },
+            1: { cellWidth: 30, halign: 'right' },
+            2: { cellWidth: 40 }
+        };
+
+        if (tieneDetallesConRuta) {
+            // Si hay detalles con ruta específica, mostrar columnas completas
+            headColumns = ["Fecha", "Origen del Día", "Destino del Día", "Trabajador", "Importe"];
+            columnStyles = {
+                0: { cellWidth: 25 },
+                1: { cellWidth: 42 },
+                2: { cellWidth: 42 },
+                3: { cellWidth: 38 },
+                4: { cellWidth: 28, halign: 'right' }
+            };
+        }
+
+        const filas = (movilidad.detalles || []).map(d => {
+            if (tieneDetallesConRuta && (d.origen || d.destino)) {
+                // Detalles con ruta específica
+                return [
+                    d.fecha || "-",
+                    d.origen || movilidad.origen || "-",
+                    d.destino || movilidad.destino || "-",
+                    movilidad.usuario_nombre || "Trabajador",
+                    { content: `S/ ${Number(d.monto).toFixed(2)}`, styles: { fontStyle: 'bold', halign: 'right' } }
+                ];
+            } else {
+                // Detalles antiguos o sin ruta específica, usar ruta general
+                return [
+                    d.fecha || "-",
+                    { content: `S/ ${Number(d.monto).toFixed(2)}`, styles: { fontStyle: 'bold', halign: 'right' } },
+                    movilidad.usuario_nombre || "Trabajador"
+                ];
+            }
         });
+
+        // Agregar nota si se está usando la ruta general
+        if (!tieneDetallesConRuta && (movilidad.detalles || []).length > 0) {
+            doc.setFontSize(7);
+            doc.setFont("helvetica", "italic");
+            doc.setTextColor(100, 100, 100);
+            doc.text("* Aplicando ruta general a todos los días", 14, 90);
+            autoTable(doc, {
+                startY: 94,
+                head: [headColumns],
+                body: filas,
+                headStyles: { fillColor: mainColor, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
+                styles: { fontSize: 8, cellPadding: 4 },
+                alternateRowStyles: { fillColor: [245, 245, 245] },
+                columnStyles: columnStyles
+            });
+        } else {
+            autoTable(doc, {
+                startY: 82,
+                head: [headColumns],
+                body: filas,
+                headStyles: { fillColor: mainColor, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
+                styles: { fontSize: 8, cellPadding: 4 },
+                alternateRowStyles: { fillColor: [245, 245, 245] },
+                columnStyles: columnStyles
+            });
+        }
+
         const finalY = doc.lastAutoTable.finalY;
         const total = (movilidad.detalles || []).reduce((acc, d) => acc + Number(d.monto || 0), 0);
+
         doc.setFillColor(240, 240, 240);
         doc.rect(140, finalY + 5, 56, 12, 'F');
         doc.setFontSize(11);
@@ -415,6 +493,8 @@ const Movilidad = ({ user }) => {
         doc.setTextColor(...mainColor);
         doc.text("TOTAL:", 145, finalY + 13);
         doc.text(`S/ ${total.toFixed(2)}`, 190, finalY + 13, { align: "right" });
+
+        // Firmas (igual que antes)
         let firmaSolicitante = null;
         let firmaAprobador = null;
         try {
@@ -423,12 +503,15 @@ const Movilidad = ({ user }) => {
         } catch (error) {
             console.error("Error cargando firmas:", error);
         }
+
         const firmaY = 260;
         doc.setDrawColor(180, 180, 180);
         doc.line(30, firmaY, 80, firmaY);
         doc.line(130, firmaY, 180, firmaY);
-        if (firmaSolicitante) try { doc.addImage(firmaSolicitante, 'PNG', 32, firmaY - 18, 45, 15); } catch (e) {}
-        if (firmaAprobador) try { doc.addImage(firmaAprobador, 'PNG', 132, firmaY - 18, 45, 15); } catch (e) {}
+
+        if (firmaSolicitante) try { doc.addImage(firmaSolicitante, 'PNG', 32, firmaY - 18, 45, 15); } catch (e) { }
+        if (firmaAprobador) try { doc.addImage(firmaAprobador, 'PNG', 132, firmaY - 18, 45, 15); } catch (e) { }
+
         doc.setFontSize(9);
         doc.setTextColor(100, 100, 100);
         doc.setFont("helvetica", "bold");
@@ -440,6 +523,7 @@ const Movilidad = ({ user }) => {
         doc.setFontSize(7);
         doc.setFont("helvetica", "italic");
         doc.text("Documento generado digitalmente - Copia interna", 105, 285, { align: "center" });
+
         doc.save(`Planilla_Movilidad_${movilidad.id}.pdf`);
     };
 
@@ -523,7 +607,7 @@ const Movilidad = ({ user }) => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {paginatedData.map(m => (
-                                        <tr key={m.id} onClick={() => { setViewMovilidad(m); setEditMovilidadData(m); setDetalles(m.detalles || [{ fecha: "", monto: "" }]); setEditingMovilidad(false); }} className="hover:bg-slate-50/80 transition-colors cursor-pointer group">
+                                        <tr key={m.id} onClick={() => { setViewMovilidad(m); setEditMovilidadData(m); setDetalles(m.detalles || [{ fecha: "", monto: "", origen: "", destino: "" }]); setEditingMovilidad(false); }} className="hover:bg-slate-50/80 transition-colors cursor-pointer group">
                                             <td className="px-6 py-4"><div className="flex items-center gap-2"><Calendar size={14} className="text-slate-400" /><span className="text-sm font-medium text-slate-700">{m.fecha}</span></div></td>
                                             <td className="px-6 py-4"><div className="flex flex-col"><span className="text-xs font-bold text-[#800000] uppercase tracking-tight">{m.empresa}</span><span className="text-sm text-slate-600 line-clamp-1">{m.motivo}</span></div></td>
                                             <td className="px-6 py-4"><span className="text-xs font-bold text-slate-600 uppercase">{m.departamento_nombre || m.departamento || `DEPTO #${m.departamento_id}`}</span></td>
@@ -636,15 +720,67 @@ const Movilidad = ({ user }) => {
                                 </div>
                                 <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                                     {detalles.map((d, i) => (
-                                        <div key={i} className="flex gap-3 items-center group animate-in slide-in-from-left-2 duration-200">
-                                            <div className="flex-1 grid grid-cols-2 gap-3">
-                                                <input type="date" value={d.fecha} onChange={(e) => updateDetalle(i, "fecha", e.target.value)} className="p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 ring-blue-100 outline-none" required />
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">S/</span>
-                                                    <input type="number" value={d.monto} onChange={(e) => { let val = Number(e.target.value); if (val > 41) val = 41; updateDetalle(i, "monto", val); }} className="w-full p-3 pl-8 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 ring-blue-100 outline-none" placeholder="0.00" required />
+                                        <div key={i} className="flex flex-col gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 group animate-in slide-in-from-left-2 duration-200">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-xs font-bold text-[#800000]">Día {i + 1}</span>
+                                                {detalles.length > 1 && (
+                                                    <button type="button" onClick={() => removeDetalle(i)} className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                                        <X size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Fecha</label>
+                                                    <input
+                                                        type="date"
+                                                        value={d.fecha}
+                                                        onChange={(e) => updateDetalle(i, "fecha", e.target.value)}
+                                                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 ring-blue-100 outline-none"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Origen</label>
+                                                    <input
+                                                        type="text"
+                                                        value={d.origen}
+                                                        onChange={(e) => updateDetalle(i, "origen", e.target.value)}
+                                                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 ring-blue-100 outline-none"
+                                                        placeholder="Ej. Piura"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Destino</label>
+                                                    <input
+                                                        type="text"
+                                                        value={d.destino}
+                                                        onChange={(e) => updateDetalle(i, "destino", e.target.value)}
+                                                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 ring-blue-100 outline-none"
+                                                        placeholder="Ej. Sullana"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Monto (S/)</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">S/</span>
+                                                        <input
+                                                            type="number"
+                                                            value={d.monto}
+                                                            onChange={(e) => {
+                                                                let val = Number(e.target.value);
+                                                                if (val > 41) val = 41;
+                                                                updateDetalle(i, "monto", val);
+                                                            }}
+                                                            className="w-full p-2 pl-8 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 ring-blue-100 outline-none"
+                                                            placeholder="0.00"
+                                                            required
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
-                                            {detalles.length > 1 && <button type="button" onClick={() => removeDetalle(i)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><X size={18} /></button>}
                                         </div>
                                     ))}
                                 </div>
@@ -713,8 +849,44 @@ const Movilidad = ({ user }) => {
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden"><div className="absolute top-0 left-0 w-1.5 h-full bg-[#800000]" /><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Concepto Detallado</p><p className="text-xl font-bold text-slate-800 leading-relaxed italic">"{viewMovilidad.motivo}"</p></div>
                                     <div className="flex flex-col md:flex-row items-center gap-4 bg-white p-2 rounded-[2.5rem] border border-slate-200 shadow-sm"><div className="flex-1 p-6 text-center md:text-left"><p className="text-[10px] text-slate-400 uppercase font-black mb-1">Origen</p><p className="font-bold text-slate-700 text-lg">{viewMovilidad.origen}</p></div><div className="bg-slate-100 p-3 rounded-full text-slate-400 transform rotate-90 md:rotate-0"><ArrowRight size={20} /></div><div className="flex-1 p-6 text-center md:text-right"><p className="text-[10px] text-slate-400 uppercase font-black mb-1">Destino</p><p className="font-bold text-slate-700 text-lg">{viewMovilidad.destino}</p></div></div>
-                                    <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm"><div className="flex justify-between items-center mb-4"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Detalle de Gastos</p><span className="text-xs font-bold text-slate-400">{viewMovilidad.detalles?.length || 0} registros</span></div><div className="space-y-3 max-h-52 overflow-y-auto pr-2 custom-scrollbar">{(viewMovilidad.detalles || []).map((d, i) => (<div key={i} className="flex justify-between items-center bg-slate-50 border border-slate-200 rounded-xl px-4 py-3"><div className="flex flex-col"><span className="text-[10px] font-bold text-slate-400 uppercase">Fecha</span><span className="text-sm font-black text-slate-700">{d.fecha}</span></div><div className="text-right"><span className="text-[10px] font-bold text-slate-400 uppercase">Monto</span><span className="text-sm font-black text-[#800000] block">S/ {Number(d.monto).toFixed(2)}</span></div></div>))}</div><div className="mt-5 pt-3 border-t border-slate-200 flex justify-end"><div className="px-5 py-2 bg-slate-100 rounded-xl border border-slate-200"><span className="text-xs font-black text-slate-500 mr-2">TOTAL:</span><span className="text-lg font-black text-[#800000]">S/ {(viewMovilidad.detalles || []).reduce((acc, d) => acc + Number(d.monto || 0), 0).toFixed(2)}</span></div></div></div>
-                                </div>
+                                    <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Detalle de Gastos por Día</p>
+                                            <span className="text-xs font-bold text-slate-400">{viewMovilidad.detalles?.length || 0} registros</span>
+                                        </div>
+                                        <div className="space-y-3 max-h-52 overflow-y-auto pr-2 custom-scrollbar">
+                                            {(viewMovilidad.detalles || []).map((d, i) => (
+                                                <div key={i} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                                        <div>
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase">Fecha</span>
+                                                            <p className="text-sm font-black text-slate-700">{d.fecha}</p>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase">Origen</span>
+                                                            <p className="text-sm font-bold text-slate-800">{d.origen || '-'}</p>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase">Destino</span>
+                                                            <p className="text-sm font-bold text-slate-800">{d.destino || '-'}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase">Monto</span>
+                                                            <p className="text-sm font-black text-[#800000]">S/ {Number(d.monto).toFixed(2)}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="mt-5 pt-3 border-t border-slate-200 flex justify-end">
+                                            <div className="px-5 py-2 bg-slate-100 rounded-xl border border-slate-200">
+                                                <span className="text-xs font-black text-slate-500 mr-2">TOTAL:</span>
+                                                <span className="text-lg font-black text-[#800000]">
+                                                    S/ {(viewMovilidad.detalles || []).reduce((acc, d) => acc + Number(d.monto || 0), 0).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div> </div>
                             ) : (
                                 <div className="bg-amber-50/50 p-8 rounded-[2.5rem] border-2 border-amber-200 space-y-6 animate-in zoom-in-95 duration-300">
                                     <div className="flex items-center gap-3 mb-2"><div className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center text-amber-700"><Edit3 size={16} /></div><h4 className="font-black text-amber-800 text-sm uppercase tracking-tighter">Modo Edición Activado</h4></div>
@@ -723,9 +895,114 @@ const Movilidad = ({ user }) => {
                                         <label><span className="text-[10px] font-black text-amber-800/60 uppercase ml-4">Punto de Origen</span><input value={editMovilidadData.origen} onChange={(e) => setEditMovilidadData(prev => ({ ...prev, origen: e.target.value }))} className="w-full mt-1 p-4 bg-white border-2 border-amber-100 rounded-2xl font-bold focus:border-amber-400 outline-none shadow-sm" /></label>
                                         <label><span className="text-[10px] font-black text-amber-800/60 uppercase ml-4">Punto de Destino</span><input value={editMovilidadData.destino} onChange={(e) => setEditMovilidadData(prev => ({ ...prev, destino: e.target.value }))} className="w-full mt-1 p-4 bg-white border-2 border-amber-100 rounded-2xl font-bold focus:border-amber-400 outline-none shadow-sm" /></label>
                                         <div className="col-span-full bg-white p-6 rounded-[2rem] border border-amber-200 shadow-inner">
-                                            <div className="flex justify-between items-center mb-4"><span className="text-[11px] font-black text-amber-800 uppercase tracking-widest">Detalle de Gastos</span><button type="button" onClick={() => setEditMovilidadData(prev => ({ ...prev, detalles: [...(prev.detalles || []), { fecha: '', monto: '' }] }))} className="px-4 py-1.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black hover:bg-amber-200 transition">+ Añadir</button></div>
-                                            <div className="space-y-3 max-h-52 overflow-y-auto pr-2">{(editMovilidadData.detalles || []).map((d, i) => (<div key={i} className="flex gap-3 items-center"><div className="flex-1 grid grid-cols-2 gap-3"><input type="date" value={d.fecha} onChange={(e) => { const nuevos = [...editMovilidadData.detalles]; nuevos[i].fecha = e.target.value; setEditMovilidadData(prev => ({ ...prev, detalles: nuevos })); }} className="p-3 bg-white border border-amber-200 rounded-xl text-sm font-bold outline-none focus:ring-2 ring-amber-200" required /><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-600 font-bold text-sm">S/</span><input type="number" value={d.monto} onChange={(e) => { let val = Number(e.target.value); if (val > 41) val = 41; const nuevos = [...editMovilidadData.detalles]; nuevos[i].monto = val; setEditMovilidadData(prev => ({ ...prev, detalles: nuevos })); }} className="w-full p-3 pl-8 bg-white border border-amber-200 rounded-xl text-sm font-bold outline-none focus:ring-2 ring-amber-200" placeholder="0.00" required /></div></div>{(editMovilidadData.detalles || []).length > 1 && (<button type="button" onClick={() => { const nuevos = editMovilidadData.detalles.filter((_, idx) => idx !== i); setEditMovilidadData(prev => ({ ...prev, detalles: nuevos })); }} className="p-2 text-amber-400 hover:text-red-500 hover:bg-red-50 rounded-lg"><X size={18} /></button>)}</div>))}</div>
-                                            <div className="mt-5 pt-3 border-t border-amber-200 flex justify-end"><div className="px-5 py-2 bg-amber-50 rounded-xl border border-amber-200"><span className="text-xs font-black text-amber-700 mr-2">TOTAL:</span><span className="text-lg font-black text-[#800000]">S/ {(editMovilidadData.detalles || []).reduce((acc, d) => acc + Number(d.monto || 0), 0).toFixed(2)}</span></div></div>
+                                            <div className="flex justify-between items-center mb-4">
+                                                <span className="text-[11px] font-black text-amber-800 uppercase tracking-widest">Detalle de Gastos por Día</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditMovilidadData(prev => ({
+                                                        ...prev,
+                                                        detalles: [...(prev.detalles || []), { fecha: '', monto: '', origen: '', destino: '' }]
+                                                    }))}
+                                                    className="px-4 py-1.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black hover:bg-amber-200 transition"
+                                                >
+                                                    + Añadir Día
+                                                </button>
+                                            </div>
+                                            <div className="space-y-4 max-h-52 overflow-y-auto pr-2">
+                                                {(editMovilidadData.detalles || []).map((d, i) => (
+                                                    <div key={i} className="p-4 bg-amber-50/50 rounded-xl border border-amber-100">
+                                                        <div className="flex justify-between items-center mb-3">
+                                                            <span className="text-xs font-bold text-amber-800">Día {i + 1}</span>
+                                                            {(editMovilidadData.detalles || []).length > 1 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const nuevos = editMovilidadData.detalles.filter((_, idx) => idx !== i);
+                                                                        setEditMovilidadData(prev => ({ ...prev, detalles: nuevos }));
+                                                                    }}
+                                                                    className="p-1 text-amber-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                                            <div>
+                                                                <label className="text-[9px] font-bold text-amber-700 block mb-1">Fecha</label>
+                                                                <input
+                                                                    type="date"
+                                                                    value={d.fecha}
+                                                                    onChange={(e) => {
+                                                                        const nuevos = [...editMovilidadData.detalles];
+                                                                        nuevos[i].fecha = e.target.value;
+                                                                        setEditMovilidadData(prev => ({ ...prev, detalles: nuevos }));
+                                                                    }}
+                                                                    className="w-full p-2 bg-white border border-amber-200 rounded-xl text-sm font-bold outline-none focus:ring-2 ring-amber-200"
+                                                                    required
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[9px] font-bold text-amber-700 block mb-1">Origen</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={d.origen || ''}
+                                                                    onChange={(e) => {
+                                                                        const nuevos = [...editMovilidadData.detalles];
+                                                                        nuevos[i].origen = e.target.value;
+                                                                        setEditMovilidadData(prev => ({ ...prev, detalles: nuevos }));
+                                                                    }}
+                                                                    className="w-full p-2 bg-white border border-amber-200 rounded-xl text-sm font-bold outline-none focus:ring-2 ring-amber-200"
+                                                                    placeholder="Ej. Piura"
+                                                                    required
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[9px] font-bold text-amber-700 block mb-1">Destino</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={d.destino || ''}
+                                                                    onChange={(e) => {
+                                                                        const nuevos = [...editMovilidadData.detalles];
+                                                                        nuevos[i].destino = e.target.value;
+                                                                        setEditMovilidadData(prev => ({ ...prev, detalles: nuevos }));
+                                                                    }}
+                                                                    className="w-full p-2 bg-white border border-amber-200 rounded-xl text-sm font-bold outline-none focus:ring-2 ring-amber-200"
+                                                                    placeholder="Ej. Sullana"
+                                                                    required
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[9px] font-bold text-amber-700 block mb-1">Monto (S/)</label>
+                                                                <div className="relative">
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-600 font-bold text-sm">S/</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={d.monto}
+                                                                        onChange={(e) => {
+                                                                            let val = Number(e.target.value);
+                                                                            if (val > 41) val = 41;
+                                                                            const nuevos = [...editMovilidadData.detalles];
+                                                                            nuevos[i].monto = val;
+                                                                            setEditMovilidadData(prev => ({ ...prev, detalles: nuevos }));
+                                                                        }}
+                                                                        className="w-full p-2 pl-8 bg-white border border-amber-200 rounded-xl text-sm font-bold outline-none focus:ring-2 ring-amber-200"
+                                                                        placeholder="0.00"
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="mt-5 pt-3 border-t border-amber-200 flex justify-end">
+                                                <div className="px-5 py-2 bg-amber-50 rounded-xl border border-amber-200">
+                                                    <span className="text-xs font-black text-amber-700 mr-2">TOTAL:</span>
+                                                    <span className="text-lg font-black text-[#800000]">
+                                                        S/ {(editMovilidadData.detalles || []).reduce((acc, d) => acc + Number(d.monto || 0), 0).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex gap-4 pt-4"><button onClick={guardarEdicionMovilidad} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-emerald-900/20 transition-all active:scale-95">GUARDAR CAMBIOS</button><button onClick={() => setEditingMovilidad(false)} className="px-8 py-4 bg-white text-slate-500 border border-slate-200 rounded-2xl font-black text-sm hover:bg-slate-100 transition-all">CANCELAR</button></div>

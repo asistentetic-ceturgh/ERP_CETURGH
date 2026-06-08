@@ -5,6 +5,7 @@ import {
     ArrowUp, ArrowDown, Building2, ChevronDown, Receipt, Send, Package, Edit3
 } from 'lucide-react';
 import { API_BASE } from "../../config/api";
+import DocumentViewer from './DocumentViewer';
 
 const API = API_BASE;
 const FONDO_ASIGNADO = 10000;
@@ -45,6 +46,9 @@ const Fondos = ({ user }) => {
     const [sedeSeleccionada, setSedeSeleccionada] = useState("");
     const [showDevolucionModal, setShowDevolucionModal] = useState(false);
     const [archivoDevolucion, setArchivoDevolucion] = useState(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerFiles, setViewerFiles] = useState([]);
+    const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
 
     // ===================== FILTROS =====================
     const [searchText, setSearchText] = useState('');
@@ -110,6 +114,13 @@ const Fondos = ({ user }) => {
 
     // SOLO se puede firmar si está SIN_FIRMAR
     const puedeFirmar = viewingReq && Number(currentUserId) === Number(viewingReq.solicitante_id) && esJefe && viewingReq?.estado === "SIN_FIRMAR";
+
+    const openDocumentViewer = (filePath) => {
+        if (!filePath) return;
+        setViewerFiles([filePath]);
+        setViewerInitialIndex(0);
+        setViewerOpen(true);
+    };
 
     // SOLO se puede editar si está SIN_FIRMAR (aún no se ha firmado)
     const puedeEditarSolicitud = (solicitud) => {
@@ -1796,7 +1807,7 @@ const Fondos = ({ user }) => {
 
                                 {/* ADJUNTOS DE RENDICIÓN Y TESORERÍA */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Rendición */}
+                                    {/* Archivos de Rendición - VERSIÓN MODIFICADA */}
                                     {rendiciones.length > 0 && (
                                         <div className="border border-slate-200/60 rounded-xl p-4 bg-white shadow-sm">
                                             <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider mb-3">Archivos de Rendición</h4>
@@ -1804,22 +1815,34 @@ const Fondos = ({ user }) => {
                                                 {rendiciones.map(arch => (
                                                     <div key={arch.id} className="flex justify-between items-center bg-slate-50 hover:bg-slate-100/80 px-3 py-2 rounded-lg border border-slate-100 transition-colors group">
                                                         <span className="text-xs font-medium text-slate-600 truncate max-w-[80%]">{arch.nombre_original}</span>
-                                                        <a href={`${API}${arch.ruta}`} target="_blank" rel="noreferrer" className="text-[#800000] hover:underline text-xs font-bold tracking-wider shrink-0 pl-2">VER</a>
+                                                        <button
+                                                            onClick={() => openDocumentViewer(arch.ruta)}
+                                                            className="text-[#800000] hover:underline text-xs font-bold tracking-wider shrink-0 pl-2"
+                                                        >
+                                                            VER
+                                                        </button>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* Tesorería */}
+                                    {/* Archivos de Tesorería - VERSIÓN MODIFICADA */}
                                     {archivosTesoreria.length > 0 && (
                                         <div className="border border-slate-200/60 rounded-xl p-4 bg-white shadow-sm">
                                             <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider mb-3">Archivos de Tesorería</h4>
                                             <div className="space-y-1.5">
                                                 {archivosTesoreria.map(arch => (
                                                     <div key={arch.id} className="flex justify-between items-center bg-slate-50 hover:bg-slate-100/80 px-3 py-2 rounded-lg border border-slate-100 transition-colors group">
-                                                        <span className="text-xs font-medium text-slate-600 truncate max-w-[80%]">{arch.nombre_original} <span className="text-slate-400 font-normal">({arch.tipo})</span></span>
-                                                        <a href={`${API}${arch.ruta}`} target="_blank" rel="noreferrer" className="text-slate-800 hover:underline text-xs font-bold tracking-wider shrink-0 pl-2">VER</a>
+                                                        <span className="text-xs font-medium text-slate-600 truncate max-w-[80%]">
+                                                            {arch.nombre_original} <span className="text-slate-400 font-normal">({arch.tipo})</span>
+                                                        </span>
+                                                        <button
+                                                            onClick={() => openDocumentViewer(arch.ruta)}
+                                                            className="text-slate-800 hover:underline text-xs font-bold tracking-wider shrink-0 pl-2"
+                                                        >
+                                                            VER
+                                                        </button>
                                                     </div>
                                                 ))}
                                             </div>
@@ -2199,6 +2222,16 @@ const Fondos = ({ user }) => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Visor de documentos integrado */}
+            {viewerOpen && (
+                <DocumentViewer
+                    files={viewerFiles}
+                    initialIndex={viewerInitialIndex}
+                    onClose={() => setViewerOpen(false)}
+                    apiBase={API}
+                />
             )}
 
 

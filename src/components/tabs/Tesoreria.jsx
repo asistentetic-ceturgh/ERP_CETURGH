@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Users, Receipt, Truck, ChevronDown, Calendar, Download, FileDown,
   CheckCircle2, AlertCircle, Building2, MapPin,
-  Wallet, ArrowRightCircle, FileText
+  Wallet, ArrowRightCircle, FileText, Eye
 } from 'lucide-react';
 
 import { API_BASE } from "../../config/api";
-
+import DocumentViewer from './DocumentViewer'; 
 const API = API_BASE;
 
 // Componente FileUploader  
@@ -32,7 +32,7 @@ const FileUploader = ({ grupoId, tipo, onUpload }) => {
         onClick={() => fileInputRef.current.click()}
         className="text-[11px] bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md font-semibold transition"
       >
-        + Agregar {tipo === 'comprobante' ? 'comprobante' : 'guía'}
+        + Agregar {tipo === 'comprobante' ? 'comprobante' : 'Sustento'}
       </button>
       <input
         type="file"
@@ -68,6 +68,9 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
   const [sedeSeleccionada, setSedeSeleccionada] = useState(null);
   const [tipoVista, setTipoVista] = useState("PENDIENTE");
   const [filtroIGV, setFiltroIGV] = useState("TODOS"); // TODOS, CON_IGV, SIN_IGV
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerFiles, setViewerFiles] = useState([]);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
 
   // --- FETCH PAGOS ---
   const fetchPagos = async () => {
@@ -157,6 +160,14 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
     } catch (error) {
       console.error("ERROR pagar grupo:", error);
     }
+  };
+
+  const openDocumentViewer = (urls, index = 0) => {
+    if (!urls || urls.length === 0) return;
+    const filesArray = Array.isArray(urls) ? urls : urls.split(',').map(u => u.trim());
+    setViewerFiles(filesArray.filter(f => f));
+    setViewerInitialIndex(index);
+    setViewerOpen(true);
   };
 
   // --- GENERAR ORDEN DE COMPRA (envía incluye_igv) ---
@@ -463,10 +474,15 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
                                           <div className="font-black text-base text-gray-800 bg-white px-4 py-1.5 rounded-lg shadow-sm">Total: S/ {grupo.montoTotal.toFixed(2)}</div>
                                         </div>
                                         <div className="mt-3 flex flex-wrap items-center gap-3">
+                                          {/* Enlaces de comprobantes - NUEVO VERSIÓN CON VISOR */}
                                           {comprobantesUrls.map((url, idx) => (
-                                            <a key={idx} href={API + `descargar_comprobante.php?file=${url.trim()}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-blue-700 text-[11px] font-bold bg-blue-50 px-3 py-1.5 rounded-md hover:underline">
+                                            <button
+                                              key={idx}
+                                              onClick={() => openDocumentViewer(comprobantesUrls, idx)}
+                                              className="inline-flex items-center gap-1.5 text-blue-700 text-[11px] font-bold bg-blue-50 px-3 py-1.5 rounded-md hover:bg-blue-100 transition"
+                                            >
                                               <FileDown size={12} /> Comprobante {idx + 1}
-                                            </a>
+                                            </button>
                                           ))}
                                           <FileUploader grupoId={grupo.grupo_id} tipo="comprobante" onUpload={async (id, files) => { for (const f of files) await subirComprobanteGrupo(id, f); fetchPagos(); }} />
                                         </div>
@@ -479,10 +495,15 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
                                             <ArrowRightCircle size={14} /> {grupoPagado ? "Pagado" : "Pagar Grupo"}
                                           </button>
                                           <div className="flex flex-wrap items-center gap-3">
+                                            {/* Enlaces de guías - NUEVO VERSIÓN CON VISOR */}
                                             {guiasUrls.map((url, idx) => (
-                                              <a key={idx} href={API + `descargar_guia.php?file=${url.trim()}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-emerald-700 text-[11px] font-bold bg-emerald-50 px-3 py-1.5 rounded-md hover:underline">
-                                                <Download size={12} /> Guía {idx + 1}
-                                              </a>
+                                              <button
+                                                key={idx}
+                                                onClick={() => openDocumentViewer(guiasUrls, idx)}
+                                                className="inline-flex items-center gap-1.5 text-emerald-700 text-[11px] font-bold bg-emerald-50 px-3 py-1.5 rounded-md hover:bg-emerald-100 transition"
+                                              >
+                                                <Eye size={12} /> Sustento {idx + 1}
+                                              </button>
                                             ))}
                                             <FileUploader grupoId={grupo.grupo_id} tipo="guia" onUpload={async (id, files) => { for (const f of files) await subirGuiaGrupo(id, f); fetchPagos(); }} />
                                           </div>
@@ -523,6 +544,16 @@ const Tesoreria = ({ setOrdenSeleccionada, setShowOrdenCompra }) => {
           </div>
         </div>
       </main>
+
+      {/* Visor de documentos integrado */}
+      {viewerOpen && (
+        <DocumentViewer
+          files={viewerFiles}
+          initialIndex={viewerInitialIndex}
+          onClose={() => setViewerOpen(false)}
+          apiBase={API}
+        />
+      )}
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }

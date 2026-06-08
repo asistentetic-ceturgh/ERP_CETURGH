@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 
 import { API_BASE } from "../../config/api";
-
+import DocumentViewer from './DocumentViewer';
 const API_BASE_URL = API_BASE;
 
 export default function CajaChica() {
@@ -14,6 +14,9 @@ export default function CajaChica() {
   const [userId, setUserId] = useState(storedUser.id || null);
   const [rolUsuario, setRolUsuario] = useState(storedUser.tipo || 'asistente');
   const [departamentoNombre, setDepartamentoNombre] = useState(storedUser.departamento || '');
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerFiles, setViewerFiles] = useState([]);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
 
   useEffect(() => {
     const updateUser = () => {
@@ -93,6 +96,13 @@ export default function CajaChica() {
   // -------------------- CÁLCULOS --------------------
   const totalRendido = itemsRendicion.reduce((acc, curr) => acc + (parseFloat(curr.monto) || 0), 0);
   const saldoCajaFinal = parseFloat(cabeceraRendicion.saldo_inicial) - totalRendido;
+
+  const openDocumentViewer = (filePath) => {
+    if (!filePath) return;
+    setViewerFiles([filePath]);
+    setViewerInitialIndex(0);
+    setViewerOpen(true);
+  };
 
   // -------------------- FUNCIONES DE CARGA --------------------
   const loadEmpresas = useCallback(async () => {
@@ -1057,14 +1067,12 @@ export default function CajaChica() {
                         </div>
 
                         {sol.voucher_pago && (
-                          <a
-                            href={`${API_BASE_URL}${sol.voucher_pago}`}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            onClick={() => openDocumentViewer(sol.voucher_pago)}
                             className="text-blue-600 hover:text-blue-800 text-[11px] font-bold inline-flex items-center gap-1 hover:underline bg-blue-50/50 px-2 py-0.5 rounded-md"
                           >
-                            Ver Voucher
-                          </a>
+                            <Eye size={12} /> Ver Voucher
+                          </button>
                         )}
                       </div>
 
@@ -1592,15 +1600,13 @@ export default function CajaChica() {
                                 />
                               </label>
                               {item.adjunto && (
-                                <a
-                                  href={`${API_BASE_URL}${item.adjunto}`}
-                                  target="_blank"
-                                  rel="noreferrer"
+                                <button
+                                  onClick={() => openDocumentViewer(item.adjunto)}
                                   className="p-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors font-bold text-[10px] inline-flex items-center gap-0.5"
                                 >
                                   <ExternalLink size={10} />
                                   Ver
-                                </a>
+                                </button>
                               )}
                             </div>
                           </td>
@@ -1838,15 +1844,13 @@ export default function CajaChica() {
                           {/* Adjunto */}
                           <td className="p-4 text-center">
                             {item.adjunto ? (
-                              <a
-                                href={`${API_BASE_URL}${item.adjunto}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={() => openDocumentViewer(item.adjunto)}
                                 className="inline-flex items-center gap-1 bg-white hover:bg-[#800000] text-slate-600 hover:text-white border border-slate-200 hover:border-[#800000] px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-2xs active:scale-95"
                               >
-                                <Paperclip size={12} className="opacity-70 group-hover:text-white" />
+                                <Eye size={12} className="opacity-70" />
                                 <span>Ver Adjunto</span>
-                              </a>
+                              </button>
                             ) : (
                               <span className="text-slate-300 font-bold font-mono">—</span>
                             )}
@@ -1878,6 +1882,15 @@ export default function CajaChica() {
 
           </div>
         </div>
+      )}
+
+      {viewerOpen && (
+        <DocumentViewer
+          files={viewerFiles}
+          initialIndex={viewerInitialIndex}
+          onClose={() => setViewerOpen(false)}
+          apiBase={API_BASE_URL}
+        />
       )}
 
       <style>{`

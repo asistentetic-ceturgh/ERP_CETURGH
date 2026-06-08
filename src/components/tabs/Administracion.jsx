@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { API_BASE } from "../../config/api";
+import DocumentViewer from './DocumentViewer';
 
 const API = API_BASE + "administracion.php";
 const IGV_RATE = 0.18; // 18%
@@ -33,6 +34,9 @@ const Administracion = () => {
     const [comentario, setComentario] = useState("");
     const [filtroEstado, setFiltroEstado] = useState("ADMINISTRACION");
     const [expandedReq, setExpandedReq] = useState(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerFiles, setViewerFiles] = useState([]);
+    const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
 
     // Estados para filtros
     const [minPrice, setMinPrice] = useState("");
@@ -78,6 +82,13 @@ const Administracion = () => {
     useEffect(() => {
         fetchItems();
     }, []);
+
+    const openDocumentViewer = (filePath) => {
+        if (!filePath) return;
+        setViewerFiles([filePath]);
+        setViewerInitialIndex(0);
+        setViewerOpen(true);
+    };
 
     // Filtro por estado
     const itemsFiltrados = items.filter(it => {
@@ -210,6 +221,65 @@ const Administracion = () => {
             fetchItems();
         } catch (err) {
             console.error("Error update:", err);
+        }
+    };
+
+    const aprobarTodosItems = async (req) => {
+        // Filtrar solo los items pendientes de aprobación en administración
+        const itemsPendientes = req.items.filter(it =>
+            it.flujo_estado === "ADMINISTRACION" &&
+            (it.estado_administracion || "PENDIENTE") === "PENDIENTE"
+        );
+
+        if (itemsPendientes.length === 0) {
+            alert("No hay items pendientes de aprobación en este requerimiento");
+            return;
+        }
+
+        // Confirmar con el usuario
+        const confirmar = confirm(
+            `¿Estás seguro de aprobar los ${itemsPendientes.length} items pendientes del requerimiento ${req.codigo}?`
+        );
+
+        if (!confirmar) return;
+
+        // Mostrar loading (opcional)
+        setLoading(true);
+
+        try {
+            // Procesar cada item pendiente
+            const resultados = await Promise.all(
+                itemsPendientes.map(item =>
+                    fetch(API, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            item_id: item.id,
+                            estado: "APROBADO",
+                            comentario: "Aprobación masiva desde administración"
+                        })
+                    }).then(res => res.json())
+                )
+            );
+
+            // Verificar si todos fueron exitosos
+            const todosExitosos = resultados.every(r => r.success);
+
+            if (todosExitosos) {
+                alert(`✅ Se aprobaron ${itemsPendientes.length} items correctamente`);
+            } else {
+                const errores = resultados.filter(r => !r.success);
+                alert(`⚠️ Se completaron ${resultados.length - errores.length} de ${itemsPendientes.length} items. Algunos fallaron.`);
+            }
+
+            // Recargar datos
+            await fetchItems();
+
+        } catch (err) {
+            console.error("Error en aprobación masiva:", err);
+            alert("❌ Error al procesar la aprobación masiva");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -420,7 +490,38 @@ const Administracion = () => {
                                                 <td className="px-6 py-5 text-sm text-slate-500">{req.empresa} <span className="mx-1 text-slate-300">|</span> {req.sede}</td>
                                                 <td className="px-6 py-5 text-right font-bold text-slate-900 text-base">S/ {totalReq.toFixed(2)}</td>
                                                 <td className="px-6 py-5 text-center"><Badge variant={req.flujo_estado}>{req.flujo_estado}</Badge></td>
-                                                <td className="px-6 py-5 text-center"><div className={`inline-flex p-2 rounded-full transition-all ${isExpanded ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>{isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</div></td>
+                                                <td className="px-6 py-5 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        {/* Botón de aprobar todos los items del requerimiento */}
+                                                        {req.items.some(it =>
+                                                            it.flujo_estado === "ADMINISTRACION" &&
+                                                            (it.estado_administracion || "PENDIENTE") === "PENDIENTE"
+                                                        ) && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        aprobarTodosItems(req);
+                                                                    }}
+                                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-all border border-emerald-200 text-xs font-bold"
+                                                                    title="Aprobar todos los items pendientes de este requerimiento"
+                                                                >
+                                                                    <CheckCircle2 size={14} />
+                                                                    Aprobar todo
+                                                                </button>
+                                                            )}
+
+                                                        {/* Botón de expandir original */}
+                                                        <div
+                                                            className={`inline-flex p-2 rounded-full transition-all cursor-pointer ${isExpanded ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setExpandedReq(isExpanded ? null : req.id);
+                                                            }}
+                                                        >
+                                                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                                        </div>
+                                                    </div>
+                                                </td>
                                             </tr>
                                             {isExpanded && (
                                                 <tr><td colSpan="7" className="px-8 py-6 bg-slate-50">
@@ -462,9 +563,15 @@ const Administracion = () => {
                                                                             <div className="flex justify-center gap-2">
                                                                                 {it.flujo_estado === "ADMINISTRACION" && (it.estado_administracion || "PENDIENTE") === "PENDIENTE" ? (
                                                                                     <>
-                                                                                        <button onClick={(e) => { e.stopPropagation(); cambiarEstado(it.id, "APROBADO"); }} className="p-2 bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100" title="Aprobar"><CheckCircle2 size={16} /></button>
-                                                                                        <button onClick={(e) => { e.stopPropagation(); setItemSeleccionado(it); setModalObs(true); }} className="p-2 bg-amber-50 text-amber-600 rounded-md hover:bg-amber-600 hover:text-white transition-all border border-amber-100" title="Observar"><AlertCircle size={16} /></button>
-                                                                                        <button onClick={(e) => { e.stopPropagation(); cambiarEstado(it.id, "DENEGADO"); }} className="p-2 bg-rose-50 text-rose-600 rounded-md hover:bg-rose-600 hover:text-white transition-all border border-rose-100" title="Denegar"><XCircle size={16} /></button>
+                                                                                        <button onClick={(e) => { e.stopPropagation(); cambiarEstado(it.id, "APROBADO"); }}
+                                                                                            className="p-2 bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100" title="Aprobar">
+                                                                                            <CheckCircle2 size={16} /></button>
+                                                                                        <button onClick={(e) => { e.stopPropagation(); setItemSeleccionado(it); setModalObs(true); }}
+                                                                                            className="p-2 bg-amber-50 text-amber-600 rounded-md hover:bg-amber-600 hover:text-white transition-all border border-amber-100" title="Observar">
+                                                                                            <AlertCircle size={16} /></button>
+                                                                                        <button onClick={(e) => { e.stopPropagation(); cambiarEstado(it.id, "DENEGADO"); }}
+                                                                                            className="p-2 bg-rose-50 text-rose-600 rounded-md hover:bg-rose-600 hover:text-white transition-all border border-rose-100" title="Denegar">
+                                                                                            <XCircle size={16} /></button>
                                                                                     </>
                                                                                 ) : <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest italic">Solo lectura</span>}
                                                                             </div>
@@ -602,7 +709,8 @@ const Administracion = () => {
                                             <img
                                                 src={`${API_BASE}${itemSeleccionado.archivo_adjunto}`}
                                                 alt="Adjunto"
-                                                className="w-16 h-16 object-cover rounded-lg border border-slate-200"
+                                                className="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80 transition"
+                                                onClick={() => openDocumentViewer(itemSeleccionado.archivo_adjunto)}
                                             />
                                         ) : (
                                             <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -613,14 +721,12 @@ const Administracion = () => {
                                             <p className="text-xs font-medium text-slate-700 truncate max-w-[200px]">
                                                 {itemSeleccionado.archivo_adjunto.split('/').pop()}
                                             </p>
-                                            <a
-                                                href={`${API_BASE}${itemSeleccionado.archivo_adjunto}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                            <button
+                                                onClick={() => openDocumentViewer(itemSeleccionado.archivo_adjunto)}
                                                 className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
                                             >
                                                 <Eye size={14} /> Ver archivo
-                                            </a>
+                                            </button>
                                         </div>
                                     </div>
                                 ) : (
@@ -642,6 +748,16 @@ const Administracion = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Visor de documentos integrado */}
+            {viewerOpen && (
+                <DocumentViewer
+                    files={viewerFiles}
+                    initialIndex={viewerInitialIndex}
+                    onClose={() => setViewerOpen(false)}
+                    apiBase={API_BASE}
+                />
             )}
         </div>
     );

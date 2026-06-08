@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 19-05-2026 a las 15:30:26
+-- Tiempo de generación: 05-06-2026 a las 22:24:57
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.0.30
 
@@ -72,6 +72,14 @@ CREATE TABLE `area_departamento` (
   `departamento_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
+--
+-- Volcado de datos para la tabla `area_departamento`
+--
+
+INSERT INTO `area_departamento` (`id`, `area_id`, `departamento_id`) VALUES
+(6, 9, 22),
+(7, 1, 22);
+
 -- --------------------------------------------------------
 
 --
@@ -102,94 +110,23 @@ CREATE TABLE `articulos` (
 CREATE TABLE `cajas_chicas` (
   `id` int(11) NOT NULL,
   `empresa_id` int(11) DEFAULT NULL,
+  `sede_id` int(11) DEFAULT NULL,
+  `centro_costo_id` int(11) DEFAULT NULL,
+  `codigo` varchar(50) DEFAULT NULL,
   `monto_base` decimal(10,2) DEFAULT NULL,
   `saldo_actual` decimal(10,2) DEFAULT NULL,
-  `fecha_actualizacion` timestamp NOT NULL DEFAULT current_timestamp(),
-  `sede_id` int(11) DEFAULT NULL,
-  `tipo` enum('TESORERIA','ALMACEN') DEFAULT NULL,
-  `centro_costo_id` int(11) DEFAULT NULL
+  `estado` enum('ACTIVA','AGOTADA','PENDIENTE_APERTURA','CERRADA') DEFAULT 'PENDIENTE_APERTURA',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `cajas_chicas`
 --
 
-INSERT INTO `cajas_chicas` (`id`, `empresa_id`, `monto_base`, `saldo_actual`, `fecha_actualizacion`, `sede_id`, `tipo`, `centro_costo_id`) VALUES
-(3, 2, 1000.00, 674.00, '2026-04-30 00:56:12', 3, 'TESORERIA', 29),
-(4, 1, 233.00, 265.00, '2026-05-16 06:19:34', 1, 'TESORERIA', 178),
-(5, 1, 233.00, 254.00, '2026-05-16 06:19:55', 2, 'ALMACEN', 329),
-(6, 1, 200.00, 220.00, '2026-05-18 14:58:50', 2, 'TESORERIA', 329);
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `caja_entregas`
---
-
-CREATE TABLE `caja_entregas` (
-  `id` int(11) NOT NULL,
-  `caja_id` int(11) DEFAULT NULL,
-  `persona` varchar(150) DEFAULT NULL,
-  `motivo` text DEFAULT NULL,
-  `monto` decimal(10,2) DEFAULT NULL,
-  `fecha` date DEFAULT NULL,
-  `estado` enum('PENDIENTE','RENDIDO') DEFAULT 'PENDIENTE',
-  `centro_costo_id` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Volcado de datos para la tabla `caja_entregas`
---
-
-INSERT INTO `caja_entregas` (`id`, `caja_id`, `persona`, `motivo`, `monto`, `fecha`, `estado`, `centro_costo_id`) VALUES
-(4, 3, 'JESSICA', 'PASAJES', 50.00, '2026-05-04', 'PENDIENTE', 1);
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `caja_recargas`
---
-
-CREATE TABLE `caja_recargas` (
-  `id` int(11) NOT NULL,
-  `caja_id` int(11) DEFAULT NULL,
-  `centro_costo_id` int(11) DEFAULT NULL,
-  `monto` decimal(10,2) DEFAULT NULL,
-  `fecha` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Volcado de datos para la tabla `caja_recargas`
---
-
-INSERT INTO `caja_recargas` (`id`, `caja_id`, `centro_costo_id`, `monto`, `fecha`) VALUES
-(1, 5, 329, 21.00, '2026-05-16 06:31:24'),
-(2, 4, 178, 12.00, '2026-05-16 06:35:22'),
-(3, 4, 178, 20.00, '2026-05-16 06:35:40'),
-(4, 6, 329, 20.00, '2026-05-18 14:59:09');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `caja_rendiciones`
---
-
-CREATE TABLE `caja_rendiciones` (
-  `id` int(11) NOT NULL,
-  `entrega_id` int(11) DEFAULT NULL,
-  `fecha` date DEFAULT NULL,
-  `monto` decimal(10,2) DEFAULT NULL,
-  `tipo_documento` varchar(50) DEFAULT NULL,
-  `descripcion` text DEFAULT NULL,
-  `comprobante_url` varchar(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Volcado de datos para la tabla `caja_rendiciones`
---
-
-INSERT INTO `caja_rendiciones` (`id`, `entrega_id`, `fecha`, `monto`, `tipo_documento`, `descripcion`, `comprobante_url`) VALUES
-(5, 4, '2026-05-18', 30.00, 'Factura', 'MONTO TOTAL DEL GASTADO DE PASAJES', 'uploads/comprobantes/1779116481_6a0b29c1efd1f.pdf');
+INSERT INTO `cajas_chicas` (`id`, `empresa_id`, `sede_id`, `centro_costo_id`, `codigo`, `monto_base`, `saldo_actual`, `estado`, `created_at`) VALUES
+(1, 1, 1, 158, 'TESORERIA_INSTITUTO', 1000.00, 787.00, 'ACTIVA', '2026-05-29 15:34:02'),
+(2, 1, 1, 158, 'TESORERIA_CETPRO_PIURA', 1000.00, 1000.00, 'ACTIVA', '2026-05-30 17:24:22'),
+(3, 2, 3, 98, 'ALMACEN_INSTITUTO', 500.00, 1000.00, 'ACTIVA', '2026-05-30 17:49:12');
 
 -- --------------------------------------------------------
 
@@ -242,7 +179,7 @@ CREATE TABLE `centros_costos` (
 --
 
 INSERT INTO `centros_costos` (`id`, `codigo`, `nombre`, `parent_id`, `empresa_id`, `sede_id`, `presupuesto`, `gastado`) VALUES
-(1, '1', 'GASTO ADMINISTRATIVO', NULL, 2, 3, 7000.00, 10.00),
+(1, '1', 'GASTO ADMINISTRATIVO', NULL, 2, 3, 7000.00, 20.00),
 (2, '1.1', 'PLANILLAS', 1, 2, 3, 0.00, 0.00),
 (3, '1.2', 'IMPUESTOS LABORALES', 1, 2, 3, 0.00, 0.00),
 (4, '1.3', 'SERVICIOS VARIOS', 1, 2, 3, 0.00, 0.00),
@@ -270,7 +207,7 @@ INSERT INTO `centros_costos` (`id`, `codigo`, `nombre`, `parent_id`, `empresa_id
 (26, '1.3.2', 'ASESORIA LEGAL', 4, 2, 3, 0.00, 0.00),
 (27, '1.3.3', 'SERVICIO LIMPIEZA', 4, 2, 3, 0.00, 0.00),
 (28, '1.3.4', 'OTRAS ASESORIAS', 4, 2, 3, 0.00, 0.00),
-(29, '1.4.1', 'CAJA CHICA', 5, 2, 3, 0.00, 0.00),
+(29, '1.4.1', 'CAJA CHICA', 5, 2, 3, 10000.00, 10.00),
 (30, '1.4.2', 'UTILES DE ESCRITORIO', 5, 2, 3, 0.00, 0.00),
 (31, '1.4.3', 'AGUA EN BIDON', 5, 2, 3, 0.00, 0.00),
 (32, '1.4.4', 'GASTOS NOTARIALES / LEGALES', 5, 2, 3, 0.00, 0.00),
@@ -372,7 +309,7 @@ INSERT INTO `centros_costos` (`id`, `codigo`, `nombre`, `parent_id`, `empresa_id
 (128, '2.2.10', 'OTROS SERVICIOS', 50, 2, 3, 0.00, 0.00),
 (129, '2.3.1', 'IMPUESTO PREDIAL ', 51, 2, 3, 0.00, 0.00),
 (130, '2.3.2', 'ARBITRIOS', 51, 2, 3, 0.00, 0.00),
-(131, '1', 'GASTO ADMINISTRATIVO', NULL, 1, 1, 0.00, 142.00),
+(131, '1', 'GASTO ADMINISTRATIVO', NULL, 1, 1, 0.00, 302.00),
 (132, '1.1', 'PLANILLAS', 131, 1, 1, 0.00, 48.00),
 (133, '1.1.1', 'PLANILLA ADMINISTRATIVA', 132, 1, 1, 0.00, 0.00),
 (134, '1.1.2', 'PLANILLA DOCENTE', 132, 1, 1, 0.00, 0.00),
@@ -399,7 +336,7 @@ INSERT INTO `centros_costos` (`id`, `codigo`, `nombre`, `parent_id`, `empresa_id
 (155, '1.3.3', 'SERVICIO LIMPIEZA', 152, 1, 1, 0.00, 0.00),
 (156, '1.3.4', 'OTRAS ASESORIAS', 152, 1, 1, 0.00, 0.00),
 (157, '1.4', 'OTROS GASTOS ADMINISTRATIVOS', 131, 1, 1, 0.00, 0.00),
-(158, '1.4.1', 'CAJA CHICA', 157, 1, 1, 0.00, 0.00),
+(158, '1.4.1', 'CAJA CHICA', 157, 1, 1, 10000.00, 50.00),
 (159, '1.4.2', 'UTILES DE ESCRITORIO', 157, 1, 1, 0.00, 0.00),
 (160, '1.4.3', 'AGUA EN BIDON', 157, 1, 1, 0.00, 0.00),
 (161, '1.4.4', 'GASTOS NOTARIALES / LEGALES', 157, 1, 1, 0.00, 0.00),
@@ -529,7 +466,7 @@ INSERT INTO `centros_costos` (`id`, `codigo`, `nombre`, `parent_id`, `empresa_id
 (285, '1.3.3', 'SERVICIO LIMPIEZA', 282, 1, 2, 0.00, 0.00),
 (286, '1.3.4', 'OTRAS ASESORIAS', 282, 1, 2, 0.00, 0.00),
 (287, '1.4', 'OTROS GASTOS ADMINISTRATIVOS', 261, 1, 2, 0.00, 0.00),
-(288, '1.4.1', 'CAJA CHICA', 287, 1, 2, 0.00, 0.00),
+(288, '1.4.1', 'CAJA CHICA', 287, 1, 2, 10000.00, 2.00),
 (289, '1.4.2', 'UTILES DE ESCRITORIO', 287, 1, 2, 0.00, 0.00),
 (290, '1.4.3', 'AGUA EN BIDON', 287, 1, 2, 0.00, 0.00),
 (291, '1.4.4', 'GASTOS NOTARIALES / LEGALES', 287, 1, 2, 0.00, 0.00),
@@ -701,6 +638,142 @@ INSERT INTO `cola_correos` (`id`, `usuario_id`, `destinatario`, `nombre`, `asunt
 (64, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Confirmación de Pago - Requerimiento', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Comprobación de Desembolso</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Nos complace informarle que el proceso de pago asociado a su requerimiento ha sido **ejecutado con éxito** por Tesorería.</p>      <div style=\"background-color: #f2fbf4; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #155724; font-weight: bold;\">          Estado del Proceso: LIQUIDADO / PAGADO        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-155</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">SOBRE MANILA A4</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Agradecemos su paciencia durante las etapas del flujo logístico.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 1, NULL, '2026-05-18 14:51:37', '2026-05-18 14:51:43'),
 (65, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-158</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">JABON LIQUIDO</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">4</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 13:25:24', NULL),
 (66, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-158</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">JABON LIQUIDO</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 13:25:32', NULL);
+INSERT INTO `cola_correos` (`id`, `usuario_id`, `destinatario`, `nombre`, `asunto`, `mensaje`, `enviado`, `error_envio`, `created_at`, `enviado_at`) VALUES
+(67, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-157</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">CARGADOR DE CELULAR</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 14:56:54', NULL),
+(68, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-157</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">PILAS AAA</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">2</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 14:56:54', NULL),
+(69, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-156</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">HARINA</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 14:56:54', NULL),
+(70, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-156</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">HARINA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 14:57:06', NULL),
+(71, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-156</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">HARINA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 14:57:06', NULL),
+(72, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-157</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">CARGADOR DE CELULAR</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 14:57:08', NULL),
+(73, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-157</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">CARGADOR DE CELULAR</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 14:57:08', NULL),
+(74, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-157</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">PILAS AAA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 14:57:08', NULL),
+(75, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-157</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">PILAS AAA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 14:57:08', NULL),
+(76, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-153</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">HARINA</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 15:07:36', NULL),
+(77, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-150</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">LAPICEROS</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 15:07:36', NULL),
+(78, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-142</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">JABON LIQUIDO</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 15:07:36', NULL),
+(79, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-150</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">LAPICEROS</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 15:07:43', NULL),
+(80, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-150</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">LAPICEROS</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 15:07:43', NULL),
+(81, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-153</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">HARINA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 15:07:45', NULL),
+(82, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-153</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">HARINA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, 'SMTP Error: Could not authenticate. | SMTP Error: Could not authenticate.', '2026-05-19 15:07:45', NULL),
+(83, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-142</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">JABON LIQUIDO</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-19 15:07:47', NULL),
+(84, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-142</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">JABON LIQUIDO</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-19 15:07:47', NULL);
+INSERT INTO `cola_correos` (`id`, `usuario_id`, `destinatario`, `nombre`, `asunto`, `mensaje`, `enviado`, `error_envio`, `created_at`, `enviado_at`) VALUES
+(85, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Movilidad Pendiente - MOV-00040', '<div style=\"font-family:Segoe UI,Arial,sans-serif;background:#f4f4f4;padding:30px;\"><div style=\"max-width:650px;margin:auto;background:#ffffff;border-radius:12px;overflow:hidden;border-top:6px solid #800000;\"><div style=\"background:#800000;padding:25px;text-align:center;\"><h2 style=\"margin:0;color:#ffffff;\">Solicitud de Movilidad</h2></div><div style=\"padding:30px;\"><p>Estimado equipo de <strong>Administración</strong>,</p><p>Existe una movilidad pendiente de validación.</p><table style=\"width:100%;border-collapse:collapse;margin-top:20px;\"><tr><td style=\"padding:10px;font-weight:bold;\">Código</td><td style=\"padding:10px;\">MOV-00040</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Solicitante</td><td style=\"padding:10px;\">Perfil Prueba</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Departamento</td><td style=\"padding:10px;\">TIC</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Origen</td><td style=\"padding:10px;\">Piura</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Destino</td><td style=\"padding:10px;\">Sullana</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Motivo</td><td style=\"padding:10px;\">Planilla de Movilidad</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Fecha</td><td style=\"padding:10px;\">20/05/2026</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Monto</td><td style=\"padding:10px;\">S/ -1.00</td></tr></table></div><div style=\"background:#fafafa;padding:20px;text-align:center;font-size:12px;color:#777;\">Sistema CETURGH - Mensaje automático</div></div></div>', 0, NULL, '2026-05-20 10:38:36', NULL),
+(86, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-160</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">JABON LIQUIDO</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1.2000000476837158</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-20 20:03:21', NULL),
+(87, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-160</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">JABON LIQUIDO</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-20 20:03:34', NULL),
+(88, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-160</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">JABON LIQUIDO</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-20 20:03:34', NULL),
+(89, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-161</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">LIMPIA TODO</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1.3229999542236328</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 06:06:17', NULL),
+(90, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-161</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">LIMPIA TODO</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 06:06:44', NULL),
+(91, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-161</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">LIMPIA TODO</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 06:06:44', NULL),
+(92, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-162</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">sdasd</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 07:00:36', NULL),
+(93, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-162</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">sdasd</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 07:00:50', NULL),
+(94, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-162</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">sdasd</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 07:00:50', NULL),
+(95, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Confirmación de Pago - Requerimiento', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Comprobación de Desembolso</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Nos complace informarle que el proceso de pago asociado a su requerimiento ha sido **ejecutado con éxito** por Tesorería.</p>      <div style=\"background-color: #f2fbf4; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #155724; font-weight: bold;\">          Estado del Proceso: LIQUIDADO / PAGADO        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-162</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">sdasd</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Agradecemos su paciencia durante las etapas del flujo logístico.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 07:46:58', NULL),
+(96, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-163</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dasdasd</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 09:08:15', NULL),
+(97, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-163</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dasdasd</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 09:08:29', NULL),
+(98, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-163</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dasdasd</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 09:08:29', NULL),
+(99, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-159</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">JABON LIQUIDO</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:24:32', NULL),
+(100, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-149</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">LAPICEROS</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:25:13', NULL),
+(101, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-164</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">FOLDER MANILA</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:26:07', NULL),
+(102, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-165</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">aasa</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:44:00', NULL);
+INSERT INTO `cola_correos` (`id`, `usuario_id`, `destinatario`, `nombre`, `asunto`, `mensaje`, `enviado`, `error_envio`, `created_at`, `enviado_at`) VALUES
+(103, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-165</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">fsdfds</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:44:03', NULL),
+(104, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-165</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">aasa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:44:36', NULL),
+(105, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-165</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">aasa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:44:36', NULL),
+(106, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-165</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">fsdfds</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:44:37', NULL),
+(107, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-165</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">fsdfds</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:44:37', NULL),
+(108, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-166</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">MICAS A4</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:54:17', NULL),
+(109, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-166</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">LAPIZ</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:54:22', NULL),
+(110, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-166</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">MICAS A4</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:54:34', NULL),
+(111, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-166</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">MICAS A4</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:54:34', NULL),
+(112, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-166</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">LAPIZ</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:54:34', NULL),
+(113, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-166</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">LAPIZ</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 16:54:34', NULL),
+(114, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-167</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">sigv</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 17:01:21', NULL),
+(115, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-167</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cigv</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 17:01:31', NULL),
+(116, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-167</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">sigv</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 17:01:47', NULL),
+(117, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-167</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">sigv</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 17:01:47', NULL),
+(118, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-167</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cigv</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 17:01:48', NULL),
+(119, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-167</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cigv</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 17:01:48', NULL),
+(120, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-164</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">FOLDER MANILA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 18:27:16', NULL),
+(121, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-164</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">FOLDER MANILA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-21 18:27:16', NULL);
+INSERT INTO `cola_correos` (`id`, `usuario_id`, `destinatario`, `nombre`, `asunto`, `mensaje`, `enviado`, `error_envio`, `created_at`, `enviado_at`) VALUES
+(122, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-174</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">asdsa</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:11:54', NULL),
+(123, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-177</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">GRAPAS</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:15:57', NULL),
+(124, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-176</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cascsa</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:23:35', NULL),
+(125, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-177</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">GRAPAS</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:36:57', NULL),
+(126, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-175</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dsadsad</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">10</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:38:18', NULL),
+(127, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-173</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dsadsa</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:47:36', NULL),
+(128, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Pago Pendiente de Movilidad - MOV-00037', '<div style=\"font-family:Segoe UI,Arial,sans-serif;padding:30px;background:#f4f4f4;\"><div style=\"max-width:650px;margin:auto;background:#fff;border-top:6px solid #800000;border-radius:10px;\"><div style=\"background:#800000;padding:25px;text-align:center;\"><h2 style=\"margin:0;color:#fff;\">Movilidad Aprobada</h2></div><div style=\"padding:30px;\"><p>Estimado equipo de <strong>Tesorería</strong>,</p><p>Existe una movilidad pendiente de desembolso.</p><p><strong>Código:</strong> MOV-00037</p><p><strong>Solicitante:</strong> LISSETH MADELEINE BRICEÑO MAZA</p><p><strong>Monto:</strong> S/ 12.00</p></div></div></div>', 0, NULL, '2026-05-28 08:52:55', NULL),
+(129, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Movilidad Pendiente - MOV-00041', '<div style=\"font-family:Segoe UI,Arial,sans-serif;background:#f4f4f4;padding:30px;\"><div style=\"max-width:650px;margin:auto;background:#ffffff;border-radius:12px;overflow:hidden;border-top:6px solid #800000;\"><div style=\"background:#800000;padding:25px;text-align:center;\"><h2 style=\"margin:0;color:#ffffff;\">Solicitud de Movilidad</h2></div><div style=\"padding:30px;\"><p>Estimado equipo de <strong>Administración</strong>,</p><p>Existe una movilidad pendiente de validación.</p><table style=\"width:100%;border-collapse:collapse;margin-top:20px;\"><tr><td style=\"padding:10px;font-weight:bold;\">Código</td><td style=\"padding:10px;\">MOV-00041</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Solicitante</td><td style=\"padding:10px;\">Perfil Prueba</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Departamento</td><td style=\"padding:10px;\">TESORERIA</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Origen</td><td style=\"padding:10px;\">SAD</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Destino</td><td style=\"padding:10px;\">DASDSA</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Motivo</td><td style=\"padding:10px;\">Praticas</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Fecha</td><td style=\"padding:10px;\">28/05/2026</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Monto</td><td style=\"padding:10px;\">S/ 12.00</td></tr></table></div><div style=\"background:#fafafa;padding:20px;text-align:center;font-size:12px;color:#777;\">Sistema CETURGH - Mensaje automático</div></div></div>', 0, NULL, '2026-05-28 08:53:59', NULL),
+(130, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-178</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">HARINA</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:56:59', NULL),
+(131, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-178</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">HARINA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:57:52', NULL),
+(132, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-178</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">HARINA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:57:52', NULL),
+(133, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-175</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dsadsad</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:57:54', NULL),
+(134, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-175</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dsadsad</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:57:54', NULL),
+(135, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-177</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">GRAPAS</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:57:55', NULL),
+(136, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-177</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">GRAPAS</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:57:55', NULL),
+(137, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-173</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dsadsa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:57:59', NULL),
+(138, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-173</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dsadsa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 08:57:59', NULL),
+(139, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-180</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">asdasds</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 09:04:23', NULL),
+(140, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-180</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">asdasds</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 09:04:58', NULL);
+INSERT INTO `cola_correos` (`id`, `usuario_id`, `destinatario`, `nombre`, `asunto`, `mensaje`, `enviado`, `error_envio`, `created_at`, `enviado_at`) VALUES
+(141, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-180</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">asdasds</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 09:04:58', NULL),
+(142, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Confirmación de Pago - Requerimiento', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Comprobación de Desembolso</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Nos complace informarle que el proceso de pago asociado a su requerimiento ha sido **ejecutado con éxito** por Tesorería.</p>      <div style=\"background-color: #f2fbf4; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #155724; font-weight: bold;\">          Estado del Proceso: LIQUIDADO / PAGADO        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-180</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">asdasds</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Agradecemos su paciencia durante las etapas del flujo logístico.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 09:05:12', NULL),
+(143, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-181</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dsadas</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 14:10:09', NULL),
+(144, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-179</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">DASD</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 14:10:20', NULL),
+(145, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-179</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">DASD</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 14:13:50', NULL),
+(146, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-179</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">DASD</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 14:13:50', NULL),
+(147, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-181</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dsadas</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 14:13:52', NULL),
+(148, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-181</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dsadas</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 14:13:52', NULL),
+(149, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-176</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cascsa</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:28:06', NULL),
+(150, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-176</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cascsa</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:31:14', NULL),
+(151, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-176</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cascsa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:31:29', NULL),
+(152, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-176</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cascsa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:31:29', NULL),
+(153, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-171</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">FRANELA</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:32:53', NULL),
+(154, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-176</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cascsa</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:35:47', NULL),
+(155, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-176</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cascsa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:36:08', NULL),
+(156, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-176</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">cascsa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:36:08', NULL),
+(157, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-174</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">asdsa</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:47:45', NULL),
+(158, 8, 'admin@c.com', 'Perfil Prueba', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-174</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">asdsa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:48:33', NULL);
+INSERT INTO `cola_correos` (`id`, `usuario_id`, `destinatario`, `nombre`, `asunto`, `mensaje`, `enviado`, `error_envio`, `created_at`, `enviado_at`) VALUES
+(159, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-174</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">asdsa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:48:33', NULL),
+(160, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-171</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">FRANELA</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:51:19', NULL),
+(161, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-171</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">FRANELA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:51:34', NULL),
+(162, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-171</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">FRANELA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:51:34', NULL),
+(163, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-172</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dasdsa</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 15:59:31', NULL),
+(164, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-171</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">FRANELA</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">12</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 16:00:01', NULL),
+(165, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-170</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">AZUCAR BLANCA</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 16:00:36', NULL),
+(166, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-170</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">AZUCAR BLANCA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 16:00:58', NULL),
+(167, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-170</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">AZUCAR BLANCA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 16:00:58', NULL),
+(168, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Actualización de Estado: APROBADO', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Actualización de Requerimiento</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que la evaluación de su ítem solicitado ha cambiado de estado en el sistema.</p>      <div style=\"background-color: #fdfaf2; border-left: 4px solid #D4AF37; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 15px; color: #333333;\">          <strong>Nuevo Estado:</strong>           <span style=\"color: #800020; font-weight: bold; text-transform: uppercase;\">APROBADO</span>        </p>      </div>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-172</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dasdsa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Para mayor información o seguimiento, por favor ingrese a su panel de usuario.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 16:00:59', NULL),
+(169, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-172</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">dasdsa</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 16:00:59', NULL),
+(170, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Solicitud pendiente de aprobación - FND-00008', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Solicitud</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido firmada por el jefe de departamento y se encuentra pendiente de su aprobación.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00008</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Departamento</td>            <td style=\"padding: 12px; color: #333333;\">ADMINISTRACION</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">ANTICIPO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 12.00</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para aprobar o rechazar la solicitud.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 19:03:33', NULL),
+(171, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Solicitud aprobada - Pago pendiente - FND-00008', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Pago Pendiente - Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido aprobada y requiere el desembolso correspondiente.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00008</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">ANTICIPO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto a Pagar</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 12.00</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Concepto</td>            <td style=\"padding: 12px; color: #333333;\">dsadsadsa</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, proceda con el pago y suba el comprobante al sistema.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 19:03:35', NULL),
+(172, 8, 'admin@c.com', 'Perfil Prueba', 'Solicitud cerrada - FND-00007', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #6c757d;\">    <div style=\"background-color: #6c757d; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Proceso Finalizado</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que su solicitud de <strong>ANTICIPO</strong> ha sido <strong>CERRADA EXITOSAMENTE</strong>.</p>      <div style=\"background-color: #e9ecef; border-left: 4px solid #6c757d; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 14px; color: #383d41;\">          <strong>Total rendido:</strong> S/ 24.00<br>          <strong>Diferencia:</strong> S/ -11.00        </p>      </div>      <p style=\"color: #555555;\">Agradecemos su gestión y cumplimiento de los procedimientos establecidos.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 19:03:51', NULL),
+(173, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Pago registrado - Rendición pendiente - FND-00008', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #28a745;\">    <div style=\"background-color: #28a745; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Pago Registrado</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Se ha registrado el pago correspondiente a su solicitud de <strong>ANTICIPO</strong>.</p>      <div style=\"background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 14px; color: #155724;\">          <strong>Monto entregado:</strong> S/ 12.00        </p>      </div>      <p style=\"color: #555555; margin-top: 15px;\"><strong>IMPORTANTE:</strong> Debe presentar la rendición documentaria de los gastos realizados dentro del plazo establecido.</p>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Ingrese al sistema para subir sus comprobantes de gasto.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-05-28 19:04:00', NULL),
+(174, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Nueva solicitud de fondos - FND-00009', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Gestión de Fondos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) <strong>Jefe de Departamento</strong>,</p>      <p style=\"color: #555555;\">Se ha creado una nueva solicitud de fondos que requiere su firma para continuar con el flujo.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00009</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">ANTICIPO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Concepto</td>            <td style=\"padding: 12px; color: #333333;\">csfcsdcdscdsdcs</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto Solicitado</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 12.00</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Empresa / Sede</td>            <td style=\"padding: 12px; color: #333333;\">EDUTUR E.I.R.L. - PIURA</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para firmar o rechazar la solicitud.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-04 14:09:06', NULL),
+(175, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Solicitud pendiente de aprobación - FND-00011', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Solicitud</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido firmada por el jefe de departamento y se encuentra pendiente de su aprobación.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00011</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Departamento</td>            <td style=\"padding: 12px; color: #333333;\">TIC</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">REEMBOLSO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 12.00</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para aprobar o rechazar la solicitud.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 14:53:09', NULL),
+(176, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Solicitud pendiente de aprobación - FND-00010', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Solicitud</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido firmada por el jefe de departamento y se encuentra pendiente de su aprobación.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00010</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Departamento</td>            <td style=\"padding: 12px; color: #333333;\">TIC</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">ANTICIPO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 12.00</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para aprobar o rechazar la solicitud.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:44:20', NULL);
+INSERT INTO `cola_correos` (`id`, `usuario_id`, `destinatario`, `nombre`, `asunto`, `mensaje`, `enviado`, `error_envio`, `created_at`, `enviado_at`) VALUES
+(177, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Solicitud aprobada - Pago pendiente - FND-00010', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Pago Pendiente - Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido aprobada y requiere el desembolso correspondiente.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00010</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">ANTICIPO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto a Pagar</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 12.00</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Concepto</td>            <td style=\"padding: 12px; color: #333333;\">dsadsadasas</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, proceda con el pago y suba el comprobante al sistema.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:44:24', NULL),
+(178, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Solicitud pendiente de aprobación - FND-00009', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Solicitud</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido firmada por el jefe de departamento y se encuentra pendiente de su aprobación.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00009</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Departamento</td>            <td style=\"padding: 12px; color: #333333;\">ADMINISTRACION</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">ANTICIPO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 12.00</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para aprobar o rechazar la solicitud.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:44:30', NULL),
+(179, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Solicitud aprobada - Pago pendiente - FND-00009', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Pago Pendiente - Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido aprobada y requiere el desembolso correspondiente.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00009</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">ANTICIPO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto a Pagar</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 12.00</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Concepto</td>            <td style=\"padding: 12px; color: #333333;\">csfcsdcdscdsdcs</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, proceda con el pago y suba el comprobante al sistema.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:44:32', NULL),
+(180, 8, 'admin@c.com', 'Perfil Prueba', 'Solicitud cerrada - FND-00011', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #6c757d;\">    <div style=\"background-color: #6c757d; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Proceso Finalizado</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que su solicitud de <strong>REEMBOLSO</strong> ha sido <strong>CERRADA EXITOSAMENTE</strong>.</p>      <div style=\"background-color: #e9ecef; border-left: 4px solid #6c757d; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 14px; color: #383d41;\">          <strong>Total rendido:</strong> S/ 12.00<br>          <strong>Diferencia:</strong> S/ 0.00        </p>      </div>      <p style=\"color: #555555;\">Agradecemos su gestión y cumplimiento de los procedimientos establecidos.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:44:55', NULL),
+(181, 8, 'admin@c.com', 'Perfil Prueba', 'Nueva solicitud de fondos - FND-00012', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Gestión de Fondos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) <strong>Jefe de Departamento</strong>,</p>      <p style=\"color: #555555;\">Se ha creado una nueva solicitud de fondos que requiere su firma para continuar con el flujo.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00012</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">REEMBOLSO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Concepto</td>            <td style=\"padding: 12px; color: #333333;\">csacascascas</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto Solicitado</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 11.00</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Empresa / Sede</td>            <td style=\"padding: 12px; color: #333333;\">EDUTUR E.I.R.L. - PIURA</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para firmar o rechazar la solicitud.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:47:54', NULL),
+(182, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Solicitud pendiente de aprobación - FND-00012', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Solicitud</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido firmada por el jefe de departamento y se encuentra pendiente de su aprobación.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00012</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Departamento</td>            <td style=\"padding: 12px; color: #333333;\">ACADEMICO CETPRO PIURA</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">REEMBOLSO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 11.00</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para aprobar o rechazar la solicitud.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:47:57', NULL),
+(183, 8, 'admin@c.com', 'Perfil Prueba', 'Solicitud cerrada - FND-00012', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #6c757d;\">    <div style=\"background-color: #6c757d; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Proceso Finalizado</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que su solicitud de <strong>REEMBOLSO</strong> ha sido <strong>CERRADA EXITOSAMENTE</strong>.</p>      <div style=\"background-color: #e9ecef; border-left: 4px solid #6c757d; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 14px; color: #383d41;\">          <strong>Total rendido:</strong> S/ 12.00<br>          <strong>Diferencia:</strong> S/ -1.00        </p>      </div>      <p style=\"color: #555555;\">Agradecemos su gestión y cumplimiento de los procedimientos establecidos.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:49:14', NULL),
+(184, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Nueva solicitud de fondos - FND-00013', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Gestión de Fondos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) <strong>Jefe de Departamento</strong>,</p>      <p style=\"color: #555555;\">Se ha creado una nueva solicitud de fondos que requiere su firma para continuar con el flujo.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00013</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">ANTICIPO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Concepto</td>            <td style=\"padding: 12px; color: #333333;\">ccascas</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto Solicitado</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 11.00</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Empresa / Sede</td>            <td style=\"padding: 12px; color: #333333;\">EDUTUR E.I.R.L. - PIURA</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para firmar o rechazar la solicitud.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:49:53', NULL),
+(185, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Solicitud pendiente de aprobación - FND-00013', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Solicitud</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido firmada por el jefe de departamento y se encuentra pendiente de su aprobación.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00013</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Departamento</td>            <td style=\"padding: 12px; color: #333333;\">ADMINISTRACION</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">ANTICIPO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 11.00</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para aprobar o rechazar la solicitud.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:49:59', NULL),
+(186, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Solicitud aprobada - Pago pendiente - FND-00013', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Pago Pendiente - Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido aprobada y requiere el desembolso correspondiente.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00013</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">ANTICIPO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto a Pagar</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 11.00</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Concepto</td>            <td style=\"padding: 12px; color: #333333;\">ccascas</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, proceda con el pago y suba el comprobante al sistema.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:50:02', NULL),
+(187, 8, 'admin@c.com', 'Perfil Prueba', 'Pago registrado - Rendición pendiente - FND-00013', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #28a745;\">    <div style=\"background-color: #28a745; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Pago Registrado</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Se ha registrado el pago correspondiente a su solicitud de <strong>ANTICIPO</strong>.</p>      <div style=\"background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 14px; color: #155724;\">          <strong>Monto entregado:</strong> S/ 11.00        </p>      </div>      <p style=\"color: #555555; margin-top: 15px;\"><strong>IMPORTANTE:</strong> Debe presentar la rendición documentaria de los gastos realizados dentro del plazo establecido.</p>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Ingrese al sistema para subir sus comprobantes de gasto.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:50:20', NULL),
+(188, 8, 'admin@c.com', 'Perfil Prueba', 'Solicitud cerrada - FND-00013', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #6c757d;\">    <div style=\"background-color: #6c757d; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Proceso Finalizado</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que su solicitud de <strong>ANTICIPO</strong> ha sido <strong>CERRADA EXITOSAMENTE</strong>.</p>      <div style=\"background-color: #e9ecef; border-left: 4px solid #6c757d; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 14px; color: #383d41;\">          <strong>Total rendido:</strong> S/ 11.00<br>          <strong>Diferencia:</strong> S/ 0.00        </p>      </div>      <p style=\"color: #555555;\">Agradecemos su gestión y cumplimiento de los procedimientos establecidos.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 15:50:43', NULL),
+(189, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Movilidad Pendiente - MOV-00042', '<div style=\"font-family:Segoe UI,Arial,sans-serif;background:#f4f4f4;padding:30px;\"><div style=\"max-width:650px;margin:auto;background:#ffffff;border-radius:12px;overflow:hidden;border-top:6px solid #800000;\"><div style=\"background:#800000;padding:25px;text-align:center;\"><h2 style=\"margin:0;color:#ffffff;\">Solicitud de Movilidad</h2></div><div style=\"padding:30px;\"><p>Estimado equipo de <strong>Administración</strong>,</p><p>Existe una movilidad pendiente de validación.</p><table style=\"width:100%;border-collapse:collapse;margin-top:20px;\"><tr><td style=\"padding:10px;font-weight:bold;\">Código</td><td style=\"padding:10px;\">MOV-00042</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Solicitante</td><td style=\"padding:10px;\">Perfil Prueba</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Departamento</td><td style=\"padding:10px;\">TIC TAC</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Origen</td><td style=\"padding:10px;\">SULLANA</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Destino</td><td style=\"padding:10px;\">paita</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Motivo</td><td style=\"padding:10px;\">dadasdas</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Fecha</td><td style=\"padding:10px;\">05/06/2026</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Monto</td><td style=\"padding:10px;\">S/ 12.00</td></tr></table></div><div style=\"background:#fafafa;padding:20px;text-align:center;font-size:12px;color:#777;\">Sistema CETURGH - Mensaje automático</div></div></div>', 0, NULL, '2026-06-05 16:09:05', NULL),
+(190, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Pago Pendiente de Movilidad - MOV-00042', '<div style=\"font-family:Segoe UI,Arial,sans-serif;padding:30px;background:#f4f4f4;\"><div style=\"max-width:650px;margin:auto;background:#fff;border-top:6px solid #800000;border-radius:10px;\"><div style=\"background:#800000;padding:25px;text-align:center;\"><h2 style=\"margin:0;color:#fff;\">Movilidad Aprobada</h2></div><div style=\"padding:30px;\"><p>Estimado equipo de <strong>Tesorería</strong>,</p><p>Existe una movilidad pendiente de desembolso.</p><p><strong>Código:</strong> MOV-00042</p><p><strong>Solicitante:</strong> Perfil Prueba</p><p><strong>Monto:</strong> S/ 12.00</p></div></div></div>', 0, NULL, '2026-06-05 16:09:20', NULL),
+(191, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Solicitud pendiente de aprobación - FND-00014', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Solicitud</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">La solicitud ha sido firmada por el jefe de departamento y se encuentra pendiente de su aprobación.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Campo</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>           </td>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Solicitud</td>            <td style=\"padding: 12px; color: #333333;\">FND-00014</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Departamento</td>            <td style=\"padding: 12px; color: #333333;\">TIC TAC</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Tipo</td>            <td style=\"padding: 12px; color: #333333;\">REEMBOLSO</td>           </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Monto</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">S/ 12.00</td>           </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para aprobar o rechazar la solicitud.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 16:29:38', NULL),
+(192, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Requerimiento Pendiente de Aprobación', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Aprobación de Requerimientos</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Administración</strong>,</p>      <p style=\"color: #555555;\">Se encuentra disponible un nuevo requerimiento que requiere su respectiva evaluación técnica y aprobación financiera.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-185</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">FRANELA</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Cantidad Solicitada</td>            <td style=\"padding: 12px; color: #333333; font-weight: bold;\">1</td>          </tr>        </tbody>      </table>      <div style=\"text-align: center; margin-top: 30px;\">        <p style=\"font-size: 14px; color: #777777; margin-bottom: 15px;\">Por favor, ingrese al sistema para validar o emitir observaciones.</p>      </div>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 16:31:00', NULL),
+(193, 12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', 'Comprobante de Pago Pendiente', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #800020;\">    <div style=\"background-color: #800020; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Área de Tesorería</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado equipo de <strong>Tesorería</strong>,</p>      <p style=\"color: #555555;\">Se ha remitido un requerimiento aprobado para la ejecución de su respectivo pago/desembolso.</p>      <table style=\"width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 14px;\">        <thead>          <tr style=\"background-color: #f5f5f5; border-bottom: 2px solid #D4AF37;\">            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Concepto</th>            <th style=\"padding: 12px; text-align: left; color: #800020; font-weight: bold;\">Detalle</th>          </tr>        </thead>        <tbody>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555; width: 35%;\">Código Requerimiento</td>            <td style=\"padding: 12px; color: #333333;\">REQ-185</td>          </tr>          <tr style=\"border-bottom: 1px solid #eeeeee;\">            <td style=\"padding: 12px; font-weight: bold; color: #555555;\">Descripción Item</td>            <td style=\"padding: 12px; color: #333333;\">FRANELA</td>          </tr>        </tbody>      </table>      <p style=\"font-size: 14px; color: #777777; text-align: center; margin-top: 25px;\">Por favor, proceda según los protocolos financieros del sistema.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 16:31:12', NULL),
+(194, 8, 'admin@c.com', 'Perfil Prueba', 'Solicitud cerrada - FND-00014', '<div style=\"font-family: \'Segoe UI\', Arial, sans-serif; background-color: #f9f9f9; padding: 30px; color: #333333; line-height: 1.6;\">  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #6c757d;\">    <div style=\"background-color: #6c757d; padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;\">      <h2 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;\">Proceso Finalizado</h2>    </div>    <div style=\"padding: 30px;\">      <p style=\"margin-top: 0; font-size: 16px;\">Estimado(a) colaborador(a),</p>      <p style=\"color: #555555;\">Le informamos que su solicitud de <strong>REEMBOLSO</strong> ha sido <strong>CERRADA EXITOSAMENTE</strong>.</p>      <div style=\"background-color: #e9ecef; border-left: 4px solid #6c757d; padding: 15px; margin: 20px 0; border-radius: 4px;\">        <p style=\"margin: 0; font-size: 14px; color: #383d41;\">          <strong>Total rendido:</strong> S/ 12.00<br>          <strong>Diferencia:</strong> S/ 0.00        </p>      </div>      <p style=\"color: #555555;\">Agradecemos su gestión y cumplimiento de los procedimientos establecidos.</p>    </div>    <div style=\"background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777777;\">      <p style=\"margin: 0; font-weight: bold; color: #800020;\">Sistema de Gestión CETURGH</p>      <p style=\"margin: 5px 0 0 0;\">Este es un mensaje automático, por favor no responder a este correo.</p>    </div>  </div></div>', 0, NULL, '2026-06-05 16:32:00', NULL),
+(195, 4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', 'Movilidad Pendiente - MOV-00046', '<div style=\"font-family:Segoe UI,Arial,sans-serif;background:#f4f4f4;padding:30px;\"><div style=\"max-width:650px;margin:auto;background:#ffffff;border-radius:12px;overflow:hidden;border-top:6px solid #800000;\"><div style=\"background:#800000;padding:25px;text-align:center;\"><h2 style=\"margin:0;color:#ffffff;\">Solicitud de Movilidad</h2></div><div style=\"padding:30px;\"><p>Estimado equipo de <strong>Administración</strong>,</p><p>Existe una movilidad pendiente de validación.</p><table style=\"width:100%;border-collapse:collapse;margin-top:20px;\"><tr><td style=\"padding:10px;font-weight:bold;\">Código</td><td style=\"padding:10px;\">MOV-00046</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Solicitante</td><td style=\"padding:10px;\">Perfil Prueba</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Departamento</td><td style=\"padding:10px;\">TIC</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Origen</td><td style=\"padding:10px;\">CETURGH PIURA</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Destino</td><td style=\"padding:10px;\">coelgios</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Motivo</td><td style=\"padding:10px;\">Praticas</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Fecha</td><td style=\"padding:10px;\">05/06/2026</td></tr><tr><td style=\"padding:10px;font-weight:bold;\">Monto</td><td style=\"padding:10px;\">S/ 25.00</td></tr></table></div><div style=\"background:#fafafa;padding:20px;text-align:center;font-size:12px;color:#777;\">Sistema CETURGH - Mensaje automático</div></div></div>', 0, NULL, '2026-06-05 19:06:52', NULL);
 
 -- --------------------------------------------------------
 
@@ -709,7 +782,7 @@ INSERT INTO `cola_correos` (`id`, `usuario_id`, `destinatario`, `nombre`, `asunt
 --
 
 CREATE TABLE `correlativos` (
-  `tipo` enum('OC','OS') NOT NULL,
+  `tipo` enum('OC','OS','RQ','REND','FND') NOT NULL,
   `anio` int(11) NOT NULL,
   `numero_actual` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
@@ -719,8 +792,11 @@ CREATE TABLE `correlativos` (
 --
 
 INSERT INTO `correlativos` (`tipo`, `anio`, `numero_actual`) VALUES
-('OC', 2026, 4),
-('OS', 2026, 0);
+('OC', 2026, 52),
+('OS', 2026, 1),
+('RQ', 2026, 17),
+('REND', 2026, 12),
+('FND', 2026, 14);
 
 -- --------------------------------------------------------
 
@@ -742,13 +818,52 @@ CREATE TABLE `departamentos` (
 --
 
 INSERT INTO `departamentos` (`id`, `nombre`, `empresa_id`, `sede_id`, `parent_id`, `presupuesto`) VALUES
-(3, 'TIC', 1, 1, NULL, 943.00),
+(3, 'TIC', 1, 1, NULL, 998.00),
 (5, 'LOGISTICA', 1, 1, NULL, 0.00),
-(6, 'RECURSOS HUMANOS', 1, 1, NULL, 0.00),
+(6, 'RECURSOS HUMANOS', 1, 1, NULL, 1110.00),
 (7, 'BIENESTAR ESTUDIANTIL', 1, 1, NULL, 0.00),
-(8, 'TESORERIA', 1, 1, NULL, 0.00),
+(8, 'TESORERIA', 1, 1, 22, 9838.00),
 (9, 'VENTAS', 1, 1, NULL, 0.00),
-(10, 'ADMINISTRACION', 1, 1, NULL, 9853.00),
+(10, 'ADMINISTRACION', 1, 1, 22, 9833.00),
+(11, 'ACADEMICO CETPRO PIURA', 1, 1, NULL, 0.00),
+(12, 'ACADEMICO CETPRO SULLANA', 1, 1, NULL, 0.00),
+(13, 'ACADEMICO INSTITUTO', 1, 1, NULL, 0.00),
+(14, 'MARKETING', 1, 1, NULL, 0.00),
+(15, 'BIBLIOTECA', 1, 1, NULL, 0.00),
+(16, 'SEGURIDAD', 1, 1, NULL, 0.00),
+(17, 'ALMACEN', 1, 1, 21, 0.00),
+(18, 'TIC SULLANA', 1, 1, 3, 0.00),
+(19, 'TIC TAC', 1, 1, 3, 0.00),
+(21, 'LOGÍSTICA Y ALMACÉN', 1, 1, NULL, 5047.00),
+(22, 'ADMINISTRACIÓN Y RECURSOS HUMANOS', 1, 1, NULL, 32041.00);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `departamentos_backup_20260605`
+--
+
+CREATE TABLE `departamentos_backup_20260605` (
+  `id` int(11) NOT NULL DEFAULT 0,
+  `nombre` varchar(100) NOT NULL,
+  `empresa_id` int(11) DEFAULT NULL,
+  `sede_id` int(11) DEFAULT NULL,
+  `parent_id` int(11) DEFAULT NULL,
+  `presupuesto` decimal(10,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `departamentos_backup_20260605`
+--
+
+INSERT INTO `departamentos_backup_20260605` (`id`, `nombre`, `empresa_id`, `sede_id`, `parent_id`, `presupuesto`) VALUES
+(3, 'TIC', 1, 1, NULL, 1020.00),
+(5, 'LOGISTICA', 1, 1, NULL, 0.00),
+(6, 'RECURSOS HUMANOS', 1, 1, NULL, 1110.00),
+(7, 'BIENESTAR ESTUDIANTIL', 1, 1, NULL, 0.00),
+(8, 'TESORERIA', 1, 1, NULL, 9838.00),
+(9, 'VENTAS', 1, 1, NULL, 0.00),
+(10, 'ADMINISTRACION', 1, 1, NULL, 9833.00),
 (11, 'ACADEMICO CETPRO PIURA', 1, 1, NULL, 0.00),
 (12, 'ACADEMICO CETPRO SULLANA', 1, 1, NULL, 0.00),
 (13, 'ACADEMICO INSTITUTO', 1, 1, NULL, 0.00),
@@ -789,36 +904,72 @@ CREATE TABLE `grupos_tesoreria` (
   `id` int(11) NOT NULL,
   `fecha` datetime DEFAULT current_timestamp(),
   `guia_url` varchar(255) DEFAULT NULL,
-  `comprobante_url` varchar(255) DEFAULT NULL
+  `comprobante_url` varchar(255) DEFAULT NULL,
+  `incluye_igv` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `grupos_tesoreria`
 --
 
-INSERT INTO `grupos_tesoreria` (`id`, `fecha`, `guia_url`, `comprobante_url`) VALUES
-(28, '2026-05-13 19:00:08', 'uploads/guias/1778716808_1778659002_Planilla_Movilidad_32.pdf', NULL),
-(29, '2026-05-14 11:00:56', 'uploads/guias/1778774456_Planilla_Movilidad_28__1_.pdf', NULL),
-(30, '2026-05-14 13:34:08', NULL, NULL),
-(31, '2026-05-14 15:08:10', NULL, NULL),
-(32, '2026-05-14 15:18:34', NULL, NULL),
-(33, '2026-05-15 09:51:37', NULL, NULL),
-(34, '2026-05-15 10:45:05', NULL, NULL),
-(40, '2026-05-15 11:55:19', NULL, NULL),
-(43, '2026-05-15 12:05:49', NULL, NULL),
-(44, '2026-05-15 12:08:22', NULL, NULL),
-(45, '2026-05-15 12:15:08', NULL, NULL),
-(46, '2026-05-15 12:20:23', NULL, NULL),
-(47, '2026-05-15 12:27:56', NULL, NULL),
-(48, '2026-05-15 12:40:04', NULL, NULL),
-(49, '2026-05-15 14:16:31', NULL, NULL),
-(50, '2026-05-15 14:20:15', NULL, NULL),
-(51, '2026-05-15 14:55:48', NULL, NULL),
-(52, '2026-05-15 15:20:52', NULL, NULL),
-(53, '2026-05-15 15:31:38', NULL, NULL),
-(54, '2026-05-15 15:39:33', NULL, NULL),
-(55, '2026-05-15 15:46:48', NULL, 'uploads/comprobantes/1779115837_Planilla_Movilidad_39.pdf'),
-(56, '2026-05-19 08:25:24', NULL, NULL);
+INSERT INTO `grupos_tesoreria` (`id`, `fecha`, `guia_url`, `comprobante_url`, `incluye_igv`) VALUES
+(28, '2026-05-13 19:00:08', 'uploads/guias/1778716808_1778659002_Planilla_Movilidad_32.pdf', NULL, 0),
+(29, '2026-05-14 11:00:56', 'uploads/guias/1778774456_Planilla_Movilidad_28__1_.pdf', NULL, 0),
+(30, '2026-05-14 13:34:08', NULL, NULL, 0),
+(31, '2026-05-14 15:08:10', NULL, NULL, 0),
+(32, '2026-05-14 15:18:34', NULL, NULL, 0),
+(33, '2026-05-15 09:51:37', NULL, NULL, 0),
+(34, '2026-05-15 10:45:05', NULL, NULL, 0),
+(40, '2026-05-15 11:55:19', NULL, NULL, 0),
+(43, '2026-05-15 12:05:49', NULL, NULL, 0),
+(44, '2026-05-15 12:08:22', NULL, NULL, 0),
+(45, '2026-05-15 12:15:08', NULL, NULL, 0),
+(46, '2026-05-15 12:20:23', NULL, NULL, 0),
+(47, '2026-05-15 12:27:56', NULL, NULL, 0),
+(48, '2026-05-15 12:40:04', NULL, NULL, 0),
+(49, '2026-05-15 14:16:31', NULL, NULL, 0),
+(50, '2026-05-15 14:20:15', NULL, NULL, 0),
+(51, '2026-05-15 14:55:48', NULL, NULL, 0),
+(52, '2026-05-15 15:20:52', NULL, NULL, 0),
+(53, '2026-05-15 15:31:38', NULL, NULL, 0),
+(54, '2026-05-15 15:39:33', NULL, NULL, 0),
+(55, '2026-05-15 15:46:48', NULL, 'uploads/comprobantes/1779115837_Planilla_Movilidad_39.pdf', 0),
+(56, '2026-05-19 08:25:24', NULL, NULL, 0),
+(57, '2026-05-19 09:56:54', NULL, NULL, 0),
+(58, '2026-05-19 10:07:36', 'uploads/guias/1779290970_Planilla_Movilidad_40.pdf', 'uploads/comprobantes/1779290979_OC-2026-000040 (1).pdf', 0),
+(59, '2026-05-20 15:03:21', NULL, NULL, 0),
+(60, '2026-05-21 01:06:17', 'uploads/guias/1779354107_Planilla_Movilidad_40.pdf,uploads/guias/1779354168_OC_2026_000041.pdf', 'uploads/comprobantes/1779354173_OC_2026_000041.pdf', 0),
+(61, '2026-05-21 02:00:36', NULL, NULL, 0),
+(62, '2026-05-21 04:08:15', NULL, 'uploads/comprobantes/1779371119_OC_2026_000042.pdf,uploads/comprobantes/1779371124_OC_2026_000041.pdf', 0),
+(63, '2026-05-21 11:24:32', NULL, NULL, 0),
+(64, '2026-05-21 11:25:13', NULL, NULL, 0),
+(65, '2026-05-21 11:26:07', NULL, NULL, 0),
+(66, '2026-05-21 11:44:00', NULL, NULL, 0),
+(67, '2026-05-21 11:44:03', NULL, NULL, 1),
+(68, '2026-05-21 11:54:17', NULL, NULL, 0),
+(69, '2026-05-21 11:54:22', NULL, 'uploads/comprobantes/1779958778_Planilla_Movilidad_37.pdf', 1),
+(70, '2026-05-21 12:01:21', NULL, NULL, 0),
+(71, '2026-05-21 12:01:31', NULL, 'uploads/comprobantes/1779958727_Planilla_Movilidad_37.pdf', 1),
+(72, '2026-05-28 03:11:54', NULL, NULL, 0),
+(73, '2026-05-28 03:15:57', NULL, NULL, 0),
+(74, '2026-05-28 03:23:35', NULL, NULL, 1),
+(75, '2026-05-28 03:36:57', 'uploads/guias/1779958706_SOLICITUD_DE_ANTICIPO_FND_20260527191741__4_.pdf,uploads/guias/1779958718_SOLICITUD_DE_ANTICIPO_FND_20260527191741__4_.pdf', 'uploads/comprobantes/1779958697_SOLICITUD_DE_ANTICIPO_FND_20260527191741__4_.pdf,uploads/comprobantes/1779958697_SOLICITUD_DE_ANTICIPO_FND_20260527194020__10_.pdf,uploads/comprobantes/1779958697_SOLICITUD_DE_ANTICIPO_FND_20260527191741__3_.pdf', 0),
+(76, '2026-05-28 03:38:18', NULL, 'uploads/comprobantes/1779958737_SOLICITUD_DE_ANTICIPO_FND_20260527194020__10_.pdf', 0),
+(77, '2026-05-28 03:47:36', 'uploads/guias/1779958749_SOLICITUD_DE_ANTICIPO_FND_20260527191741__2_.pdf', 'uploads/comprobantes/1779958744_SOLICITUD_DE_ANTICIPO_FND_20260527194020__10_.pdf', 0),
+(78, '2026-05-28 03:56:59', 'uploads/guias/1779958771_SOLICITUD_DE_ANTICIPO_FND_20260527191741__3_.pdf', 'uploads/comprobantes/1779958755_SOLICITUD_DE_ANTICIPO_FND_20260527191741__4_.pdf,uploads/comprobantes/1779958767_Planilla_Movilidad_40__1_.pdf', 0),
+(79, '2026-05-28 04:04:23', 'uploads/guias/1779959110_SOLICITUD_DE_ANTICIPO_FND_20260527191741__4_.pdf', 'uploads/comprobantes/1779959106_Planilla_Movilidad_40__1_.pdf', 0),
+(80, '2026-05-28 09:10:09', NULL, NULL, 0),
+(81, '2026-05-28 09:10:20', NULL, NULL, 1),
+(87, '2026-05-28 10:28:06', NULL, NULL, 0),
+(88, '2026-05-28 10:31:14', NULL, NULL, 0),
+(89, '2026-05-28 10:32:53', NULL, NULL, 1),
+(90, '2026-05-28 10:35:47', NULL, NULL, 1),
+(91, '2026-05-28 10:47:45', NULL, NULL, 0),
+(92, '2026-05-28 10:51:19', NULL, NULL, 1),
+(93, '2026-05-28 10:59:31', NULL, NULL, 0),
+(94, '2026-05-28 11:00:01', NULL, NULL, 1),
+(95, '2026-05-28 11:00:36', NULL, NULL, 1),
+(96, '2026-06-05 11:31:00', NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -1004,7 +1155,7 @@ CREATE TABLE `items` (
   `id` int(11) NOT NULL,
   `requerimiento_id` int(11) DEFAULT NULL,
   `descripcion` varchar(255) DEFAULT NULL,
-  `cantidad` int(11) DEFAULT NULL,
+  `cantidad` float DEFAULT NULL,
   `unidad` varchar(50) DEFAULT NULL,
   `precio_unitario` decimal(10,2) DEFAULT NULL,
   `total` decimal(10,2) DEFAULT NULL,
@@ -1021,6 +1172,8 @@ CREATE TABLE `items` (
   `motivo_insumo` text DEFAULT NULL,
   `grupo_id` int(11) DEFAULT NULL,
   `comentario_estado` text DEFAULT NULL,
+  `comentario_solicitante` text DEFAULT NULL,
+  `archivo_adjunto` varchar(500) DEFAULT NULL,
   `tipo_inventario` enum('MENAJE','INSUMO','MOVIL','OFICINA','HERRAMIENTA','LOGISTICA','DATA_CENTER') DEFAULT NULL,
   `estado_inventario` enum('PENDIENTE','INGRESADO') DEFAULT 'PENDIENTE',
   `flujo_estado` enum('LOGISTICA','ADMINISTRACION','TESORERIA','FINALIZADO') DEFAULT 'LOGISTICA',
@@ -1028,44 +1181,76 @@ CREATE TABLE `items` (
   `estado_administracion` enum('PENDIENTE','APROBADO','OBSERVADO','DENEGADO') DEFAULT 'PENDIENTE',
   `estado_tesoreria` enum('PENDIENTE','PAGADO') DEFAULT 'PENDIENTE',
   `tipo_destino` enum('GENERAL','CARRERA','CURSO_CORTO') DEFAULT 'GENERAL',
-  `curso_corto` varchar(255) DEFAULT NULL
+  `curso_corto` varchar(255) DEFAULT NULL,
+  `incluye_igv` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `items`
 --
 
-INSERT INTO `items` (`id`, `requerimiento_id`, `descripcion`, `cantidad`, `unidad`, `precio_unitario`, `total`, `requiere_cotizacion`, `centro_costo_id`, `area_costo_id`, `carrera_id`, `proveedor`, `proveedor_id`, `estado_pago`, `es_insumo`, `estado_insumo`, `tipo`, `motivo_insumo`, `grupo_id`, `comentario_estado`, `tipo_inventario`, `estado_inventario`, `flujo_estado`, `estado_logistica`, `estado_administracion`, `estado_tesoreria`, `tipo_destino`, `curso_corto`) VALUES
-(146, 132, 'LAPICEROS', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'Constructores y Consultores la Guadalupana S.R.L.', 37, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 28, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(147, 133, 'HARINA', 5, 'KG', 7.00, 35.00, 0, 132, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 29, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(148, 133, 'LAPICEROS', 4, 'Unidad', 10.00, 40.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 29, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(149, 133, 'LIMPIA TODO', 3, 'Unidad', 20.00, 60.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 30, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(150, 134, 'FRANELA', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 31, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(151, 135, 'JABON LIQUIDO', 1, 'Unidad', 2.00, 2.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 32, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(152, 136, 'LAPIZ', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 33, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(153, 137, 'LAPIZ', 1, 'Unidad', 10.00, 10.00, 0, 132, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 34, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(154, 138, 'LAPIZ', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 40, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(155, 139, 'LAPICEROS', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, NULL, NULL, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 43, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(156, 140, 'PAPEL DINA A4', 1, 'Unidad', 0.00, 0.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 44, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(157, 141, 'JABON LIQUIDO', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 45, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(158, 142, 'JABON LIQUIDO', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL),
-(159, 143, 'CORRECTOR', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 46, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL),
-(160, 144, 'LIMPIA TODO', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 47, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(161, 145, 'JABON LIQUIDO', 1, 'Unidad', 10.00, 10.00, 0, 261, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 48, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL),
-(162, 146, 'LAPIZ', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 49, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL),
-(163, 147, 'ARCHIVADOR', 1, 'Unidad', 2.00, 2.00, 0, 12, NULL, NULL, 'Tintos & Hielos SCRL', 4, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 50, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(164, 148, 'CINTA SCOTCH', 1, 'Unidad', 2.00, 2.00, 0, 261, NULL, NULL, 'Carnicos C&S', 3, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 51, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(165, 149, 'LAPICEROS', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL),
-(166, 150, 'LAPICEROS', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL),
-(167, 151, 'JABON LIQUIDO', 1, 'Unidad', 3.00, 3.00, 0, 132, NULL, NULL, 'Carnicos C&S', 3, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 52, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(168, 152, 'RESALTADOR', 1, 'Unidad', 10.00, 10.00, 0, 132, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 53, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL),
-(169, 153, 'HARINA', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL),
-(170, 154, 'JABON LIQUIDO', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 54, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(171, 155, 'SOBRE MANILA A4', 1, 'Unidad', 10.00, 10.00, 0, 1, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 55, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL),
-(172, 156, 'HARINA', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL),
-(173, 157, 'PILAS AAA', 2, 'Paquetes', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL),
-(174, 157, 'CARGADOR DE CELULAR', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL),
-(175, 158, 'JABON LIQUIDO', 4, 'Unidad', 10.00, 40.00, 0, 1, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 56, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL);
+INSERT INTO `items` (`id`, `requerimiento_id`, `descripcion`, `cantidad`, `unidad`, `precio_unitario`, `total`, `requiere_cotizacion`, `centro_costo_id`, `area_costo_id`, `carrera_id`, `proveedor`, `proveedor_id`, `estado_pago`, `es_insumo`, `estado_insumo`, `tipo`, `motivo_insumo`, `grupo_id`, `comentario_estado`, `comentario_solicitante`, `archivo_adjunto`, `tipo_inventario`, `estado_inventario`, `flujo_estado`, `estado_logistica`, `estado_administracion`, `estado_tesoreria`, `tipo_destino`, `curso_corto`, `incluye_igv`) VALUES
+(146, 132, 'LAPICEROS', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'Constructores y Consultores la Guadalupana S.R.L.', 37, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 28, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(147, 133, 'HARINA', 5, 'KG', 7.00, 35.00, 0, 132, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 29, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(148, 133, 'LAPICEROS', 4, 'Unidad', 10.00, 40.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 29, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(149, 133, 'LIMPIA TODO', 3, 'Unidad', 20.00, 60.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 30, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(150, 134, 'FRANELA', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 31, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(151, 135, 'JABON LIQUIDO', 1, 'Unidad', 2.00, 2.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 32, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(152, 136, 'LAPIZ', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 33, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(153, 137, 'LAPIZ', 1, 'Unidad', 10.00, 10.00, 0, 132, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 34, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(154, 138, 'LAPIZ', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 40, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(155, 139, 'LAPICEROS', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, NULL, NULL, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 43, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(156, 140, 'PAPEL DINA A4', 1, 'Unidad', 0.00, 0.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 44, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(157, 141, 'JABON LIQUIDO', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 45, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(158, 142, 'JABON LIQUIDO', 1, 'Unidad', 30.00, 30.00, 1, 131, NULL, NULL, 'Tintos & Hielos SCRL', 4, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 58, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(159, 143, 'CORRECTOR', 1, 'Unidad', 10.00, 10.00, 1, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 46, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(160, 144, 'LIMPIA TODO', 1, 'Unidad', 0.00, 0.00, 0, NULL, NULL, NULL, '', NULL, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 47, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(161, 145, 'JABON LIQUIDO', 1, 'Unidad', 10.00, 10.00, 1, 261, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 48, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(162, 146, 'LAPIZ', 1, 'Unidad', 10.00, 10.00, 1, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 49, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(163, 147, 'ARCHIVADOR', 1, 'Unidad', 2.00, 2.00, 0, 12, NULL, NULL, 'Tintos & Hielos SCRL', 4, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 50, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(164, 148, 'CINTA SCOTCH', 1, 'Unidad', 2.00, 2.00, 0, 261, NULL, NULL, 'Carnicos C&S', 3, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 51, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(165, 149, 'LAPICEROS', 1, 'Unidad', 130.00, 130.00, 1, 1, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 64, '', NULL, NULL, NULL, 'PENDIENTE', 'ADMINISTRACION', 'ENVIADO', 'DENEGADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(166, 150, 'LAPICEROS', 1, 'Unidad', 20.00, 20.00, 1, 131, NULL, NULL, 'Tintos & Hielos SCRL', 4, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 58, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(167, 151, 'JABON LIQUIDO', 1, 'Unidad', 3.00, 3.00, 0, 132, NULL, NULL, 'Carnicos C&S', 3, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 52, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(168, 152, 'RESALTADOR', 1, 'Unidad', 10.00, 10.00, 1, 132, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 53, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(169, 153, 'HARINA', 1, 'Unidad', 10.00, 10.00, 1, 131, NULL, NULL, 'Tintos & Hielos SCRL', 4, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 58, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(170, 154, 'JABON LIQUIDO', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 54, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(171, 155, 'SOBRE MANILA A4', 1, 'Unidad', 10.00, 10.00, 0, 1, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 55, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(172, 156, 'HARINA', 1, 'Unidad', 10.00, 10.00, 1, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 57, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(173, 157, 'PILAS AAA', 2, 'Paquetes', 10.00, 20.00, 1, 261, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 57, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(174, 157, 'CARGADOR DE CELULAR', 1, 'Unidad', 10.00, 10.00, 1, 261, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 57, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(175, 158, 'JABON LIQUIDO', 4, 'Unidad', 10.00, 40.00, 1, 1, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 56, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(176, 159, 'JABON LIQUIDO', 1, 'Unidad', 0.00, 0.00, 1, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 63, NULL, NULL, NULL, NULL, 'PENDIENTE', 'ADMINISTRACION', 'ENVIADO', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL, 0),
+(177, 160, 'JABON LIQUIDO', 1.2, 'Unidad', 10.00, 12.00, 1, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 59, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(178, 161, 'LIMPIA TODO', 1.323, 'Unidad', 3.00, 3.97, 1, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 60, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(179, 162, 'sdasd', 1, 'Unidad', 150.00, 150.00, 0, 131, NULL, NULL, 'Sanchez Flores Eleuterio', 22, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 61, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(180, 163, 'dasdasd', 1, 'Unidad', 10.00, 10.00, 1, 261, NULL, NULL, 'Red Hardward Tecnology S.R.L', 32, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 62, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(181, 164, 'FOLDER MANILA', 1, 'Unidad', 20.00, 20.00, 1, 133, NULL, NULL, 'Olympus Industrias S.R.L', 14, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 65, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(182, 165, 'fsdfds', 1, 'Unidad', 10.00, 10.00, 1, 131, NULL, NULL, 'MARIA NELIDA CHIROQUE MACALUPU', 10, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 67, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(183, 165, 'aasa', 1, 'Unidad', 10.00, 10.00, 1, 131, NULL, NULL, 'Palacios Alburqueque Jani Daniel', 5, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 66, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(184, 166, 'LAPIZ', 1, 'Unidad', 30.00, 30.00, 1, 131, NULL, NULL, 'Wilmer Timana Carmen', 7, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 69, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(185, 166, 'MICAS A4', 1, 'Unidad', 30.00, 30.00, 1, 131, NULL, NULL, 'Palacios Alburqueque Jani Daniel', 5, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 68, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(186, 167, 'cigv', 1, 'Unidad', 40.00, 40.00, 1, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 71, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(187, 167, 'sigv', 1, 'Unidad', 40.00, 40.00, 1, 131, NULL, NULL, 'Olympus Industrias S.R.L', 14, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 70, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(188, 168, 'JABON LIQUIDO', 1, 'Unidad', 0.00, 0.00, 1, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, NULL, NULL, NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL, 0),
+(189, 169, 'FRANELA', 1, 'Unidad', 0.00, 0.00, 1, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, NULL, NULL, NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL, 0),
+(190, 170, 'AZUCAR BLANCA', 1, 'KG', 10.00, 10.00, 1, 131, NULL, NULL, 'Jose Chavez Varona', 15, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 95, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 1),
+(191, 171, 'FRANELA', 12, 'Unidad', 0.00, 0.00, 1, NULL, NULL, NULL, '', 3, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 94, NULL, NULL, NULL, NULL, 'PENDIENTE', 'ADMINISTRACION', 'ENVIADO', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL, 1),
+(192, 172, 'dasdsa', 1, 'Unidad', 10.00, 10.00, 1, 1, NULL, NULL, 'Olympus Industrias S.R.L', 14, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 93, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(193, 173, 'dsadsa', 1, 'Unidad', 11.00, 11.00, 1, 139, NULL, NULL, 'Carniceria Giron SCRL', 6, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 77, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(194, 174, 'asdsa', 1, 'Unidad', 10.00, 10.00, 1, 131, NULL, NULL, 'MIKESCORT E.I.R.L', 1, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 91, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(195, 175, 'dsadsad', 10, 'Unidad', 12.00, 120.00, 1, 131, NULL, NULL, 'MB SAC', 9, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 76, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(196, 176, 'cascsa', 1, 'Unidad', 30.00, 30.00, 1, 132, NULL, NULL, 'Miguel Angel Alcas Chorres', 24, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 90, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 1),
+(197, 171, 'FRANELA', 1, 'Unidad', 10.00, 10.00, 1, 132, NULL, NULL, 'OTOYA LIVIAPOMA ', 8, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 92, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 1),
+(198, 177, 'GRAPAS', 1, 'Unidad', 20.00, 20.00, 1, 132, NULL, NULL, 'OTOYA LIVIAPOMA LUIS ENRIQUE', 8, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 75, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(199, 178, 'HARINA', 1, 'Unidad', 10.00, 10.00, 1, 133, NULL, NULL, 'Ferreteria Burgos', 36, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 78, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(200, 179, 'DASD', 1, 'Unidad', 10.00, 10.00, 1, 131, NULL, NULL, 'Unión ychicawa s.a', 18, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 81, NULL, NULL, NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(201, 180, 'asdasds', 1, 'Unidad', 10.00, 10.00, 0, 131, NULL, NULL, 'Unión ychicawa s.a', 18, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 79, NULL, 'dsdsad', 'uploads/items/6a18046222984_201_1779958882.pdf', NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0),
+(202, 181, 'dsadas', 1, 'Unidad', 10.00, 10.00, 1, 131, NULL, NULL, 'OTOYA LIVIAPOMA LUIS ENRIQUE', 8, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, 80, NULL, 'marca', NULL, NULL, 'PENDIENTE', 'TESORERIA', 'ENVIADO', 'APROBADO', 'PENDIENTE', 'GENERAL', NULL, 0),
+(203, 182, 'dasdsa', 1, 'Unidad', 0.00, 0.00, 1, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, 'dasdasdsa', 'uploads/items/6a18962227a26_203_1779996194.pdf', NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL, 0),
+(204, 183, 'FRANELA', 13, 'Unidad', 0.00, 0.00, 1, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, 'franela de color blanco', 'uploads/items/6a199e5df30e9_204_1780063837.pdf', NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL, 0),
+(205, 184, 'PAPEL DINA A4', 0.65, 'GR', 0.00, 0.00, 1, NULL, NULL, NULL, '', NULL, 'Pendiente', 0, 'Pendiente', 'Producto', NULL, NULL, NULL, NULL, NULL, NULL, 'PENDIENTE', 'LOGISTICA', 'PENDIENTE', 'PENDIENTE', 'PENDIENTE', 'GENERAL', NULL, 0),
+(206, 185, 'FRANELA', 1, 'Unidad', 10.00, 10.00, 1, 1, NULL, NULL, 'Constructores y Consultores la Guadalupana S.R.L.', 37, 'Pagado', 0, 'Pendiente', 'Producto', NULL, 96, NULL, NULL, NULL, NULL, 'PENDIENTE', 'FINALIZADO', 'ENVIADO', 'APROBADO', 'PAGADO', 'GENERAL', NULL, 0);
 
 --
 -- Disparadores `items`
@@ -1637,6 +1822,42 @@ CREATE TABLE `logs` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `movimientos_caja`
+--
+
+CREATE TABLE `movimientos_caja` (
+  `id` int(11) NOT NULL,
+  `caja_id` int(11) DEFAULT NULL,
+  `tipo` enum('APERTURA','RECARGA','GASTO','RENDICION','AJUSTE') DEFAULT NULL,
+  `referencia_id` int(11) DEFAULT NULL,
+  `descripcion` text DEFAULT NULL,
+  `ingreso` decimal(10,2) DEFAULT 0.00,
+  `salida` decimal(10,2) DEFAULT 0.00,
+  `saldo_resultante` decimal(10,2) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `movimientos_caja`
+--
+
+INSERT INTO `movimientos_caja` (`id`, `caja_id`, `tipo`, `referencia_id`, `descripcion`, `ingreso`, `salida`, `saldo_resultante`, `created_at`) VALUES
+(1, 1, 'APERTURA', NULL, 'Apertura por solicitud', 1000.00, 0.00, 1000.00, '2026-05-29 15:34:02'),
+(2, 1, 'RECARGA', NULL, 'Recarga por solicitud', 10.00, 0.00, 1010.00, '2026-05-29 16:11:58'),
+(3, 1, 'RENDICION', 2, 'Rendición aprobada', 0.00, 280.00, 730.00, '2026-05-29 17:18:56'),
+(4, 1, 'RENDICION', 3, 'Rendición aprobada', 0.00, 21.00, 709.00, '2026-05-30 16:41:40'),
+(5, 2, 'APERTURA', NULL, 'Apertura por solicitud', 1000.00, 0.00, 1000.00, '2026-05-30 17:24:22'),
+(6, 3, 'APERTURA', NULL, 'Apertura por solicitud', 500.00, 0.00, 500.00, '2026-05-30 17:49:12'),
+(7, 1, 'RECARGA', NULL, 'Recarga por solicitud', 100.00, 0.00, 809.00, '2026-05-30 17:50:08'),
+(8, 1, 'RENDICION', 5, 'Rendición aprobada', 0.00, 22.00, 787.00, '2026-05-30 17:54:35'),
+(9, 3, 'RENDICION', 6, 'Rendición aprobada', 0.00, 530.00, 0.00, '2026-06-03 13:04:57'),
+(10, 3, 'RECARGA', NULL, 'Recarga por solicitud', 1000.00, 0.00, 1000.00, '2026-06-03 13:09:02'),
+(11, 3, 'RENDICION', 8, 'Rendición aprobada', 0.00, 4434.00, 0.00, '2026-06-04 13:24:43'),
+(12, 3, 'RECARGA', NULL, 'Recarga por solicitud', 1000.00, 0.00, 1000.00, '2026-06-04 13:25:35');
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `movimientos_stock`
 --
 
@@ -1756,12 +1977,146 @@ INSERT INTO `notificaciones` (`id`, `usuario_id`, `titulo`, `mensaje`, `tipo`, `
 (82, 8, 'Movilidad pagada', 'La movilidad MOV-00036 fue pagada correctamente', 'MOVILIDAD', 1, NULL, NULL, '2026-05-16 03:16:29', 'MOV_PAGADO_36'),
 (83, 8, 'Movilidad pendiente', 'Existe una movilidad pendiente del área TESORERIA', 'MOVILIDAD', 1, NULL, NULL, '2026-05-16 03:19:28', 'MOV_PEND_37'),
 (84, 8, 'Movilidad pendiente', 'Existe una movilidad pendiente del área TESORERIA', 'MOVILIDAD', 1, NULL, NULL, '2026-05-16 03:22:01', 'MOV_PEND_38'),
-(85, 12, 'Movilidad pendiente', 'Existe una movilidad pendiente del área TESORERIA', 'MOVILIDAD', 0, NULL, NULL, '2026-05-18 14:46:22', 'MOV_PEND_39'),
-(86, 4, 'Requerimiento pagado', 'Su requerimiento fue pagado', 'TESORERIA', 0, 171, 155, '2026-05-18 14:51:37', 'PAGADO_171'),
+(85, 12, 'Movilidad pendiente', 'Existe una movilidad pendiente del área TESORERIA', 'MOVILIDAD', 1, NULL, NULL, '2026-05-18 14:46:22', 'MOV_PEND_39'),
+(86, 4, 'Requerimiento pagado', 'Su requerimiento fue pagado', 'TESORERIA', 1, 171, 155, '2026-05-18 14:51:37', 'PAGADO_171'),
 (87, 8, 'Movilidad aprobada', 'Su movilidad MOV-00039 fue aprobada', 'MOVILIDAD', 1, NULL, NULL, '2026-05-18 15:02:55', 'MOV_USER_APROB_39'),
 (88, 8, 'Movilidad pagada', 'La movilidad MOV-00039 fue pagada correctamente', 'MOVILIDAD', 1, NULL, NULL, '2026-05-18 15:03:39', 'MOV_PAGADO_39'),
-(89, 12, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 0, 175, 158, '2026-05-19 13:25:24', 'ADMIN_175'),
-(90, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 0, 175, 158, '2026-05-19 13:25:32', 'ADMIN_ESTADO_APROBADO_175');
+(89, 12, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 175, 158, '2026-05-19 13:25:24', 'ADMIN_175'),
+(90, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 175, 158, '2026-05-19 13:25:32', 'ADMIN_ESTADO_APROBADO_175'),
+(91, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 174, 157, '2026-05-19 14:56:54', 'ADMIN_174'),
+(92, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 173, 157, '2026-05-19 14:56:54', 'ADMIN_173'),
+(93, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 172, 156, '2026-05-19 14:56:54', 'ADMIN_172'),
+(94, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 172, 156, '2026-05-19 14:57:06', 'ADMIN_ESTADO_APROBADO_172'),
+(95, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 172, 156, '2026-05-19 14:57:06', 'TESORERIA_172'),
+(96, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 174, 157, '2026-05-19 14:57:08', 'ADMIN_ESTADO_APROBADO_174'),
+(97, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 174, 157, '2026-05-19 14:57:08', 'TESORERIA_174'),
+(98, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 173, 157, '2026-05-19 14:57:08', 'ADMIN_ESTADO_APROBADO_173'),
+(99, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 173, 157, '2026-05-19 14:57:08', 'TESORERIA_173'),
+(100, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 169, 153, '2026-05-19 15:07:36', 'ADMIN_169'),
+(101, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 166, 150, '2026-05-19 15:07:36', 'ADMIN_166'),
+(102, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 158, 142, '2026-05-19 15:07:36', 'ADMIN_158'),
+(103, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 166, 150, '2026-05-19 15:07:43', 'ADMIN_ESTADO_APROBADO_166'),
+(104, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 166, 150, '2026-05-19 15:07:43', 'TESORERIA_166'),
+(105, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 169, 153, '2026-05-19 15:07:45', 'ADMIN_ESTADO_APROBADO_169'),
+(106, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 169, 153, '2026-05-19 15:07:45', 'TESORERIA_169'),
+(107, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 158, 142, '2026-05-19 15:07:47', 'ADMIN_ESTADO_APROBADO_158'),
+(108, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 158, 142, '2026-05-19 15:07:47', 'TESORERIA_158'),
+(109, 4, 'Movilidad pendiente', 'Existe una movilidad pendiente del área TIC', 'MOVILIDAD', 1, NULL, NULL, '2026-05-20 10:38:36', 'MOV_PEND_40'),
+(110, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 177, 160, '2026-05-20 20:03:21', 'ADMIN_177'),
+(111, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 177, 160, '2026-05-20 20:03:34', 'ADMIN_ESTADO_APROBADO_177'),
+(112, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 177, 160, '2026-05-20 20:03:34', 'TESORERIA_177'),
+(113, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 178, 161, '2026-05-21 06:06:17', 'ADMIN_178'),
+(114, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 178, 161, '2026-05-21 06:06:44', 'ADMIN_ESTADO_APROBADO_178'),
+(115, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 178, 161, '2026-05-21 06:06:44', 'TESORERIA_178'),
+(116, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 179, 162, '2026-05-21 07:00:36', 'ADMIN_179'),
+(117, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 179, 162, '2026-05-21 07:00:50', 'ADMIN_ESTADO_APROBADO_179'),
+(118, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 179, 162, '2026-05-21 07:00:50', 'TESORERIA_179'),
+(119, 12, 'Requerimiento pagado', 'Su requerimiento fue pagado', 'TESORERIA', 1, 179, 162, '2026-05-21 07:46:58', 'PAGADO_179'),
+(120, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 180, 163, '2026-05-21 09:08:15', 'ADMIN_180'),
+(121, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 180, 163, '2026-05-21 09:08:29', 'ADMIN_ESTADO_APROBADO_180'),
+(122, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 180, 163, '2026-05-21 09:08:29', 'TESORERIA_180'),
+(123, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 176, 159, '2026-05-21 16:24:32', 'ADMIN_176'),
+(124, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 165, 149, '2026-05-21 16:25:13', 'ADMIN_165'),
+(125, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 181, 164, '2026-05-21 16:26:07', 'ADMIN_181'),
+(126, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 183, 165, '2026-05-21 16:44:00', 'ADMIN_183'),
+(127, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 182, 165, '2026-05-21 16:44:03', 'ADMIN_182'),
+(128, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 183, 165, '2026-05-21 16:44:36', 'ADMIN_ESTADO_APROBADO_183'),
+(129, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 183, 165, '2026-05-21 16:44:36', 'TESORERIA_183'),
+(130, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 182, 165, '2026-05-21 16:44:37', 'ADMIN_ESTADO_APROBADO_182'),
+(131, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 182, 165, '2026-05-21 16:44:37', 'TESORERIA_182'),
+(132, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 185, 166, '2026-05-21 16:54:17', 'ADMIN_185'),
+(133, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 184, 166, '2026-05-21 16:54:22', 'ADMIN_184'),
+(134, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 185, 166, '2026-05-21 16:54:34', 'ADMIN_ESTADO_APROBADO_185'),
+(135, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 185, 166, '2026-05-21 16:54:34', 'TESORERIA_185'),
+(136, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 184, 166, '2026-05-21 16:54:34', 'ADMIN_ESTADO_APROBADO_184'),
+(137, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 184, 166, '2026-05-21 16:54:34', 'TESORERIA_184'),
+(138, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 187, 167, '2026-05-21 17:01:21', 'ADMIN_187'),
+(139, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 186, 167, '2026-05-21 17:01:31', 'ADMIN_186'),
+(140, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 187, 167, '2026-05-21 17:01:47', 'ADMIN_ESTADO_APROBADO_187'),
+(141, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 187, 167, '2026-05-21 17:01:47', 'TESORERIA_187'),
+(142, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 186, 167, '2026-05-21 17:01:48', 'ADMIN_ESTADO_APROBADO_186'),
+(143, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 186, 167, '2026-05-21 17:01:48', 'TESORERIA_186'),
+(144, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 181, 164, '2026-05-21 18:27:16', 'ADMIN_ESTADO_APROBADO_181'),
+(145, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 181, 164, '2026-05-21 18:27:16', 'TESORERIA_181'),
+(146, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 194, 174, '2026-05-28 08:11:54', 'ADMIN_194'),
+(147, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 198, 177, '2026-05-28 08:15:57', 'ADMIN_198'),
+(148, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 196, 176, '2026-05-28 08:23:35', 'ADMIN_196'),
+(149, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 198, 177, '2026-05-28 08:36:57', 'ADMIN_198'),
+(150, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 195, 175, '2026-05-28 08:38:18', 'ADMIN_195'),
+(151, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 193, 173, '2026-05-28 08:47:36', 'ADMIN_193'),
+(152, 12, 'Movilidad aprobada', 'Existe una movilidad pendiente de pago del área TESORERIA', 'MOVILIDAD', 1, NULL, NULL, '2026-05-28 08:52:55', 'MOV_APROB_37'),
+(153, 12, 'Movilidad aprobada', 'Su movilidad MOV-00037 fue aprobada', 'MOVILIDAD', 1, NULL, NULL, '2026-05-28 08:52:55', 'MOV_USER_APROB_37'),
+(154, 12, 'Movilidad pagada', 'La movilidad MOV-00037 fue pagada correctamente', 'MOVILIDAD', 1, NULL, NULL, '2026-05-28 08:53:21', 'MOV_PAGADO_37'),
+(155, 8, 'Movilidad pagada', 'La movilidad MOV-00034 fue pagada correctamente', 'MOVILIDAD', 1, NULL, NULL, '2026-05-28 08:53:37', 'MOV_PAGADO_34'),
+(156, 4, 'Movilidad pendiente', 'Existe una movilidad pendiente del área TESORERIA', 'MOVILIDAD', 1, NULL, NULL, '2026-05-28 08:53:59', 'MOV_PEND_41'),
+(157, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 199, 178, '2026-05-28 08:56:59', 'ADMIN_199'),
+(158, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 199, 178, '2026-05-28 08:57:52', 'ADMIN_ESTADO_APROBADO_199'),
+(159, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 199, 178, '2026-05-28 08:57:52', 'TESORERIA_199'),
+(160, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 195, 175, '2026-05-28 08:57:54', 'ADMIN_ESTADO_APROBADO_195'),
+(161, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 195, 175, '2026-05-28 08:57:54', 'TESORERIA_195'),
+(162, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 198, 177, '2026-05-28 08:57:55', 'ADMIN_ESTADO_APROBADO_198'),
+(163, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 198, 177, '2026-05-28 08:57:55', 'TESORERIA_198'),
+(164, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 193, 173, '2026-05-28 08:57:59', 'ADMIN_ESTADO_APROBADO_193'),
+(165, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 193, 173, '2026-05-28 08:57:59', 'TESORERIA_193'),
+(166, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 201, 180, '2026-05-28 09:04:23', 'ADMIN_201'),
+(167, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 201, 180, '2026-05-28 09:04:58', 'ADMIN_ESTADO_APROBADO_201'),
+(168, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 201, 180, '2026-05-28 09:04:58', 'TESORERIA_201'),
+(169, 4, 'Requerimiento pagado', 'Su requerimiento fue pagado', 'TESORERIA', 1, 201, 180, '2026-05-28 09:05:12', 'PAGADO_201'),
+(170, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 202, 181, '2026-05-28 14:10:09', 'ADMIN_202'),
+(171, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 200, 179, '2026-05-28 14:10:20', 'ADMIN_200'),
+(172, 12, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 200, 179, '2026-05-28 14:13:50', 'ADMIN_ESTADO_APROBADO_200'),
+(173, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 200, 179, '2026-05-28 14:13:50', 'TESORERIA_200'),
+(174, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 202, 181, '2026-05-28 14:13:52', 'ADMIN_ESTADO_APROBADO_202'),
+(175, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 202, 181, '2026-05-28 14:13:52', 'TESORERIA_202'),
+(176, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 196, 176, '2026-05-28 15:28:06', 'ADMIN_196'),
+(177, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 196, 176, '2026-05-28 15:31:14', 'ADMIN_196'),
+(178, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 196, 176, '2026-05-28 15:31:29', 'ADMIN_ESTADO_APROBADO_196'),
+(179, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 196, 176, '2026-05-28 15:31:29', 'TESORERIA_196'),
+(180, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 197, 171, '2026-05-28 15:32:53', 'ADMIN_197'),
+(181, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 196, 176, '2026-05-28 15:35:47', 'ADMIN_196'),
+(182, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 196, 176, '2026-05-28 15:36:08', 'ADMIN_ESTADO_APROBADO_196'),
+(183, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 196, 176, '2026-05-28 15:36:08', 'TESORERIA_196'),
+(184, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 194, 174, '2026-05-28 15:47:45', 'ADMIN_194'),
+(185, 8, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 194, 174, '2026-05-28 15:48:33', 'ADMIN_ESTADO_APROBADO_194'),
+(186, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 194, 174, '2026-05-28 15:48:33', 'TESORERIA_194'),
+(187, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 197, 171, '2026-05-28 15:51:19', 'ADMIN_197'),
+(188, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 197, 171, '2026-05-28 15:51:34', 'ADMIN_ESTADO_APROBADO_197'),
+(189, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 197, 171, '2026-05-28 15:51:34', 'TESORERIA_197'),
+(190, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 192, 172, '2026-05-28 15:59:31', 'ADMIN_192'),
+(191, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 191, 171, '2026-05-28 16:00:01', 'ADMIN_191'),
+(192, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 1, 190, 170, '2026-05-28 16:00:36', 'ADMIN_190'),
+(193, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 190, 170, '2026-05-28 16:00:58', 'ADMIN_ESTADO_APROBADO_190'),
+(194, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 190, 170, '2026-05-28 16:00:58', 'TESORERIA_190'),
+(195, 4, 'Estado actualizado', 'Su item fue APROBADO', 'ADMINISTRACION', 1, 192, 172, '2026-05-28 16:00:59', 'ADMIN_ESTADO_APROBADO_192'),
+(196, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 1, 192, 172, '2026-05-28 16:00:59', 'TESORERIA_192'),
+(197, 4, 'Solicitud firmada', 'La solicitud FND-00008 está pendiente de aprobación', 'FONDOS_APROBAR', 1, NULL, 81, '2026-05-28 19:03:33', 'APROBAR_81'),
+(198, 12, 'Solicitud aprobada - Pendiente de pago', 'La solicitud FND-00008 está aprobada y espera pago de tesorería', 'FONDOS_PAGAR', 1, NULL, 81, '2026-05-28 19:03:35', 'PAGAR_81'),
+(199, 8, 'Proceso finalizado', 'La solicitud FND-00007 ha sido cerrada exitosamente.', 'FONDOS_CERRADO', 1, NULL, 78, '2026-05-28 19:03:51', 'CERRADO_78'),
+(200, 4, 'Pago registrado - Pendiente de rendición', 'El pago de su solicitud FND-00008 ha sido registrado. Debe presentar la rendición de gastos.', 'FONDOS_RENDIR', 1, NULL, 81, '2026-05-28 19:04:00', 'RENDIR_81'),
+(201, 4, 'Nueva solicitud de fondos', 'La solicitud FND-00009 - csfcsdcdscdsdcs requiere su firma', 'FONDOS_FIRMA', 0, NULL, 82, '2026-06-04 14:09:06', 'FIRMA_82'),
+(202, 4, 'Solicitud firmada', 'La solicitud FND-00011 está pendiente de aprobación', 'FONDOS_APROBAR', 0, NULL, 84, '2026-06-05 14:53:09', 'APROBAR_84'),
+(203, 4, 'Solicitud firmada', 'La solicitud FND-00010 está pendiente de aprobación', 'FONDOS_APROBAR', 0, NULL, 83, '2026-06-05 15:44:20', 'APROBAR_83'),
+(204, 12, 'Solicitud aprobada - Pendiente de pago', 'La solicitud FND-00010 está aprobada y espera pago de tesorería', 'FONDOS_PAGAR', 0, NULL, 83, '2026-06-05 15:44:24', 'PAGAR_83'),
+(205, 4, 'Solicitud firmada', 'La solicitud FND-00009 está pendiente de aprobación', 'FONDOS_APROBAR', 0, NULL, 82, '2026-06-05 15:44:30', 'APROBAR_82'),
+(206, 12, 'Solicitud aprobada - Pendiente de pago', 'La solicitud FND-00009 está aprobada y espera pago de tesorería', 'FONDOS_PAGAR', 0, NULL, 82, '2026-06-05 15:44:32', 'PAGAR_82'),
+(207, 8, 'Proceso finalizado', 'La solicitud FND-00011 ha sido cerrada exitosamente.', 'FONDOS_CERRADO', 1, NULL, 84, '2026-06-05 15:44:55', 'CERRADO_84'),
+(208, 8, 'Nueva solicitud de fondos', 'La solicitud FND-00012 - csacascascas requiere su firma', 'FONDOS_FIRMA', 1, NULL, 85, '2026-06-05 15:47:54', 'FIRMA_85'),
+(209, 4, 'Solicitud firmada', 'La solicitud FND-00012 está pendiente de aprobación', 'FONDOS_APROBAR', 0, NULL, 85, '2026-06-05 15:47:57', 'APROBAR_85'),
+(210, 8, 'Proceso finalizado', 'La solicitud FND-00012 ha sido cerrada exitosamente.', 'FONDOS_CERRADO', 1, NULL, 85, '2026-06-05 15:49:14', 'CERRADO_85'),
+(211, 4, 'Nueva solicitud de fondos', 'La solicitud FND-00013 - ccascas requiere su firma', 'FONDOS_FIRMA', 0, NULL, 86, '2026-06-05 15:49:53', 'FIRMA_86'),
+(212, 4, 'Solicitud firmada', 'La solicitud FND-00013 está pendiente de aprobación', 'FONDOS_APROBAR', 0, NULL, 86, '2026-06-05 15:49:59', 'APROBAR_86'),
+(213, 12, 'Solicitud aprobada - Pendiente de pago', 'La solicitud FND-00013 está aprobada y espera pago de tesorería', 'FONDOS_PAGAR', 0, NULL, 86, '2026-06-05 15:50:02', 'PAGAR_86'),
+(214, 8, 'Pago registrado - Pendiente de rendición', 'El pago de su solicitud FND-00013 ha sido registrado. Debe presentar la rendición de gastos.', 'FONDOS_RENDIR', 1, NULL, 86, '2026-06-05 15:50:20', 'RENDIR_86'),
+(215, 8, 'Proceso finalizado', 'La solicitud FND-00013 ha sido cerrada exitosamente.', 'FONDOS_CERRADO', 1, NULL, 86, '2026-06-05 15:50:43', 'CERRADO_86'),
+(216, 4, 'Movilidad pendiente', 'Existe una movilidad pendiente del área TIC TAC', 'MOVILIDAD', 0, NULL, NULL, '2026-06-05 16:09:05', 'MOV_PEND_42'),
+(217, 12, 'Movilidad aprobada', 'Existe una movilidad pendiente de pago del área TIC TAC', 'MOVILIDAD', 0, NULL, NULL, '2026-06-05 16:09:20', 'MOV_APROB_42'),
+(218, 8, 'Movilidad aprobada', 'Su movilidad MOV-00042 fue aprobada', 'MOVILIDAD', 1, NULL, NULL, '2026-06-05 16:09:20', 'MOV_USER_APROB_42'),
+(222, 4, 'Solicitud firmada', 'La solicitud FND-00014 está pendiente de aprobación', 'FONDOS_APROBAR', 0, NULL, 87, '2026-06-05 16:29:38', 'APROBAR_87'),
+(223, 4, 'Pendiente aprobación', 'Existe un item pendiente en administración', 'ADMINISTRACION', 0, 206, 185, '2026-06-05 16:31:00', 'ADMIN_206'),
+(224, 12, 'Pago pendiente', 'Existe un item pendiente de pago', 'TESORERIA', 0, 206, 185, '2026-06-05 16:31:12', 'TESORERIA_206'),
+(225, 8, 'Proceso finalizado', 'La solicitud FND-00014 ha sido cerrada exitosamente.', 'FONDOS_CERRADO', 1, NULL, 87, '2026-06-05 16:32:00', 'CERRADO_87'),
+(226, 8, 'Movilidad pagada', 'La movilidad MOV-00042 fue pagada correctamente', 'MOVILIDAD', 1, NULL, NULL, '2026-06-05 16:44:02', 'MOV_PAGADO_42'),
+(227, 4, 'Movilidad pendiente', 'Existe una movilidad pendiente del área TIC', 'MOVILIDAD', 0, NULL, NULL, '2026-06-05 19:06:52', 'MOV_PEND_46');
 
 -- --------------------------------------------------------
 
@@ -1777,19 +2132,49 @@ CREATE TABLE `ordenes_compra` (
   `sede_id` int(11) DEFAULT NULL,
   `fecha` date DEFAULT NULL,
   `total` decimal(10,2) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `subtotal` decimal(10,2) DEFAULT 0.00,
+  `igv` decimal(10,2) DEFAULT 0.00,
+  `modo_igv` enum('incluido','agregado') DEFAULT 'incluido',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `condiciones` text DEFAULT NULL,
+  `observaciones` text DEFAULT NULL,
+  `grupo_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `ordenes_compra`
 --
 
-INSERT INTO `ordenes_compra` (`id`, `numero`, `proveedor_id`, `empresa_id`, `sede_id`, `fecha`, `total`, `created_at`) VALUES
-(96, 'OC-2026-000001', 1, 1, 1, '2026-05-14', 60.00, '2026-05-14 18:49:36'),
-(97, 'OC-2026-000002', 3, 1, 2, '2026-05-18', 2.00, '2026-05-18 14:52:04'),
-(98, 'OS-1779116227325', 10, 1, NULL, '2026-05-18', 490.00, '2026-05-18 14:57:07'),
-(99, 'OC-2026-000003', 1, 1, 1, '2026-05-19', 10.00, '2026-05-19 13:24:08'),
-(100, 'OC-2026-000004', 1, 2, 3, '2026-05-19', 40.00, '2026-05-19 13:25:38');
+INSERT INTO `ordenes_compra` (`id`, `numero`, `proveedor_id`, `empresa_id`, `sede_id`, `fecha`, `total`, `subtotal`, `igv`, `modo_igv`, `created_at`, `condiciones`, `observaciones`, `grupo_id`) VALUES
+(121, 'OC-2026-000025', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:29:58', NULL, NULL, NULL),
+(122, 'OC-2026-000026', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:31:54', NULL, NULL, NULL),
+(123, 'OC-2026-000027', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:34:45', NULL, NULL, NULL),
+(124, 'OC-2026-000028', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:35:23', NULL, NULL, NULL),
+(125, 'OC-2026-000029', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:35:32', NULL, NULL, NULL),
+(126, 'OC-2026-000030', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:39:20', NULL, NULL, NULL),
+(127, 'OC-2026-000031', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:40:06', NULL, NULL, NULL),
+(128, 'OC-2026-000032', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:42:41', '', '', NULL),
+(129, 'OC-2026-000033', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:47:38', '', '', NULL),
+(130, 'OC-2026-000034', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:47:46', '', '', NULL),
+(131, 'OC-2026-000035', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:48:07', '', '', NULL),
+(132, 'OC-2026-000036', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:48:14', '', '', NULL),
+(133, 'OC-2026-000037', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 14:48:25', NULL, NULL, NULL),
+(134, 'OC-2026-000038', 1, 1, 1, '2026-05-19', 10.00, 0.00, 0.00, 'incluido', '2026-05-19 14:59:37', NULL, NULL, 57),
+(135, 'OC-2026-000039', 1, 2, 3, '2026-05-19', 40.00, 0.00, 0.00, 'incluido', '2026-05-19 15:00:05', '', '', 56),
+(136, 'OC-2026-000040', 4, 1, 1, '2026-05-19', 0.00, 0.00, 0.00, 'incluido', '2026-05-19 15:44:08', '', '', 58),
+(137, 'OC-2026-000041', 1, 1, 1, '2026-05-20', 12.00, 0.00, 0.00, 'incluido', '2026-05-20 20:04:09', NULL, NULL, 59),
+(138, 'OC-2026-000042', 1, 1, 1, '2026-05-21', 0.00, 0.00, 0.00, 'incluido', '2026-05-21 06:06:49', 'nnuj', '', 60),
+(139, 'OS-2026-000001', 22, 1, 1, '2026-05-21', 177.00, 150.00, 27.00, 'agregado', '2026-05-21 07:01:09', '', '', 61),
+(140, 'OC-2026-000043', 32, 1, 2, '2026-05-21', 10.00, 8.47, 1.53, 'incluido', '2026-05-21 09:08:36', '', '', 62),
+(141, 'OC-2026-000044', 1, 1, 1, '2026-05-21', 40.00, 33.90, 6.10, 'incluido', '2026-05-21 17:02:56', NULL, NULL, 71),
+(142, 'OC-2026-000045', 10, 1, 1, '2026-05-21', 10.00, 8.47, 1.53, 'incluido', '2026-05-21 18:24:54', NULL, NULL, 67),
+(143, 'OC-2026-000046', 1, 2, 3, '2026-05-21', 10.00, 8.47, 1.53, 'incluido', '2026-05-21 18:25:25', NULL, NULL, 55),
+(144, 'OC-2026-000047', 5, 1, 1, '2026-05-21', 30.00, 25.42, 4.58, 'incluido', '2026-05-21 18:25:29', NULL, NULL, 68),
+(145, 'OC-2026-000048', 8, 1, 1, '2026-05-28', 10.00, 8.47, 1.53, 'incluido', '2026-05-28 14:35:16', NULL, NULL, 80),
+(146, 'OC-2026-000049', 18, 1, 1, '2026-05-28', 10.00, 8.47, 1.53, 'incluido', '2026-05-28 14:35:31', NULL, NULL, 81),
+(147, 'OC-2026-000050', 24, 1, 1, '2026-05-28', 30.00, 25.42, 4.58, 'incluido', '2026-05-28 15:36:18', NULL, NULL, 90),
+(148, 'OC-2026-000051', 1, 1, 1, '2026-05-28', 11.80, 10.00, 1.80, 'incluido', '2026-05-28 15:48:45', NULL, NULL, 91),
+(149, 'OC-2026-000052', 37, 2, 3, '2026-06-05', 11.80, 10.00, 1.80, 'incluido', '2026-06-05 16:31:21', NULL, NULL, 96);
 
 -- --------------------------------------------------------
 
@@ -1802,7 +2187,7 @@ CREATE TABLE `orden_compra_items` (
   `orden_id` int(11) DEFAULT NULL,
   `item_id` int(11) DEFAULT NULL,
   `descripcion` varchar(255) DEFAULT NULL,
-  `cantidad` int(11) DEFAULT NULL,
+  `cantidad` decimal(12,4) NOT NULL,
   `precio` decimal(10,2) DEFAULT NULL,
   `total` decimal(10,2) DEFAULT NULL,
   `tipo` enum('Producto','Servicio') DEFAULT 'Producto',
@@ -1819,11 +2204,62 @@ CREATE TABLE `orden_compra_items` (
 --
 
 INSERT INTO `orden_compra_items` (`id`, `orden_id`, `item_id`, `descripcion`, `cantidad`, `precio`, `total`, `tipo`, `created_at`, `centro_costo_id`, `area_costo_id`, `centro_costo_nombre`, `area_costo_nombre`, `departamento_nombre`) VALUES
-(101, 96, 149, 'LIMPIA TODO', 3, 60.00, 60.00, 'Producto', '2026-05-14 18:49:36', NULL, NULL, '131', '', ''),
-(102, 97, 164, 'CINTA SCOTCH', 1, 2.00, 2.00, 'Producto', '2026-05-18 14:52:04', NULL, NULL, '261', '', ''),
-(103, 98, NULL, 'Desarrollo Artistico - TECNICO EN COCINA (A)', 20, 25.00, 490.00, 'Producto', '2026-05-18 14:57:07', NULL, NULL, NULL, NULL, NULL),
-(104, 99, 168, 'RESALTADOR', 1, 10.00, 10.00, 'Producto', '2026-05-19 13:24:08', NULL, NULL, '132', '', ''),
-(105, 100, 175, 'JABON LIQUIDO', 4, 40.00, 40.00, 'Producto', '2026-05-19 13:25:38', NULL, NULL, '1', '', '');
+(101, 96, 149, 'LIMPIA TODO', 3.0000, 60.00, 60.00, 'Producto', '2026-05-14 18:49:36', NULL, NULL, '131', '', ''),
+(102, 97, 164, 'CINTA SCOTCH', 1.0000, 2.00, 2.00, 'Producto', '2026-05-18 14:52:04', NULL, NULL, '261', '', ''),
+(103, 98, NULL, 'Desarrollo Artistico - TECNICO EN COCINA (A)', 20.0000, 25.00, 490.00, 'Producto', '2026-05-18 14:57:07', NULL, NULL, NULL, NULL, NULL),
+(104, 99, 168, 'RESALTADOR', 1.0000, 10.00, 10.00, 'Producto', '2026-05-19 13:24:08', NULL, NULL, '132', '', ''),
+(105, 100, 175, 'JABON LIQUIDO', 4.0000, 40.00, 40.00, 'Producto', '2026-05-19 13:25:38', NULL, NULL, '1', '', ''),
+(106, 101, 175, 'JABON LIQUIDO', 4.0000, 40.00, 40.00, 'Producto', '2026-05-19 13:36:31', NULL, NULL, '1', '', ''),
+(107, 102, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 13:47:17', NULL, NULL, '1', '', ''),
+(108, 103, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 13:53:26', NULL, NULL, '1', '', ''),
+(109, 104, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 13:54:51', NULL, NULL, '1', '', ''),
+(110, 105, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:01:05', NULL, NULL, '1', '', ''),
+(111, 106, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:04:41', NULL, NULL, '1', '', ''),
+(112, 107, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:05:34', NULL, NULL, '1', '', ''),
+(113, 108, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:12:29', NULL, NULL, '1', '', ''),
+(114, 109, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:13:00', NULL, NULL, '1', '', ''),
+(115, 110, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:13:04', NULL, NULL, '1', '', ''),
+(116, 111, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:16:28', NULL, NULL, '1', '', ''),
+(117, 112, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:18:21', NULL, NULL, '1', '', ''),
+(118, 113, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:18:31', NULL, NULL, '1', '', ''),
+(119, 114, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:19:06', NULL, NULL, '1', '', ''),
+(120, 115, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:20:34', NULL, NULL, '1', '', ''),
+(121, 116, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:22:58', NULL, NULL, '1', '', ''),
+(122, 117, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:25:50', NULL, NULL, '1', '', ''),
+(123, 118, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:26:00', NULL, NULL, '1', '', ''),
+(124, 119, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:26:48', NULL, NULL, '1', '', ''),
+(125, 120, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:29:51', NULL, NULL, '1', '', ''),
+(126, 121, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:29:58', NULL, NULL, '1', '', ''),
+(127, 122, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:31:54', NULL, NULL, '1', '', ''),
+(128, 123, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:34:45', NULL, NULL, '1', '', ''),
+(129, 124, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:35:23', NULL, NULL, '1', '', ''),
+(130, 125, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:35:32', NULL, NULL, '1', '', ''),
+(131, 126, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:39:20', NULL, NULL, '1', '', ''),
+(132, 127, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:40:06', NULL, NULL, '1', '', ''),
+(134, 128, 133, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:47:34', NULL, NULL, NULL, NULL, NULL),
+(136, 129, 135, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:47:42', NULL, NULL, NULL, NULL, NULL),
+(138, 130, 137, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:47:50', NULL, NULL, NULL, NULL, NULL),
+(140, 131, 139, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:48:10', NULL, NULL, NULL, NULL, NULL),
+(142, 132, 141, 'JABON LIQUIDO jh', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:48:22', NULL, NULL, NULL, NULL, NULL),
+(143, 133, 175, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 14:48:25', NULL, NULL, '1', '', ''),
+(144, 134, 172, 'HARINA', 1.0000, 10.00, 10.00, 'Producto', '2026-05-19 14:59:37', NULL, NULL, '131', '', ''),
+(146, 135, 145, 'JABON LIQUIDO', 4.0000, 10.00, 40.00, 'Producto', '2026-05-19 15:00:22', NULL, NULL, NULL, NULL, NULL),
+(189, 136, 186, 'LAPICEROS', 1.0000, 20.00, 20.00, 'Producto', '2026-05-19 20:28:53', NULL, NULL, NULL, NULL, NULL),
+(190, 136, 187, 'HARINA', 1.0000, 10.00, 10.00, 'Producto', '2026-05-19 20:28:53', NULL, NULL, NULL, NULL, NULL),
+(191, 136, 188, 'JABON LIQUIDO', 1.0000, 30.00, 30.00, 'Producto', '2026-05-19 20:28:53', NULL, NULL, NULL, NULL, NULL),
+(192, 137, 177, 'JABON LIQUIDO', 1.2000, 10.00, 12.00, 'Producto', '2026-05-20 20:04:09', NULL, NULL, '131', '', ''),
+(199, 138, 198, 'LIMPIA TODO', 1.3230, 3.00, 3.97, 'Producto', '2026-05-21 06:59:18', NULL, NULL, NULL, NULL, NULL),
+(204, 139, 203, 'sdasd', 1.0000, 150.00, 150.00, 'Producto', '2026-05-21 07:45:54', NULL, NULL, NULL, NULL, NULL),
+(206, 140, 205, 'dasdasd', 1.0000, 10.00, 10.00, 'Producto', '2026-05-21 13:41:12', NULL, NULL, NULL, NULL, NULL),
+(207, 141, 186, 'cigv', 1.0000, 40.00, 40.00, 'Producto', '2026-05-21 17:02:56', NULL, NULL, '131', '', ''),
+(208, 142, 182, 'fsdfds', 1.0000, 10.00, 10.00, 'Producto', '2026-05-21 18:24:54', NULL, NULL, '131', '', ''),
+(209, 143, 171, 'SOBRE MANILA A4', 1.0000, 10.00, 10.00, 'Producto', '2026-05-21 18:25:25', NULL, NULL, '1', '', ''),
+(210, 144, 185, 'MICAS A4', 1.0000, 30.00, 30.00, 'Producto', '2026-05-21 18:25:29', NULL, NULL, '131', '', ''),
+(211, 145, 202, 'dsadas', 1.0000, 10.00, 10.00, 'Producto', '2026-05-28 14:35:16', NULL, NULL, '131', '', ''),
+(212, 146, 200, 'DASD', 1.0000, 10.00, 10.00, 'Producto', '2026-05-28 14:35:31', NULL, NULL, '131', '', ''),
+(213, 147, 196, 'cascsa', 1.0000, 30.00, 30.00, 'Producto', '2026-05-28 15:36:18', NULL, NULL, '132', '', ''),
+(214, 148, 194, 'asdsa', 1.0000, 11.80, 11.80, 'Producto', '2026-05-28 15:48:45', NULL, NULL, '131', '', ''),
+(215, 149, 206, 'FRANELA', 1.0000, 11.80, 11.80, 'Producto', '2026-06-05 16:31:21', NULL, NULL, '1', '', '');
 
 -- --------------------------------------------------------
 
@@ -1923,12 +2359,16 @@ INSERT INTO `planilla_movilidad` (`id`, `fecha`, `empresa_id`, `sede_id`, `depar
 (31, '2026-05-16', 1, 1, 3, 4, 'Praticas', 'Piura', 'PIURA', 11.00, 'Observado', '4', '2026-05-15 21:13:05', '2026-05-16 02:13:02', NULL, NULL, NULL, NULL, NULL, NULL),
 (32, '2026-05-16', 1, 1, 10, 8, 'Planilla de Movilidad', 'Piura', 'Sullana', 10.00, 'Aprobado', '8', '2026-05-15 21:19:21', '2026-05-16 02:19:18', 8, '2026-05-15 21:19:34', NULL, NULL, NULL, NULL),
 (33, '2026-05-16', 1, 1, 3, 4, 'Praticas', 'Piura', 'Sullana', 12.00, 'Pagado', '4', '2026-05-15 21:28:47', '2026-05-16 02:28:45', 8, '2026-05-15 21:29:20', NULL, NULL, NULL, NULL),
-(34, '2026-05-16', 1, 1, 10, 8, 'Planilla de Movilidad', 'Piura', 'Sullana', 10.00, 'Aprobado', '8', '2026-05-15 21:44:48', '2026-05-16 02:44:45', 8, '2026-05-15 21:44:52', NULL, NULL, NULL, NULL),
+(34, '2026-05-16', 1, 1, 10, 8, 'Planilla de Movilidad', 'Piura', 'Sullana', 10.00, 'Pagado', '8', '2026-05-15 21:44:48', '2026-05-16 02:44:45', 8, '2026-05-15 21:44:52', 'uploads/comprobantes_movilidad/movilidad_1779958417_7844.png', 'imagen', '2026-05-28 03:53:37', 8),
 (35, '2026-05-16', 1, 1, 8, 12, 'Praticas', 'Piura', 'Sullana', 12.00, 'Pagado', '12', '2026-05-15 22:09:15', '2026-05-16 03:09:12', 8, '2026-05-15 22:09:40', 'uploads/comprobantes_movilidad/movilidad_1778901209_8878.png', 'imagen', '2026-05-15 22:13:29', 12),
 (36, '2026-05-16', 1, 1, 10, 8, 'Planilla de Movilidad', 'Piura', 'Sullana', 12.00, 'Pagado', '8', '2026-05-15 22:16:00', '2026-05-16 03:15:58', 8, '2026-05-15 22:16:04', 'uploads/comprobantes_movilidad/movilidad_1778901389_6676.png', 'imagen', '2026-05-15 22:16:29', 12),
-(37, '2026-05-16', 1, 1, 8, 12, 'Praticas', 'Piura', 'Sullana', 12.00, 'Pendiente', '12', '2026-05-15 22:19:28', '2026-05-16 03:19:25', NULL, NULL, NULL, NULL, NULL, NULL),
+(37, '2026-05-16', 1, 1, 8, 12, 'Praticas', 'Piura', 'Sullana', 12.00, 'Pagado', '12', '2026-05-15 22:19:28', '2026-05-16 03:19:25', 4, '2026-05-28 03:52:55', 'uploads/comprobantes_movilidad/movilidad_1779958401_2249.pdf', 'pdf', '2026-05-28 03:53:21', 8),
 (38, '2026-05-16', 1, 1, 8, 12, 'Praticas', 'SULLANA', 'Sullana', 12.00, 'Pendiente', '12', '2026-05-15 22:22:01', '2026-05-16 03:21:57', NULL, NULL, NULL, NULL, NULL, NULL),
-(39, '2026-05-18', 1, 2, 8, 8, 'VISITA PIURA', 'SULLANA', 'PIURA', 35.00, 'Pagado', '8', '2026-05-18 09:46:22', '2026-05-18 14:45:46', 8, '2026-05-18 10:02:55', 'uploads/comprobantes_movilidad/movilidad_1779116619_2861.pdf', 'pdf', '2026-05-18 10:03:39', 8);
+(39, '2026-05-18', 1, 2, 8, 8, 'VISITA PIURA', 'SULLANA', 'PIURA', 35.00, 'Pagado', '8', '2026-05-18 09:46:22', '2026-05-18 14:45:46', 8, '2026-05-18 10:02:55', 'uploads/comprobantes_movilidad/movilidad_1779116619_2861.pdf', 'pdf', '2026-05-18 10:03:39', 8),
+(40, '2026-05-20', 1, 1, 3, 8, 'Planilla de Movilidad', 'Piura', 'Sullana', -1.00, 'Pendiente', '8', '2026-05-20 05:38:36', '2026-05-20 10:38:30', NULL, NULL, NULL, NULL, NULL, NULL),
+(41, '2026-05-28', 1, 1, 8, 8, 'Praticas', 'SAD', 'DASDSA', 12.00, 'Pendiente', '8', '2026-05-28 03:53:59', '2026-05-28 08:53:56', NULL, NULL, NULL, NULL, NULL, NULL),
+(42, '2026-06-05', 1, 1, 19, 8, 'dadasdas', 'SULLANA', 'paita', 12.00, 'Pagado', '8', '2026-06-05 11:09:05', '2026-06-05 16:09:00', 8, '2026-06-05 11:09:20', 'uploads/comprobantes_movilidad/movilidad_1780677842_5518.png', 'imagen', '2026-06-05 11:44:02', 8),
+(46, '2026-06-05', 1, 1, 3, 8, 'Praticas', 'CETURGH PIURA', 'coelgios', 25.00, 'Pendiente', '8', '2026-06-05 14:06:52', '2026-06-05 19:06:40', NULL, NULL, NULL, NULL, NULL, NULL);
 
 --
 -- Disparadores `planilla_movilidad`
@@ -2328,6 +2768,54 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `planilla_movilidad_backup_20260605`
+--
+
+CREATE TABLE `planilla_movilidad_backup_20260605` (
+  `id` int(11) NOT NULL DEFAULT 0,
+  `fecha` date DEFAULT NULL,
+  `empresa_id` int(11) DEFAULT NULL,
+  `sede_id` int(11) DEFAULT NULL,
+  `departamento_id` int(11) DEFAULT NULL,
+  `creador_id` int(11) DEFAULT NULL,
+  `motivo` varchar(255) DEFAULT NULL,
+  `origen` varchar(150) DEFAULT NULL,
+  `destino` varchar(150) DEFAULT NULL,
+  `monto_total` decimal(10,2) DEFAULT NULL,
+  `estado` enum('Sin firmar','Pendiente','Aprobado','Denegado','Observado','Pagado') DEFAULT NULL,
+  `firmado_por` varchar(100) DEFAULT NULL,
+  `fecha_firma` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `aprobado_por` int(11) DEFAULT NULL,
+  `fecha_aprobacion` datetime DEFAULT NULL,
+  `comprobante_pago` varchar(255) DEFAULT NULL,
+  `comprobante_tipo` enum('imagen','pdf') DEFAULT NULL,
+  `fecha_pago` datetime DEFAULT NULL,
+  `pagado_por` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `planilla_movilidad_backup_20260605`
+--
+
+INSERT INTO `planilla_movilidad_backup_20260605` (`id`, `fecha`, `empresa_id`, `sede_id`, `departamento_id`, `creador_id`, `motivo`, `origen`, `destino`, `monto_total`, `estado`, `firmado_por`, `fecha_firma`, `created_at`, `aprobado_por`, `fecha_aprobacion`, `comprobante_pago`, `comprobante_tipo`, `fecha_pago`, `pagado_por`) VALUES
+(29, '2026-05-15', 1, 1, 3, 4, 'VISITA PIURA', 'Piura', 'Sullana', 12.00, 'Aprobado', '4', '2026-05-15 15:47:31', '2026-05-15 20:47:28', 8, '2026-05-15 15:47:56', NULL, NULL, NULL, NULL),
+(30, '2026-05-16', 1, 1, 3, 4, 'Praticas', 'Piura', 'Sullana', 11.00, 'Pagado', '4', '2026-05-15 21:12:27', '2026-05-16 02:12:23', 8, '2026-05-15 21:12:45', NULL, NULL, NULL, NULL),
+(31, '2026-05-16', 1, 1, 3, 4, 'Praticas', 'Piura', 'PIURA', 11.00, 'Observado', '4', '2026-05-15 21:13:05', '2026-05-16 02:13:02', NULL, NULL, NULL, NULL, NULL, NULL),
+(32, '2026-05-16', 1, 1, 10, 8, 'Planilla de Movilidad', 'Piura', 'Sullana', 10.00, 'Aprobado', '8', '2026-05-15 21:19:21', '2026-05-16 02:19:18', 8, '2026-05-15 21:19:34', NULL, NULL, NULL, NULL),
+(33, '2026-05-16', 1, 1, 3, 4, 'Praticas', 'Piura', 'Sullana', 12.00, 'Pagado', '4', '2026-05-15 21:28:47', '2026-05-16 02:28:45', 8, '2026-05-15 21:29:20', NULL, NULL, NULL, NULL),
+(34, '2026-05-16', 1, 1, 10, 8, 'Planilla de Movilidad', 'Piura', 'Sullana', 10.00, 'Pagado', '8', '2026-05-15 21:44:48', '2026-05-16 02:44:45', 8, '2026-05-15 21:44:52', 'uploads/comprobantes_movilidad/movilidad_1779958417_7844.png', 'imagen', '2026-05-28 03:53:37', 8),
+(35, '2026-05-16', 1, 1, 8, 12, 'Praticas', 'Piura', 'Sullana', 12.00, 'Pagado', '12', '2026-05-15 22:09:15', '2026-05-16 03:09:12', 8, '2026-05-15 22:09:40', 'uploads/comprobantes_movilidad/movilidad_1778901209_8878.png', 'imagen', '2026-05-15 22:13:29', 12),
+(36, '2026-05-16', 1, 1, 10, 8, 'Planilla de Movilidad', 'Piura', 'Sullana', 12.00, 'Pagado', '8', '2026-05-15 22:16:00', '2026-05-16 03:15:58', 8, '2026-05-15 22:16:04', 'uploads/comprobantes_movilidad/movilidad_1778901389_6676.png', 'imagen', '2026-05-15 22:16:29', 12),
+(37, '2026-05-16', 1, 1, 8, 12, 'Praticas', 'Piura', 'Sullana', 12.00, 'Pagado', '12', '2026-05-15 22:19:28', '2026-05-16 03:19:25', 4, '2026-05-28 03:52:55', 'uploads/comprobantes_movilidad/movilidad_1779958401_2249.pdf', 'pdf', '2026-05-28 03:53:21', 8),
+(38, '2026-05-16', 1, 1, 8, 12, 'Praticas', 'SULLANA', 'Sullana', 12.00, 'Pendiente', '12', '2026-05-15 22:22:01', '2026-05-16 03:21:57', NULL, NULL, NULL, NULL, NULL, NULL),
+(39, '2026-05-18', 1, 2, 8, 8, 'VISITA PIURA', 'SULLANA', 'PIURA', 35.00, 'Pagado', '8', '2026-05-18 09:46:22', '2026-05-18 14:45:46', 8, '2026-05-18 10:02:55', 'uploads/comprobantes_movilidad/movilidad_1779116619_2861.pdf', 'pdf', '2026-05-18 10:03:39', 8),
+(40, '2026-05-20', 1, 1, 3, 8, 'Planilla de Movilidad', 'Piura', 'Sullana', -1.00, 'Pendiente', '8', '2026-05-20 05:38:36', '2026-05-20 10:38:30', NULL, NULL, NULL, NULL, NULL, NULL),
+(41, '2026-05-28', 1, 1, 8, 8, 'Praticas', 'SAD', 'DASDSA', 12.00, 'Pendiente', '8', '2026-05-28 03:53:59', '2026-05-28 08:53:56', NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `planilla_movilidad_detalle`
 --
 
@@ -2335,26 +2823,33 @@ CREATE TABLE `planilla_movilidad_detalle` (
   `id` int(11) NOT NULL,
   `planilla_id` int(11) DEFAULT NULL,
   `fecha` date DEFAULT NULL,
-  `monto` decimal(10,2) DEFAULT NULL
+  `monto` decimal(10,2) DEFAULT NULL,
+  `origen` varchar(150) DEFAULT NULL,
+  `destino` varchar(150) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `planilla_movilidad_detalle`
 --
 
-INSERT INTO `planilla_movilidad_detalle` (`id`, `planilla_id`, `fecha`, `monto`) VALUES
-(20, 29, '2026-05-15', 12.00),
-(21, 30, '2026-05-14', 11.00),
-(22, 31, '2026-05-15', 11.00),
-(23, 32, '2026-05-15', 10.00),
-(24, 33, '2026-05-15', 12.00),
-(25, 34, '2026-05-15', 10.00),
-(26, 35, '2026-05-15', 12.00),
-(27, 36, '2026-05-15', 12.00),
-(28, 37, '2026-05-15', 12.00),
-(29, 38, '2026-05-15', 12.00),
-(32, 39, '2026-05-18', 15.00),
-(33, 39, '2026-05-19', 20.00);
+INSERT INTO `planilla_movilidad_detalle` (`id`, `planilla_id`, `fecha`, `monto`, `origen`, `destino`) VALUES
+(20, 29, '2026-05-15', 12.00, NULL, NULL),
+(21, 30, '2026-05-14', 11.00, NULL, NULL),
+(22, 31, '2026-05-15', 11.00, NULL, NULL),
+(23, 32, '2026-05-15', 10.00, NULL, NULL),
+(24, 33, '2026-05-15', 12.00, NULL, NULL),
+(25, 34, '2026-05-15', 10.00, NULL, NULL),
+(26, 35, '2026-05-15', 12.00, NULL, NULL),
+(27, 36, '2026-05-15', 12.00, NULL, NULL),
+(28, 37, '2026-05-15', 12.00, NULL, NULL),
+(29, 38, '2026-05-15', 12.00, NULL, NULL),
+(32, 39, '2026-05-18', 15.00, NULL, NULL),
+(33, 39, '2026-05-19', 20.00, NULL, NULL),
+(34, 40, '2026-05-20', -1.00, NULL, NULL),
+(35, 41, '2026-05-15', 12.00, NULL, NULL),
+(36, 42, '2026-06-05', 12.00, NULL, NULL),
+(37, 46, '2026-06-05', 12.00, 'Piura', 'Talara'),
+(38, 46, '2026-06-06', 13.00, 'Piura', 'Sullana');
 
 -- --------------------------------------------------------
 
@@ -2371,6 +2866,42 @@ CREATE TABLE `presupuestos_carreras` (
   `estado` enum('ACTIVO','INACTIVO') DEFAULT 'ACTIVO',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `presupuestos_historicos`
+--
+
+CREATE TABLE `presupuestos_historicos` (
+  `id` int(11) NOT NULL,
+  `departamento_id` int(11) NOT NULL,
+  `mes` int(2) NOT NULL,
+  `anio` int(4) NOT NULL,
+  `presupuesto_asignado` decimal(10,2) DEFAULT 0.00,
+  `fecha_registro` datetime DEFAULT current_timestamp(),
+  `registrado_por` int(11) DEFAULT NULL,
+  `nota` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `presupuestos_historicos`
+--
+
+INSERT INTO `presupuestos_historicos` (`id`, `departamento_id`, `mes`, `anio`, `presupuesto_asignado`, `fecha_registro`, `registrado_por`, `nota`) VALUES
+(1, 3, 6, 2026, 1050.00, '2026-06-05 09:09:08', 1, 'Presupuesto asignado manualmente para Junio 2026'),
+(2, 6, 6, 2026, 1110.00, '2026-06-05 08:55:55', 1, 'Presupuesto inicial migrado desde tabla departamentos'),
+(3, 8, 6, 2026, 9838.00, '2026-06-05 08:55:55', 1, 'Presupuesto inicial migrado desde tabla departamentos'),
+(4, 10, 6, 2026, 9833.00, '2026-06-05 08:55:55', 1, 'Presupuesto inicial migrado desde tabla departamentos'),
+(8, 3, 5, 2026, 1020.00, '2026-06-05 08:56:09', 1, 'Presupuesto histórico basado en gastos de requerimientos'),
+(9, 8, 5, 2026, 9838.00, '2026-06-05 08:56:09', 1, 'Presupuesto histórico basado en gastos de requerimientos'),
+(10, 10, 5, 2026, 9833.00, '2026-06-05 08:56:09', 1, 'Presupuesto histórico basado en gastos de requerimientos'),
+(11, 11, 5, 2026, 0.00, '2026-06-05 08:56:09', 1, 'Presupuesto histórico basado en gastos de requerimientos'),
+(15, 3, 7, 2026, 1080.00, '2026-06-05 09:10:04', 1, 'Presupuesto asignado manualmente para Julio 2026'),
+(16, 5, 6, 2026, 1200.00, '2026-06-05 09:31:06', 1, 'Presupuesto asignado manualmente para Junio 2026'),
+(17, 5, 8, 2026, 1500.00, '2026-06-05 09:31:24', 1, 'Presupuesto asignado manualmente para Agosto 2026'),
+(18, 21, 6, 2026, 5047.00, '2026-06-05 12:36:14', 1, NULL),
+(19, 22, 6, 2026, 32041.00, '2026-06-05 12:38:41', 1, NULL);
 
 -- --------------------------------------------------------
 
@@ -2540,6 +3071,77 @@ INSERT INTO `proveedores` (`id`, `nombre`, `ruc`, `direccion`, `telefono`, `emai
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `rendiciones_caja`
+--
+
+CREATE TABLE `rendiciones_caja` (
+  `id` int(11) NOT NULL,
+  `caja_id` int(11) DEFAULT NULL,
+  `numero` varchar(20) DEFAULT NULL,
+  `fecha_rendicion` date DEFAULT NULL,
+  `saldo_inicial` decimal(10,2) DEFAULT NULL,
+  `total_rendido` decimal(10,2) DEFAULT NULL,
+  `saldo_final` decimal(10,2) DEFAULT NULL,
+  `estado` enum('BORRADOR','ENVIADO','OBSERVADO','APROBADO') DEFAULT 'BORRADOR',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `rendiciones_caja`
+--
+
+INSERT INTO `rendiciones_caja` (`id`, `caja_id`, `numero`, `fecha_rendicion`, `saldo_inicial`, `total_rendido`, `saldo_final`, `estado`, `created_by`, `created_at`) VALUES
+(1, 1, 'REND-2026-00004', '2026-05-29', 1000.00, 290.00, 710.00, 'BORRADOR', 8, '2026-05-29 15:35:37'),
+(2, 1, 'REND-2026-00006', '2026-05-29', 1010.00, 280.00, 730.00, 'APROBADO', 12, '2026-05-29 16:58:12'),
+(3, 1, 'REND-2026-00007', '2026-05-30', 730.00, 21.00, 709.00, 'APROBADO', 12, '2026-05-30 16:41:07'),
+(4, 2, 'REND-2026-00008', '2026-05-30', 1000.00, 45.00, 955.00, 'OBSERVADO', 12, '2026-05-30 17:25:12'),
+(5, 1, 'REND-2026-00009', '2026-05-30', 809.00, 22.00, 787.00, 'APROBADO', 12, '2026-05-30 17:53:56'),
+(6, 3, 'REND-2026-00010', '2026-06-03', 500.00, 530.00, 0.00, 'APROBADO', 8, '2026-06-03 13:04:44'),
+(7, 3, 'REND-2026-00011', '2026-06-04', 1000.00, 344.00, 656.00, 'BORRADOR', 8, '2026-06-04 13:24:01'),
+(8, 3, 'REND-2026-00012', '2026-06-04', 1000.00, 4434.00, 0.00, 'APROBADO', 8, '2026-06-04 13:24:18');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `rendicion_items`
+--
+
+CREATE TABLE `rendicion_items` (
+  `id` int(11) NOT NULL,
+  `rendicion_id` int(11) DEFAULT NULL,
+  `fecha` date DEFAULT NULL,
+  `proveedor` varchar(255) DEFAULT NULL,
+  `ruc_dni` varchar(20) DEFAULT NULL,
+  `tipo_documento` enum('FACTURA','BOLETA','RXH','MOVILIDAD','OTROS') DEFAULT NULL,
+  `numero_documento` varchar(100) DEFAULT NULL,
+  `descripcion` text DEFAULT NULL,
+  `monto` decimal(10,2) DEFAULT NULL,
+  `adjunto` varchar(255) DEFAULT NULL,
+  `archivo` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `rendicion_items`
+--
+
+INSERT INTO `rendicion_items` (`id`, `rendicion_id`, `fecha`, `proveedor`, `ruc_dni`, `tipo_documento`, `numero_documento`, `descripcion`, `monto`, `adjunto`, `archivo`) VALUES
+(1, 1, '2026-05-29', 'UYUU', '34334324', 'FACTURA', '2323', 'RECEVCVR', 124.00, NULL, NULL),
+(2, 1, '2026-05-29', 'DDEDE', '23232', 'FACTURA', '3', 'DEWDE', 12.00, NULL, NULL),
+(3, 1, '2026-05-30', 'CARAMELO', '23234', 'FACTURA', '3434', 'CCDC', 154.00, NULL, NULL),
+(4, 2, '2026-05-29', 'dcsdvsd', '12324324', 'FACTURA', '2', 'vcsdvvsdv', 124.00, 'uploads/adjuntos_rendicion/6a19c58453ac1_ab3eb89a297e51e0.pdf', NULL),
+(5, 2, '2026-05-29', 'sdsdvsd', '12566', 'BOLETA', '3', 'efcsvcdsvsdv', 156.00, 'uploads/adjuntos_rendicion/6a19c5a1ece22_af53124290e5fe9c.pdf', NULL),
+(6, 3, '2026-05-30', 'vvdfdfv', '23243243', 'FACTURA', '12', 'sdfsdfsd', 21.00, NULL, NULL),
+(7, 4, '2026-05-30', 'CSACSDCDS', '12345678909876543212', 'FACTURA', '2', 'FDSFDSFDSF', 21.00, NULL, NULL),
+(8, 4, '2026-05-31', 'DASDASDAS', '', 'FACTURA', '21', 'FSFSDFSDFDS', 24.00, NULL, NULL),
+(9, 5, '2026-05-23', 'GSFSDF', '21332432423', 'FACTURA', '21', 'SDCSDCSDCSDCDSCDS', 22.00, NULL, NULL),
+(10, 6, '2026-06-03', 'pipo', '233456789', 'FACTURA', '1', 'prueba', 530.00, NULL, NULL),
+(11, 7, '2026-06-04', '4343', '2123123', 'FACTURA', '3432', 'e23e23e2', 344.00, NULL, NULL),
+(12, 8, '2026-06-04', 'csdcsdcsdcsd', '131432432', 'FACTURA', '23123', 'dcds', 4434.00, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `requerimientos`
 --
 
@@ -2595,7 +3197,120 @@ INSERT INTO `requerimientos` (`id`, `codigo`, `departamento_id`, `empresa_id`, `
 (155, 'RQ-2026-5248', 3, 2, 3, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 20:45:55', 'Producto', 4, 'GENERAL', NULL, NULL),
 (156, 'RQ-2026-2273', 8, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-16', 0.00, NULL, NULL, '2026-05-16 16:39:12', 'Producto', 8, 'GENERAL', NULL, NULL),
 (157, 'RQ-2026-6337', 8, 1, 2, 'Media', 'Pendiente', NULL, '2026-05-18', 0.00, NULL, NULL, '2026-05-18 14:42:46', 'Producto', 8, 'GENERAL', NULL, NULL),
-(158, 'RQ-2026-4189', 10, 2, 3, 'Media', 'Pendiente', NULL, '2026-05-19', 0.00, NULL, NULL, '2026-05-19 13:24:54', 'Producto', 8, 'GENERAL', NULL, NULL);
+(158, 'RQ-2026-4189', 10, 2, 3, 'Media', 'Pendiente', NULL, '2026-05-19', 0.00, NULL, NULL, '2026-05-19 13:24:54', 'Producto', 8, 'GENERAL', NULL, NULL),
+(159, 'RQ-2026-2887', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-20', 0.00, NULL, NULL, '2026-05-20 10:38:12', 'Producto', 8, 'GENERAL', NULL, NULL),
+(160, 'RQ-2026-8707', 8, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-20', 0.00, NULL, NULL, '2026-05-20 20:02:38', 'Producto', 8, 'GENERAL', NULL, NULL),
+(161, 'RQ-2026-1780', 8, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 06:05:41', 'Producto', 8, 'GENERAL', NULL, NULL),
+(162, 'RQ-2026-7620', 8, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 07:00:07', 'Servicio', 8, 'GENERAL', NULL, NULL),
+(163, 'RQ-2026-4834', 8, 1, 2, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 09:07:54', 'Producto', 8, 'GENERAL', NULL, NULL),
+(164, 'RQ-2026-4023', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 16:25:44', 'Producto', 8, 'GENERAL', NULL, NULL),
+(165, 'RQ-2026-4427', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 16:43:24', 'Producto', 8, 'GENERAL', NULL, NULL),
+(166, 'RQ-2026-5468', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 16:53:45', 'Producto', 8, 'GENERAL', NULL, NULL),
+(167, 'RQ-2026-1777', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 16:59:11', 'Producto', 8, 'GENERAL', NULL, NULL),
+(168, 'RQ-2026-1869', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-22', 0.00, NULL, NULL, '2026-05-22 03:17:51', 'Producto', 8, 'GENERAL', NULL, NULL),
+(169, 'RQ-2026-0001', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-25', 0.00, NULL, NULL, '2026-05-25 13:35:23', 'Producto', 8, 'GENERAL', NULL, NULL),
+(170, 'RQ-2026-0002', 10, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 19:28:26', 'Producto', 4, 'GENERAL', NULL, NULL),
+(171, 'RQ-2026-0003', 10, 1, 1, 'Media', 'Sin firmar', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 19:30:50', 'Producto', 4, 'GENERAL', NULL, NULL),
+(172, 'RQ-2026-0004', 10, 2, 3, 'Media', 'Cotizado', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 19:36:07', 'Producto', 4, 'GENERAL', NULL, NULL),
+(173, 'RQ-2026-0005', 10, 1, 1, 'Media', 'Sin firmar', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 19:40:40', 'Producto', 4, 'GENERAL', NULL, NULL),
+(174, 'RQ-2026-0006', 11, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 19:59:32', 'Producto', 8, 'GENERAL', NULL, NULL),
+(175, 'RQ-2026-0007', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 20:01:19', 'Producto', 4, 'GENERAL', NULL, NULL),
+(176, 'RQ-2026-0008', 10, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 20:05:59', 'Producto', 4, 'GENERAL', NULL, NULL),
+(177, 'RQ-2026-0009', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 20:16:30', 'Producto', 4, 'GENERAL', NULL, NULL),
+(178, 'RQ-2026-0010', 8, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-28', 0.00, NULL, NULL, '2026-05-28 08:55:15', 'Producto', 8, 'GENERAL', NULL, NULL),
+(179, 'RQ-2026-0011', 8, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-28', 0.00, NULL, NULL, '2026-05-28 08:55:43', 'Producto', 8, 'GENERAL', NULL, NULL),
+(180, 'RQ-2026-0012', 10, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-28', 0.00, NULL, NULL, '2026-05-28 09:01:12', 'Producto', 8, 'GENERAL', NULL, NULL),
+(181, 'RQ-2026-0013', 10, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-28', 0.00, NULL, NULL, '2026-05-28 14:02:45', 'Producto', 8, 'GENERAL', NULL, NULL),
+(182, 'RQ-2026-0014', 8, 1, 1, 'Media', 'Sin firmar', NULL, '2026-05-28', 0.00, NULL, NULL, '2026-05-28 19:23:14', 'Producto', 8, 'GENERAL', NULL, NULL),
+(183, 'RQ-2026-0015', 8, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-29', 0.00, NULL, NULL, '2026-05-29 14:10:37', 'Producto', 8, 'GENERAL', NULL, NULL),
+(184, 'RQ-2026-0016', 3, 1, 1, 'Media', 'Sin firmar', NULL, '2026-06-04', 0.00, NULL, NULL, '2026-06-04 16:28:21', 'Producto', 8, 'GENERAL', NULL, NULL),
+(185, 'RQ-2026-0017', 19, 2, 3, 'Media', 'Cotizado', NULL, '2026-06-05', 0.00, NULL, NULL, '2026-06-05 16:29:06', 'Producto', 8, 'GENERAL', NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `requerimientos_backup_20260605`
+--
+
+CREATE TABLE `requerimientos_backup_20260605` (
+  `id` int(11) NOT NULL DEFAULT 0,
+  `codigo` varchar(50) DEFAULT NULL,
+  `departamento_id` int(11) DEFAULT NULL,
+  `empresa_id` int(11) DEFAULT NULL,
+  `sede_id` int(11) DEFAULT NULL,
+  `prioridad` enum('Baja','Media','Alta','Urgente') DEFAULT NULL,
+  `estado` enum('Sin firmar','Pendiente','Evaluando','Cotizado','Aprobado','Denegado','Pagado','Observado') DEFAULT NULL,
+  `comentarios` text DEFAULT NULL,
+  `fecha` date DEFAULT NULL,
+  `total` decimal(10,2) DEFAULT 0.00,
+  `firmado_por` varchar(100) DEFAULT NULL,
+  `fecha_firma` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `tipo` enum('Producto','Servicio') DEFAULT 'Producto',
+  `creador_id` int(11) DEFAULT NULL,
+  `tipo_destino` enum('GENERAL','CARRERA','CURSO_CORTO') DEFAULT 'GENERAL',
+  `carrera_id` int(11) DEFAULT NULL,
+  `curso_corto` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `requerimientos_backup_20260605`
+--
+
+INSERT INTO `requerimientos_backup_20260605` (`id`, `codigo`, `departamento_id`, `empresa_id`, `sede_id`, `prioridad`, `estado`, `comentarios`, `fecha`, `total`, `firmado_por`, `fecha_firma`, `created_at`, `tipo`, `creador_id`, `tipo_destino`, `carrera_id`, `curso_corto`) VALUES
+(132, 'RQ-2026-0730', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-14', 0.00, NULL, NULL, '2026-05-13 23:59:10', 'Producto', 8, 'GENERAL', NULL, NULL),
+(133, 'RQ-2026-5017', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-14', 0.00, NULL, NULL, '2026-05-14 16:00:05', 'Producto', 8, 'GENERAL', NULL, NULL),
+(134, 'RQ-2026-8392', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-14', 0.00, NULL, NULL, '2026-05-14 19:12:08', 'Producto', 4, 'CURSO_CORTO', NULL, 'Preparación de Pizzas'),
+(135, 'RQ-2026-2630', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-14', 0.00, NULL, NULL, '2026-05-14 20:18:12', 'Producto', 4, 'GENERAL', NULL, NULL),
+(136, 'RQ-2026-7123', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 14:50:37', 'Producto', 4, 'GENERAL', NULL, NULL),
+(137, 'RQ-2026-1582', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 15:44:41', 'Producto', 4, 'GENERAL', NULL, NULL),
+(138, 'RQ-2026-2103', 3, 1, 2, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 16:52:32', 'Producto', 4, 'GENERAL', NULL, NULL),
+(139, 'RQ-2026-3584', 3, 2, 3, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 17:01:53', 'Producto', 4, 'GENERAL', NULL, NULL),
+(140, 'RQ-2026-2168', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 17:07:32', 'Producto', 4, 'GENERAL', NULL, NULL),
+(141, 'RQ-2026-6956', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 17:14:17', 'Producto', 4, 'GENERAL', NULL, NULL),
+(142, 'RQ-2026-1946', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 17:19:42', 'Producto', 8, 'GENERAL', NULL, NULL),
+(143, 'RQ-2026-6888', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 17:20:06', 'Producto', 4, 'GENERAL', NULL, NULL),
+(144, 'RQ-2026-2157', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 17:27:02', 'Producto', 4, 'GENERAL', NULL, NULL),
+(145, 'RQ-2026-1094', 3, 1, 2, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 17:39:21', 'Producto', 4, 'GENERAL', NULL, NULL),
+(146, 'RQ-2026-7572', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 19:15:37', 'Producto', 4, 'GENERAL', NULL, NULL),
+(147, 'RQ-2026-7609', 3, 2, 3, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 19:19:17', 'Producto', 4, 'GENERAL', NULL, NULL),
+(148, 'RQ-2026-5703', 3, 1, 2, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 19:55:15', 'Producto', 4, 'GENERAL', NULL, NULL),
+(149, 'RQ-2026-1193', 3, 2, 3, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 20:00:01', 'Producto', 4, 'GENERAL', NULL, NULL),
+(150, 'RQ-2026-9317', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 20:19:59', 'Producto', 8, 'GENERAL', NULL, NULL),
+(151, 'RQ-2026-7586', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 20:20:37', 'Producto', 4, 'GENERAL', NULL, NULL),
+(152, 'RQ-2026-4727', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 20:31:14', 'Producto', 4, 'GENERAL', NULL, NULL),
+(153, 'RQ-2026-6158', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 20:38:56', 'Producto', 8, 'GENERAL', NULL, NULL),
+(154, 'RQ-2026-1196', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 20:39:11', 'Producto', 4, 'GENERAL', NULL, NULL),
+(155, 'RQ-2026-5248', 3, 2, 3, 'Media', 'Pendiente', NULL, '2026-05-15', 0.00, NULL, NULL, '2026-05-15 20:45:55', 'Producto', 4, 'GENERAL', NULL, NULL),
+(156, 'RQ-2026-2273', 8, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-16', 0.00, NULL, NULL, '2026-05-16 16:39:12', 'Producto', 8, 'GENERAL', NULL, NULL),
+(157, 'RQ-2026-6337', 8, 1, 2, 'Media', 'Pendiente', NULL, '2026-05-18', 0.00, NULL, NULL, '2026-05-18 14:42:46', 'Producto', 8, 'GENERAL', NULL, NULL),
+(158, 'RQ-2026-4189', 10, 2, 3, 'Media', 'Pendiente', NULL, '2026-05-19', 0.00, NULL, NULL, '2026-05-19 13:24:54', 'Producto', 8, 'GENERAL', NULL, NULL),
+(159, 'RQ-2026-2887', 3, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-20', 0.00, NULL, NULL, '2026-05-20 10:38:12', 'Producto', 8, 'GENERAL', NULL, NULL),
+(160, 'RQ-2026-8707', 8, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-20', 0.00, NULL, NULL, '2026-05-20 20:02:38', 'Producto', 8, 'GENERAL', NULL, NULL),
+(161, 'RQ-2026-1780', 8, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 06:05:41', 'Producto', 8, 'GENERAL', NULL, NULL),
+(162, 'RQ-2026-7620', 8, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 07:00:07', 'Servicio', 8, 'GENERAL', NULL, NULL),
+(163, 'RQ-2026-4834', 8, 1, 2, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 09:07:54', 'Producto', 8, 'GENERAL', NULL, NULL),
+(164, 'RQ-2026-4023', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 16:25:44', 'Producto', 8, 'GENERAL', NULL, NULL),
+(165, 'RQ-2026-4427', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 16:43:24', 'Producto', 8, 'GENERAL', NULL, NULL),
+(166, 'RQ-2026-5468', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 16:53:45', 'Producto', 8, 'GENERAL', NULL, NULL),
+(167, 'RQ-2026-1777', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-21', 0.00, NULL, NULL, '2026-05-21 16:59:11', 'Producto', 8, 'GENERAL', NULL, NULL),
+(168, 'RQ-2026-1869', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-22', 0.00, NULL, NULL, '2026-05-22 03:17:51', 'Producto', 8, 'GENERAL', NULL, NULL),
+(169, 'RQ-2026-0001', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-25', 0.00, NULL, NULL, '2026-05-25 13:35:23', 'Producto', 8, 'GENERAL', NULL, NULL),
+(170, 'RQ-2026-0002', 10, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 19:28:26', 'Producto', 4, 'GENERAL', NULL, NULL),
+(171, 'RQ-2026-0003', 10, 1, 1, 'Media', 'Sin firmar', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 19:30:50', 'Producto', 4, 'GENERAL', NULL, NULL),
+(172, 'RQ-2026-0004', 10, 2, 3, 'Media', 'Cotizado', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 19:36:07', 'Producto', 4, 'GENERAL', NULL, NULL),
+(173, 'RQ-2026-0005', 10, 1, 1, 'Media', 'Sin firmar', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 19:40:40', 'Producto', 4, 'GENERAL', NULL, NULL),
+(174, 'RQ-2026-0006', 11, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 19:59:32', 'Producto', 8, 'GENERAL', NULL, NULL),
+(175, 'RQ-2026-0007', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 20:01:19', 'Producto', 4, 'GENERAL', NULL, NULL),
+(176, 'RQ-2026-0008', 10, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 20:05:59', 'Producto', 4, 'GENERAL', NULL, NULL),
+(177, 'RQ-2026-0009', 10, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-27', 0.00, NULL, NULL, '2026-05-27 20:16:30', 'Producto', 4, 'GENERAL', NULL, NULL),
+(178, 'RQ-2026-0010', 8, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-28', 0.00, NULL, NULL, '2026-05-28 08:55:15', 'Producto', 8, 'GENERAL', NULL, NULL),
+(179, 'RQ-2026-0011', 8, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-28', 0.00, NULL, NULL, '2026-05-28 08:55:43', 'Producto', 8, 'GENERAL', NULL, NULL),
+(180, 'RQ-2026-0012', 10, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-28', 0.00, NULL, NULL, '2026-05-28 09:01:12', 'Producto', 8, 'GENERAL', NULL, NULL),
+(181, 'RQ-2026-0013', 10, 1, 1, 'Media', 'Cotizado', NULL, '2026-05-28', 0.00, NULL, NULL, '2026-05-28 14:02:45', 'Producto', 8, 'GENERAL', NULL, NULL),
+(182, 'RQ-2026-0014', 8, 1, 1, 'Media', 'Sin firmar', NULL, '2026-05-28', 0.00, NULL, NULL, '2026-05-28 19:23:14', 'Producto', 8, 'GENERAL', NULL, NULL),
+(183, 'RQ-2026-0015', 8, 1, 1, 'Media', 'Pendiente', NULL, '2026-05-29', 0.00, NULL, NULL, '2026-05-29 14:10:37', 'Producto', 8, 'GENERAL', NULL, NULL),
+(184, 'RQ-2026-0016', 3, 1, 1, 'Media', 'Sin firmar', NULL, '2026-06-04', 0.00, NULL, NULL, '2026-06-04 16:28:21', 'Producto', 8, 'GENERAL', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -2621,777 +3336,87 @@ INSERT INTO `sedes` (`id`, `empresa_id`, `nombre`) VALUES
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `trabajadores`
+-- Estructura de tabla para la tabla `solicitudes_caja`
 --
 
-CREATE TABLE `trabajadores` (
+CREATE TABLE `solicitudes_caja` (
   `id` int(11) NOT NULL,
-  `nombre` varchar(150) DEFAULT NULL,
-  `cargo` varchar(150) DEFAULT NULL,
-  `tipoContrato` enum('Planilla','Recibo x Honorarios','Servicios Externos') DEFAULT NULL,
-  `estado` varchar(20) DEFAULT 'Activo',
-  `fecha_registro` timestamp NOT NULL DEFAULT current_timestamp(),
+  `caja_id` int(11) DEFAULT NULL,
+  `tipo` enum('APERTURA','RECARGA','CIERRE') DEFAULT NULL,
   `empresa_id` int(11) DEFAULT NULL,
   `sede_id` int(11) DEFAULT NULL,
-  `tipo_personal` enum('DOCENTE','CHEF','ADMIN') DEFAULT 'ADMIN',
-  `numero_cuenta` varchar(50) DEFAULT NULL,
-  `cci` varchar(50) DEFAULT NULL,
-  `tipo_documento` varchar(20) DEFAULT 'DNI',
-  `numero_documento` varchar(20) DEFAULT NULL
+  `centro_costo_id` int(11) DEFAULT NULL,
+  `monto` decimal(10,2) DEFAULT NULL,
+  `motivo` text DEFAULT NULL,
+  `codigo_solicitado` varchar(100) DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `estado` enum('PENDIENTE_ADMIN','APROBADO_ADMIN','RECHAZADO_ADMIN','PENDIENTE_TESORERIA','PAGADO','ANULADO') DEFAULT 'PENDIENTE_ADMIN',
+  `aprobado_admin_por` int(11) DEFAULT NULL,
+  `fecha_aprobacion_admin` datetime DEFAULT NULL,
+  `pagado_por` int(11) DEFAULT NULL,
+  `fecha_pago` datetime DEFAULT NULL,
+  `voucher_pago` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
--- Volcado de datos para la tabla `trabajadores`
+-- Volcado de datos para la tabla `solicitudes_caja`
 --
 
-INSERT INTO `trabajadores` (`id`, `nombre`, `cargo`, `tipoContrato`, `estado`, `fecha_registro`, `empresa_id`, `sede_id`, `tipo_personal`, `numero_cuenta`, `cci`, `tipo_documento`, `numero_documento`) VALUES
-(10, 'Pablo Cesar Castro Timaná', 'ASISTENTE TIC', 'Planilla', 'Activo', '2026-05-18 14:54:44', 1, 2, 'ADMIN', '25259280525052050505', '', 'DNI', '77777777');
+INSERT INTO `solicitudes_caja` (`id`, `caja_id`, `tipo`, `empresa_id`, `sede_id`, `centro_costo_id`, `monto`, `motivo`, `codigo_solicitado`, `created_by`, `estado`, `aprobado_admin_por`, `fecha_aprobacion_admin`, `pagado_por`, `fecha_pago`, `voucher_pago`, `created_at`) VALUES
+(7, 3, 'RECARGA', NULL, NULL, NULL, 1000.00, '2241eewfwefwe', NULL, 8, 'PAGADO', 8, '2026-06-03 08:08:50', 8, '2026-06-03 08:09:02', 'uploads/vouchers/6a20276e9fc11_c66128f2e5420e23.pdf', '2026-06-03 13:08:33'),
+(8, 3, 'RECARGA', NULL, NULL, NULL, 1000.00, 'vdsvsdvsdhbrjtykyjt', NULL, 8, 'PAGADO', 8, '2026-06-04 08:25:24', 8, '2026-06-04 08:25:35', 'uploads/vouchers/6a217ccf45229_a395da9e09058819.png', '2026-06-04 13:25:09');
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `usuarios`
+-- Estructura de tabla para la tabla `solicitudes_fondo`
 --
 
-CREATE TABLE `usuarios` (
+CREATE TABLE `solicitudes_fondo` (
   `id` int(11) NOT NULL,
-  `usuario` varchar(100) DEFAULT NULL,
-  `nombre` varchar(150) DEFAULT NULL,
-  `documento` varchar(20) DEFAULT NULL,
-  `telefono` varchar(20) DEFAULT NULL,
-  `tipo_documento` enum('DNI','CE') DEFAULT 'DNI',
-  `password` varchar(255) DEFAULT NULL,
-  `tipo` enum('jefe','asistente') DEFAULT 'asistente',
-  `departamento_id` int(11) DEFAULT NULL,
-  `firma` varchar(255) DEFAULT NULL
+  `codigo` varchar(20) DEFAULT NULL,
+  `solicitante_id` int(11) NOT NULL,
+  `departamento_solicitante` varchar(100) DEFAULT NULL,
+  `departamento_id` int(11) NOT NULL,
+  `empresa` varchar(120) DEFAULT NULL,
+  `sede` varchar(120) DEFAULT NULL,
+  `tipo` enum('ADELANTO','REEMBOLSO','VIATICOS') NOT NULL DEFAULT 'ADELANTO',
+  `modo_pago` enum('ANTICIPADO','REEMBOLSO') DEFAULT 'ANTICIPADO',
+  `categoria` varchar(100) DEFAULT NULL,
+  `concepto` text DEFAULT NULL,
+  `monto_solicitado` decimal(10,2) DEFAULT NULL,
+  `monto_rendido` decimal(10,2) DEFAULT 0.00,
+  `diferencia` decimal(10,2) DEFAULT 0.00,
+  `estado` enum('SIN_FIRMAR','PENDIENTE','APROBADO','RECHAZADO','PAGADO','EN_RENDICION','POR_DEVOLVER','POR_REEMBOLSAR','CERRADO') DEFAULT 'SIN_FIRMAR',
+  `firma_digital` longtext DEFAULT NULL,
+  `firmado_por` int(11) DEFAULT NULL,
+  `fecha_firma` datetime DEFAULT NULL,
+  `aprobado_por` int(11) DEFAULT NULL,
+  `fecha_aprobacion` datetime DEFAULT NULL,
+  `pagado_por` int(11) DEFAULT NULL,
+  `fecha_pago` datetime DEFAULT NULL,
+  `observaciones` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
--- Volcado de datos para la tabla `usuarios`
+-- Volcado de datos para la tabla `solicitudes_fondo`
 --
 
-INSERT INTO `usuarios` (`id`, `usuario`, `nombre`, `documento`, `telefono`, `tipo_documento`, `password`, `tipo`, `departamento_id`, `firma`) VALUES
-(4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', '75307827', '939427488', 'DNI', '$2y$10$oj14EIUQ4vb8FHPQq4HcS.houY4ZrczNVhvxzn3KUthfbo77OGBWG', 'jefe', 3, 'firmas/firma_6a045846389f9.png'),
-(8, 'admin@c.com', 'Perfil Prueba', '76567566', '939427488', 'DNI', '$2y$10$wSCKxZBC8QwbN9PfROtG9.FkvrAiZThSjrAFacTTcZdd7cbTFG9S6', 'jefe', 13, NULL),
-(12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', '71103989', '939427488', 'DNI', '$2y$10$hDJUjGC9bEcc3auRYp71MOzeAgcpHonPSYGMZSPc04fOJfiFQ4NSG', 'asistente', 10, NULL),
-(13, 'oliver.holguin@ceturghperu.edu.pe', 'OLIVER HOLGUIN LLACSAHUANGA', '70367686', NULL, 'DNI', '$2y$10$5AqHnzrIzxTdLV2QiovsreO9JGng5EHCX2CvSAUVZ0kw28vWr9rXe', 'jefe', 9, NULL),
-(14, 'eliana.takury9@gmail.com', 'ELIANA TAKURY BARRANTES', '73180322', NULL, 'DNI', '$2y$10$9o.QgrHcmIG8AxYf0m869ephCzhJ2RZfBCRWTkGFUjYZlDQmb1E/W', 'asistente', 7, NULL),
-(15, 'paola.barahona@ceturghperu.edu.pe', 'PAOLA MERCEDES BARAHONA CHAU', '73180322', NULL, 'DNI', '$2y$10$Vl9mye3JUVlIx1BrFTVLDepfSG0QQm5uJpKxJM9QxEpwtd05uQdmS', 'jefe', 7, NULL),
-(16, 'auxiliar.academico@ceturghperu.edu.pe', 'KEIKO YAJAIRA CRUZ FLORES', '72104731', NULL, 'DNI', '$2y$10$YnsWz9AZPbjDL2pyRwnVjenyit0XNbOD6joswXPGZJeMDldMCbGnG', 'asistente', 15, NULL),
-(17, 'manuel.marcelo@ceturghperu.edu.pe', 'MANUEL ERNESTO MONTERO MARCELO', '42064694', NULL, 'DNI', '$2y$10$j5jlT4aMv81ttyJRISLeDOnM5SpHSfEHNNYQv94rfnOksySxq2kSe', 'jefe', 15, NULL),
-(18, 'ejecutiva.comercial.piura@ceturghperu.edu.pe', 'LUCIA DEL CARMEN SEMINARIO GUERRERO', '75134345', NULL, 'DNI', '$2y$10$yd8cy3DIg1XMcNt33ColcOQIA8A.GJNISTl/d8Lf8HTrR2bpJUoKq', 'asistente', 9, NULL),
-(19, 'juana.mena@ceturghperu.edu.pe', 'JUANA MENA BENITES', '47577954', NULL, 'DNI', '$2y$10$UoNwoohYZPxqrTavWlNl0uoQ/FnxkemJvqHI9bH9gWYR4ErxqKiAq', 'jefe', 14, NULL),
-(20, 'asistente.marketing@ceturghperu.edu.pe', 'SUSANA QUIROZ MARQUEZ', '72531482', NULL, 'DNI', '$2y$10$ZwcZoEjoLIvXHUSFs/j6Cumy.x3afnW8KAHfW2pI/I/GgPuiXgP5.', 'asistente', 14, NULL),
-(21, 'davie.moscoso@ceturghperu.edu.pe', 'DAVIE MOSCOSO DIAZ', '40285401', NULL, 'DNI', '$2y$10$1NT5rilw2g3rwtseBI0qx.V8Z01e3zTFBGn1g5fDHAmQycr9VN8sO', 'jefe', 13, NULL);
+INSERT INTO `solicitudes_fondo` (`id`, `codigo`, `solicitante_id`, `departamento_solicitante`, `departamento_id`, `empresa`, `sede`, `tipo`, `modo_pago`, `categoria`, `concepto`, `monto_solicitado`, `monto_rendido`, `diferencia`, `estado`, `firma_digital`, `firmado_por`, `fecha_firma`, `aprobado_por`, `fecha_aprobacion`, `pagado_por`, `fecha_pago`, `observaciones`, `created_at`) VALUES
+(82, 'FND-00009', 8, NULL, 10, 'EDUTUR E.I.R.L.', 'PIURA', 'ADELANTO', 'ANTICIPADO', 'Imprevisto', 'csfcsdcdscdsdcs', 12.00, 0.00, 0.00, 'APROBADO', NULL, 8, '2026-06-05 10:44:30', 8, '2026-06-05 10:44:32', NULL, NULL, NULL, '2026-06-04 14:09:06'),
+(83, 'FND-00010', 8, NULL, 3, 'EDUTUR E.I.R.L.', 'PIURA', 'ADELANTO', 'ANTICIPADO', 'Viáticos', 'dsadsadasas', 12.00, 0.00, 0.00, 'APROBADO', NULL, 8, '2026-06-05 10:44:20', 8, '2026-06-05 10:44:24', NULL, NULL, NULL, '2026-06-04 14:16:38'),
+(84, 'FND-00011', 8, NULL, 3, 'EDUTUR E.I.R.L.', 'PIURA', 'REEMBOLSO', 'ANTICIPADO', 'Imprevisto', 'dasdasdasdasdsa', 12.00, 12.00, 0.00, 'CERRADO', NULL, 8, '2026-06-05 09:53:09', 8, '2026-06-05 10:11:14', 8, '2026-06-05 10:44:55', NULL, '2026-06-05 14:53:02'),
+(85, 'FND-00012', 8, NULL, 11, 'EDUTUR E.I.R.L.', 'PIURA', 'REEMBOLSO', 'ANTICIPADO', 'Transporte', 'csacascascas', 11.00, 12.00, -1.00, 'CERRADO', NULL, 8, '2026-06-05 10:47:57', 8, '2026-06-05 10:48:38', 8, '2026-06-05 10:49:14', NULL, '2026-06-05 15:47:54'),
+(86, 'FND-00013', 8, NULL, 10, 'EDUTUR E.I.R.L.', 'PIURA', 'ADELANTO', 'ANTICIPADO', 'Imprevisto', 'ccascas', 11.00, 11.00, 0.00, 'CERRADO', NULL, 8, '2026-06-05 10:49:59', 8, '2026-06-05 10:50:02', 8, '2026-06-05 10:50:20', NULL, '2026-06-05 15:49:53'),
+(87, 'FND-00014', 8, NULL, 19, 'EDUTUR E.I.R.L.', 'PIURA', 'REEMBOLSO', 'ANTICIPADO', 'Imprevisto', 'vavavsdvsdvs', 12.00, 12.00, 0.00, 'CERRADO', NULL, 8, '2026-06-05 11:29:38', 8, '2026-06-05 11:30:20', 8, '2026-06-05 11:32:00', NULL, '2026-06-05 16:29:34');
 
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `usuarios_departamentos`
---
-
-CREATE TABLE `usuarios_departamentos` (
-  `id` int(11) NOT NULL,
-  `usuario_id` int(11) NOT NULL,
-  `departamento_id` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Volcado de datos para la tabla `usuarios_departamentos`
---
-
-INSERT INTO `usuarios_departamentos` (`id`, `usuario_id`, `departamento_id`) VALUES
-(19, 8, 13),
-(20, 8, 17),
-(21, 8, 5),
-(22, 8, 6),
-(23, 8, 8),
-(24, 8, 3),
-(25, 8, 10);
-
---
--- Índices para tablas volcadas
---
-
---
--- Indices de la tabla `areas_costos`
---
-ALTER TABLE `areas_costos`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `empresa_id` (`empresa_id`),
-  ADD KEY `sede_id` (`sede_id`);
-
---
--- Indices de la tabla `area_departamento`
---
-ALTER TABLE `area_departamento`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `area_id` (`area_id`),
-  ADD KEY `departamento_id` (`departamento_id`);
-
---
--- Indices de la tabla `articulos`
---
-ALTER TABLE `articulos`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `cajas_chicas`
---
-ALTER TABLE `cajas_chicas`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `empresa_id` (`empresa_id`);
-
---
--- Indices de la tabla `caja_entregas`
---
-ALTER TABLE `caja_entregas`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `caja_id` (`caja_id`),
-  ADD KEY `centro_costo_id` (`centro_costo_id`);
-
---
--- Indices de la tabla `caja_recargas`
---
-ALTER TABLE `caja_recargas`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `caja_rendiciones`
---
-ALTER TABLE `caja_rendiciones`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `entrega_id` (`entrega_id`);
-
---
--- Indices de la tabla `carreras`
---
-ALTER TABLE `carreras`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `centros_costos`
---
-ALTER TABLE `centros_costos`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `parent_id` (`parent_id`),
-  ADD KEY `empresa_id` (`empresa_id`),
-  ADD KEY `sede_id` (`sede_id`);
-
---
--- Indices de la tabla `cola_correos`
---
-ALTER TABLE `cola_correos`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `correlativos`
---
-ALTER TABLE `correlativos`
-  ADD PRIMARY KEY (`tipo`,`anio`);
-
---
--- Indices de la tabla `departamentos`
---
-ALTER TABLE `departamentos`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `empresa_id` (`empresa_id`),
-  ADD KEY `sede_id` (`sede_id`),
-  ADD KEY `parent_id` (`parent_id`);
-
---
--- Indices de la tabla `empresas`
---
-ALTER TABLE `empresas`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `grupos_tesoreria`
---
-ALTER TABLE `grupos_tesoreria`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `inventario`
---
-ALTER TABLE `inventario`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `inventario_herramientas`
---
-ALTER TABLE `inventario_herramientas`
-  ADD KEY `inventario_id` (`inventario_id`);
-
---
--- Indices de la tabla `inventario_insumos`
---
-ALTER TABLE `inventario_insumos`
-  ADD KEY `inventario_id` (`inventario_id`);
-
---
--- Indices de la tabla `inventario_lotes`
---
-ALTER TABLE `inventario_lotes`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `inventario_id` (`inventario_id`);
-
---
--- Indices de la tabla `inventario_menaje`
---
-ALTER TABLE `inventario_menaje`
-  ADD KEY `inventario_id` (`inventario_id`);
-
---
--- Indices de la tabla `inventario_moviles`
---
-ALTER TABLE `inventario_moviles`
-  ADD KEY `inventario_id` (`inventario_id`);
-
---
--- Indices de la tabla `inventario_oficina`
---
-ALTER TABLE `inventario_oficina`
-  ADD KEY `inventario_id` (`inventario_id`);
-
---
--- Indices de la tabla `items`
---
-ALTER TABLE `items`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `requerimiento_id` (`requerimiento_id`),
-  ADD KEY `centro_costo_id` (`centro_costo_id`),
-  ADD KEY `area_costo_id` (`area_costo_id`);
-
---
--- Indices de la tabla `logs`
---
-ALTER TABLE `logs`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `movimientos_stock`
---
-ALTER TABLE `movimientos_stock`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `notificaciones`
---
-ALTER TABLE `notificaciones`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `ordenes_compra`
---
-ALTER TABLE `ordenes_compra`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `orden_compra_items`
---
-ALTER TABLE `orden_compra_items`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `pagos`
---
-ALTER TABLE `pagos`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_pagos_trabajador` (`trabajador_id`);
-
---
--- Indices de la tabla `planilla_docente`
---
-ALTER TABLE `planilla_docente`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `trabajador_id` (`trabajador_id`),
-  ADD KEY `fk_programa` (`programa_id`);
-
---
--- Indices de la tabla `planilla_movilidad`
---
-ALTER TABLE `planilla_movilidad`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `empresa_id` (`empresa_id`),
-  ADD KEY `sede_id` (`sede_id`),
-  ADD KEY `departamento_id` (`departamento_id`);
-
---
--- Indices de la tabla `planilla_movilidad_detalle`
---
-ALTER TABLE `planilla_movilidad_detalle`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `planilla_id` (`planilla_id`);
-
---
--- Indices de la tabla `presupuestos_carreras`
---
-ALTER TABLE `presupuestos_carreras`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `productos_select`
---
-ALTER TABLE `productos_select`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `nombre` (`nombre`);
-
---
--- Indices de la tabla `programas`
---
-ALTER TABLE `programas`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `propuestas`
---
-ALTER TABLE `propuestas`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `item_id` (`item_id`);
-
---
--- Indices de la tabla `proveedores`
---
-ALTER TABLE `proveedores`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `requerimientos`
---
-ALTER TABLE `requerimientos`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `codigo` (`codigo`),
-  ADD KEY `departamento_id` (`departamento_id`),
-  ADD KEY `empresa_id` (`empresa_id`),
-  ADD KEY `sede_id` (`sede_id`),
-  ADD KEY `fk_requerimientos_usuario` (`creador_id`);
-
---
--- Indices de la tabla `sedes`
---
-ALTER TABLE `sedes`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `empresa_id` (`empresa_id`);
-
---
--- Indices de la tabla `trabajadores`
---
-ALTER TABLE `trabajadores`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `usuarios`
---
-ALTER TABLE `usuarios`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `departamento_id` (`departamento_id`);
-
---
--- Indices de la tabla `usuarios_departamentos`
---
-ALTER TABLE `usuarios_departamentos`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `usuario_id` (`usuario_id`),
-  ADD KEY `departamento_id` (`departamento_id`);
-
---
--- AUTO_INCREMENT de las tablas volcadas
---
-
---
--- AUTO_INCREMENT de la tabla `areas_costos`
---
-ALTER TABLE `areas_costos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
-
---
--- AUTO_INCREMENT de la tabla `area_departamento`
---
-ALTER TABLE `area_departamento`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
---
--- AUTO_INCREMENT de la tabla `articulos`
---
-ALTER TABLE `articulos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
---
--- AUTO_INCREMENT de la tabla `cajas_chicas`
---
-ALTER TABLE `cajas_chicas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
-
---
--- AUTO_INCREMENT de la tabla `caja_entregas`
---
-ALTER TABLE `caja_entregas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
-
---
--- AUTO_INCREMENT de la tabla `caja_recargas`
---
-ALTER TABLE `caja_recargas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
-
---
--- AUTO_INCREMENT de la tabla `caja_rendiciones`
---
-ALTER TABLE `caja_rendiciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
 --
--- AUTO_INCREMENT de la tabla `carreras`
+-- Disparadores `solicitudes_fondo`
 --
-ALTER TABLE `carreras`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
-
---
--- AUTO_INCREMENT de la tabla `centros_costos`
---
-ALTER TABLE `centros_costos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=391;
-
---
--- AUTO_INCREMENT de la tabla `cola_correos`
---
-ALTER TABLE `cola_correos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
-
---
--- AUTO_INCREMENT de la tabla `departamentos`
---
-ALTER TABLE `departamentos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
-
---
--- AUTO_INCREMENT de la tabla `empresas`
---
-ALTER TABLE `empresas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
-
---
--- AUTO_INCREMENT de la tabla `grupos_tesoreria`
---
-ALTER TABLE `grupos_tesoreria`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=57;
-
---
--- AUTO_INCREMENT de la tabla `inventario`
---
-ALTER TABLE `inventario`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
-
---
--- AUTO_INCREMENT de la tabla `inventario_lotes`
---
-ALTER TABLE `inventario_lotes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT de la tabla `items`
---
-ALTER TABLE `items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=176;
-
---
--- AUTO_INCREMENT de la tabla `logs`
---
-ALTER TABLE `logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT de la tabla `movimientos_stock`
---
-ALTER TABLE `movimientos_stock`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT de la tabla `notificaciones`
---
-ALTER TABLE `notificaciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=91;
-
---
--- AUTO_INCREMENT de la tabla `ordenes_compra`
---
-ALTER TABLE `ordenes_compra`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
-
---
--- AUTO_INCREMENT de la tabla `orden_compra_items`
---
-ALTER TABLE `orden_compra_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
-
---
--- AUTO_INCREMENT de la tabla `pagos`
---
-ALTER TABLE `pagos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
-
---
--- AUTO_INCREMENT de la tabla `planilla_docente`
---
-ALTER TABLE `planilla_docente`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
-
---
--- AUTO_INCREMENT de la tabla `planilla_movilidad`
---
-ALTER TABLE `planilla_movilidad`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
-
---
--- AUTO_INCREMENT de la tabla `planilla_movilidad_detalle`
---
-ALTER TABLE `planilla_movilidad_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
-
---
--- AUTO_INCREMENT de la tabla `presupuestos_carreras`
---
-ALTER TABLE `presupuestos_carreras`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- AUTO_INCREMENT de la tabla `productos_select`
---
-ALTER TABLE `productos_select`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
-
---
--- AUTO_INCREMENT de la tabla `programas`
---
-ALTER TABLE `programas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
-
---
--- AUTO_INCREMENT de la tabla `propuestas`
---
-ALTER TABLE `propuestas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
-
---
--- AUTO_INCREMENT de la tabla `proveedores`
---
-ALTER TABLE `proveedores`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
-
---
--- AUTO_INCREMENT de la tabla `requerimientos`
---
-ALTER TABLE `requerimientos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=159;
-
---
--- AUTO_INCREMENT de la tabla `sedes`
---
-ALTER TABLE `sedes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
-
---
--- AUTO_INCREMENT de la tabla `trabajadores`
---
-ALTER TABLE `trabajadores`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
-
---
--- AUTO_INCREMENT de la tabla `usuarios`
---
-ALTER TABLE `usuarios`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
-
---
--- AUTO_INCREMENT de la tabla `usuarios_departamentos`
---
-ALTER TABLE `usuarios_departamentos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
-
---
--- Restricciones para tablas volcadas
---
-
---
--- Filtros para la tabla `areas_costos`
---
-ALTER TABLE `areas_costos`
-  ADD CONSTRAINT `areas_costos_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`),
-  ADD CONSTRAINT `areas_costos_ibfk_2` FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`);
-
---
--- Filtros para la tabla `area_departamento`
---
-ALTER TABLE `area_departamento`
-  ADD CONSTRAINT `area_departamento_ibfk_1` FOREIGN KEY (`area_id`) REFERENCES `areas_costos` (`id`),
-  ADD CONSTRAINT `area_departamento_ibfk_2` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`);
-
---
--- Filtros para la tabla `cajas_chicas`
---
-ALTER TABLE `cajas_chicas`
-  ADD CONSTRAINT `cajas_chicas_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`);
-
---
--- Filtros para la tabla `caja_entregas`
---
-ALTER TABLE `caja_entregas`
-  ADD CONSTRAINT `caja_entregas_ibfk_1` FOREIGN KEY (`caja_id`) REFERENCES `cajas_chicas` (`id`),
-  ADD CONSTRAINT `caja_entregas_ibfk_2` FOREIGN KEY (`centro_costo_id`) REFERENCES `centros_costos` (`id`);
-
---
--- Filtros para la tabla `caja_rendiciones`
---
-ALTER TABLE `caja_rendiciones`
-  ADD CONSTRAINT `caja_rendiciones_ibfk_1` FOREIGN KEY (`entrega_id`) REFERENCES `caja_entregas` (`id`);
-
---
--- Filtros para la tabla `centros_costos`
---
-ALTER TABLE `centros_costos`
-  ADD CONSTRAINT `centros_costos_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `centros_costos` (`id`),
-  ADD CONSTRAINT `centros_costos_ibfk_2` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`),
-  ADD CONSTRAINT `centros_costos_ibfk_3` FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`);
-
---
--- Filtros para la tabla `departamentos`
---
-ALTER TABLE `departamentos`
-  ADD CONSTRAINT `departamentos_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`),
-  ADD CONSTRAINT `departamentos_ibfk_2` FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`),
-  ADD CONSTRAINT `departamentos_ibfk_3` FOREIGN KEY (`parent_id`) REFERENCES `departamentos` (`id`);
-
---
--- Filtros para la tabla `inventario_herramientas`
---
-ALTER TABLE `inventario_herramientas`
-  ADD CONSTRAINT `inventario_herramientas_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
-
---
--- Filtros para la tabla `inventario_insumos`
---
-ALTER TABLE `inventario_insumos`
-  ADD CONSTRAINT `inventario_insumos_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
-
---
--- Filtros para la tabla `inventario_lotes`
---
-ALTER TABLE `inventario_lotes`
-  ADD CONSTRAINT `inventario_lotes_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
-
---
--- Filtros para la tabla `inventario_menaje`
---
-ALTER TABLE `inventario_menaje`
-  ADD CONSTRAINT `inventario_menaje_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
-
---
--- Filtros para la tabla `inventario_moviles`
---
-ALTER TABLE `inventario_moviles`
-  ADD CONSTRAINT `inventario_moviles_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
-
---
--- Filtros para la tabla `inventario_oficina`
---
-ALTER TABLE `inventario_oficina`
-  ADD CONSTRAINT `inventario_oficina_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
-
---
--- Filtros para la tabla `items`
---
-ALTER TABLE `items`
-  ADD CONSTRAINT `items_ibfk_1` FOREIGN KEY (`requerimiento_id`) REFERENCES `requerimientos` (`id`),
-  ADD CONSTRAINT `items_ibfk_2` FOREIGN KEY (`centro_costo_id`) REFERENCES `centros_costos` (`id`),
-  ADD CONSTRAINT `items_ibfk_3` FOREIGN KEY (`area_costo_id`) REFERENCES `areas_costos` (`id`);
-
---
--- Filtros para la tabla `pagos`
---
-ALTER TABLE `pagos`
-  ADD CONSTRAINT `fk_pagos_trabajador` FOREIGN KEY (`trabajador_id`) REFERENCES `trabajadores` (`id`);
-
---
--- Filtros para la tabla `planilla_docente`
---
-ALTER TABLE `planilla_docente`
-  ADD CONSTRAINT `fk_programa` FOREIGN KEY (`programa_id`) REFERENCES `programas` (`id`),
-  ADD CONSTRAINT `planilla_docente_ibfk_1` FOREIGN KEY (`trabajador_id`) REFERENCES `trabajadores` (`id`);
-
---
--- Filtros para la tabla `planilla_movilidad`
---
-ALTER TABLE `planilla_movilidad`
-  ADD CONSTRAINT `planilla_movilidad_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`),
-  ADD CONSTRAINT `planilla_movilidad_ibfk_2` FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`),
-  ADD CONSTRAINT `planilla_movilidad_ibfk_3` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`);
-
---
--- Filtros para la tabla `planilla_movilidad_detalle`
---
-ALTER TABLE `planilla_movilidad_detalle`
-  ADD CONSTRAINT `planilla_movilidad_detalle_ibfk_1` FOREIGN KEY (`planilla_id`) REFERENCES `planilla_movilidad` (`id`) ON DELETE CASCADE;
-
---
--- Filtros para la tabla `propuestas`
---
-ALTER TABLE `propuestas`
-  ADD CONSTRAINT `propuestas_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`);
-
---
--- Filtros para la tabla `requerimientos`
---
-ALTER TABLE `requerimientos`
-  ADD CONSTRAINT `fk_requerimientos_usuario` FOREIGN KEY (`creador_id`) REFERENCES `usuarios` (`id`),
-  ADD CONSTRAINT `requerimientos_ibfk_1` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`),
-  ADD CONSTRAINT `requerimientos_ibfk_2` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`),
-  ADD CONSTRAINT `requerimientos_ibfk_3` FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`);
-
---
--- Filtros para la tabla `sedes`
---
-ALTER TABLE `sedes`
-  ADD CONSTRAINT `sedes_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`);
-
---
--- Filtros para la tabla `usuarios`
---
-ALTER TABLE `usuarios`
-  ADD CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`);
-
---
--- Filtros para la tabla `usuarios_departamentos`
---
-ALTER TABLE `usuarios_departamentos`
-  ADD CONSTRAINT `usuarios_departamentos_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`),
-  ADD CONSTRAINT `usuarios_departamentos_ibfk_2` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`);
-COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-------------------------------------------------------------------------------------
-
-
-ALTER TABLE ordenes_compra
-ADD COLUMN condiciones TEXT NULL,
-ADD COLUMN observaciones TEXT NULL;
-
-ALTER TABLE ordenes_compra
-ADD COLUMN grupo_id INT NULL;
-
-
 DELIMITER $$
-
--- =========================================
--- TRIGGER AFTER INSERT - NUEVA SOLICITUD
--- =========================================
-DROP TRIGGER IF EXISTS trg_solicitudes_fondo_insert_notificaciones$$
-CREATE TRIGGER trg_solicitudes_fondo_insert_notificaciones 
-AFTER INSERT ON solicitudes_fondo 
-FOR EACH ROW 
-BEGIN
+CREATE TRIGGER `trg_solicitudes_fondo_insert_notificaciones` AFTER INSERT ON `solicitudes_fondo` FOR EACH ROW BEGIN
 
     IF NEW.estado = 'SIN_FIRMAR' THEN
         
@@ -3493,16 +3518,11 @@ BEGIN
         
     END IF;
 
-END$$
-
--- =========================================
--- TRIGGER AFTER UPDATE - CAMBIO DE ESTADO
--- =========================================
-DROP TRIGGER IF EXISTS trg_solicitudes_fondo_update_notificaciones$$
-CREATE TRIGGER trg_solicitudes_fondo_update_notificaciones 
-AFTER UPDATE ON solicitudes_fondo 
-FOR EACH ROW 
-BEGIN
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `trg_solicitudes_fondo_update_notificaciones` AFTER UPDATE ON `solicitudes_fondo` FOR EACH ROW BEGIN
 
     DECLARE depto_nombre VARCHAR(100);
     DECLARE tipo_fondo VARCHAR(20);
@@ -3970,259 +3990,992 @@ BEGIN
         
     END IF;
 
-END$$
-
+END
+$$
 DELIMITER ;
 
--------------------------------------------------------------------------------------
+-- --------------------------------------------------------
 
-DROP TABLE IF EXISTS caja_recargas;
-DROP TABLE IF EXISTS caja_entregas;
-DROP TABLE IF EXISTS caja_movimientos;
-DROP TABLE IF EXISTS caja_rendiciones;
-DROP TABLE IF EXISTS caja_solicitudes;
-DROP TABLE IF EXISTS cajas_chicas;
+--
+-- Estructura de tabla para la tabla `solicitud_archivos`
+--
 
-CREATE TABLE cajas_chicas (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    empresa_id INT,
-    sede_id INT,
-    centro_costo_id INT,
-    codigo VARCHAR(50),
-    monto_base DECIMAL(10,2),
-    saldo_actual DECIMAL(10,2),
-    estado ENUM('ACTIVA','AGOTADA','PENDIENTE_APERTURA','CERRADA') DEFAULT 'PENDIENTE_APERTURA',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE solicitudes_caja (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    caja_id INT NULL,
-    tipo ENUM('APERTURA','RECARGA','CIERRE'),
-    empresa_id INT,
-    sede_id INT,
-    centro_costo_id INT,
-    monto DECIMAL(10,2),
-    motivo TEXT,
-    codigo_solicitado VARCHAR(100) NULL,
-    estado ENUM('PENDIENTE_ADMIN','APROBADO_ADMIN','RECHAZADO_ADMIN','PENDIENTE_TESORERIA','PAGADO','ANULADO') DEFAULT 'PENDIENTE_ADMIN',
-    aprobado_admin_por INT NULL,
-    fecha_aprobacion_admin DATETIME NULL,
-    pagado_por INT NULL,
-    fecha_pago DATETIME NULL,
-    voucher_pago VARCHAR(255) NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE movimientos_caja (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    caja_id INT,
-    tipo ENUM('APERTURA','RECARGA','GASTO','RENDICION','AJUSTE'),
-    referencia_id INT NULL,
-    descripcion TEXT,
-    ingreso DECIMAL(10,2) DEFAULT 0,
-    salida DECIMAL(10,2) DEFAULT 0,
-    saldo_resultante DECIMAL(10,2),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE rendiciones_caja (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    caja_id INT,
-    numero VARCHAR(20),
-    fecha_rendicion DATE,
-    saldo_inicial DECIMAL(10,2),
-    total_rendido DECIMAL(10,2),
-    saldo_final DECIMAL(10,2),
-    estado ENUM('BORRADOR','ENVIADO','OBSERVADO','APROBADO') DEFAULT 'BORRADOR',
-    created_by INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE rendicion_items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    rendicion_id INT,
-    fecha DATE,
-    proveedor VARCHAR(255),
-    ruc_dni VARCHAR(20),
-    tipo_documento ENUM('FACTURA','BOLETA','RXH','MOVILIDAD','OTROS'),
-    numero_documento VARCHAR(100),
-    descripcion TEXT,
-    monto DECIMAL(10,2),
-    archivo VARCHAR(255) NULL
-);
-ALTER TABLE rendicion_items ADD COLUMN adjunto VARCHAR(255) NULL AFTER monto;
-
-
-----------------------------------------------------------------------------------------
-
--- ==========================================
--- PASO 1: RESPALDAR DATOS IMPORTANTES
--- ==========================================
--- EJECUTAR ESTO PRIMERO EN TU PHPMyAdmin O MySQL
--- Crear tablas temporales de respaldo
-CREATE TABLE departamentos_backup_20260605 AS SELECT * FROM departamentos;
-CREATE TABLE requerimientos_backup_20260605 AS SELECT * FROM requerimientos;
-CREATE TABLE planilla_movilidad_backup_20260605 AS SELECT * FROM planilla_movilidad;
-
--- ==========================================
--- PASO 2: CREAR TABLA DE PRESUPUESTOS HISTÓRICOS
--- ==========================================
-CREATE TABLE IF NOT EXISTS `presupuestos_historicos` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `departamento_id` int(11) NOT NULL,
-  `mes` int(2) NOT NULL,
-  `anio` int(4) NOT NULL,
-  `presupuesto_asignado` decimal(10,2) DEFAULT 0.00,
-  `fecha_registro` datetime DEFAULT CURRENT_TIMESTAMP,
-  `registrado_por` int(11) DEFAULT NULL,
-  `nota` text DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `unique_periodo` (`departamento_id`, `mes`, `anio`),
-  KEY `idx_departamento` (`departamento_id`),
-  KEY `idx_fecha` (`anio`, `mes`),
-  FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`) ON DELETE CASCADE
+CREATE TABLE `solicitud_archivos` (
+  `id` int(11) NOT NULL,
+  `solicitud_id` int(11) NOT NULL,
+  `gasto_id` int(11) DEFAULT NULL,
+  `tipo` enum('SOLICITUD','PAGO_TESORERIA','RENDICION','DEVOLUCION','REEMBOLSO') DEFAULT NULL,
+  `nombre_original` varchar(255) DEFAULT NULL,
+  `nombre_guardado` varchar(255) DEFAULT NULL,
+  `ruta` varchar(255) DEFAULT NULL,
+  `subido_por` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
--- ==========================================
--- PASO 3: MIGRAR PRESUPUESTOS ACTUALES AL MES CORRIENTE (JUNIO 2026)
--- ==========================================
-INSERT INTO presupuestos_historicos (departamento_id, mes, anio, presupuesto_asignado, registrado_por, nota)
-SELECT 
-  d.id,
-  6 as mes,  -- Junio
-  2026 as anio,
-  d.presupuesto as presupuesto_asignado,
-  1 as registrado_por,  -- Usuario administrador (ID 1)
-  'Presupuesto inicial migrado desde tabla departamentos'
-FROM departamentos d
-WHERE d.presupuesto > 0
-ON DUPLICATE KEY UPDATE 
-  presupuesto_asignado = VALUES(presupuesto_asignado),
-  nota = CONCAT(nota, ' - Actualizado: ', NOW());
+--
+-- Volcado de datos para la tabla `solicitud_archivos`
+--
 
--- ==========================================
--- PASO 4: MIGRAR PRESUPUESTOS PARA MESES ANTERIORES (MAYO 2026 y anteriores)
--- ==========================================
+INSERT INTO `solicitud_archivos` (`id`, `solicitud_id`, `gasto_id`, `tipo`, `nombre_original`, `nombre_guardado`, `ruta`, `subido_por`, `created_at`) VALUES
+(155, 84, NULL, 'PAGO_TESORERIA', 'transacción_10721-LACCEI2026-1611.pdf', '6a22eef7b0c4e_1780674295.pdf', 'uploads/pagos/6a22eef7b0c4e_1780674295.pdf', 8, '2026-06-05 15:44:55'),
+(156, 85, NULL, 'PAGO_TESORERIA', 'Plataforma STEAM con IA (1).pdf', '6a22effa822ab_1780674554.pdf', 'uploads/pagos/6a22effa822ab_1780674554.pdf', 8, '2026-06-05 15:49:14'),
+(157, 86, NULL, 'PAGO_TESORERIA', 'Planilla_Rendicion_REND-2026-00004.pdf', '6a22f03c29ae6_1780674620.pdf', 'uploads/pagos/6a22f03c29ae6_1780674620.pdf', 8, '2026-06-05 15:50:20'),
+(158, 86, 38, 'RENDICION', 'DNI_CASTRO_PABLO.pdf', '6a22f04f317a2_1780674639.pdf', 'uploads/gastos/6a22f04f317a2_1780674639.pdf', 8, '2026-06-05 15:50:39'),
+(159, 87, 39, 'RENDICION', '02-Reglamento-institucional-2025-a-2030-2.pdf', '6a22f98313e64_1780676995.pdf', 'uploads/gastos/6a22f98313e64_1780676995.pdf', 8, '2026-06-05 16:29:55'),
+(160, 87, NULL, 'PAGO_TESORERIA', 'Plataforma STEAM con IA (1).pdf', '6a22fa0071e19_1780677120.pdf', 'uploads/pagos/6a22fa0071e19_1780677120.pdf', 8, '2026-06-05 16:32:00');
 
--- 4.1 Obtener meses con gastos en REQUERIMIENTOS
-INSERT INTO presupuestos_historicos (departamento_id, mes, anio, presupuesto_asignado, registrado_por, nota)
-SELECT DISTINCT
-  r.departamento_id,
-  MONTH(r.fecha) as mes,
-  YEAR(r.fecha) as anio,
-  d.presupuesto as presupuesto_asignado,
-  1 as registrado_por,
-  'Presupuesto histórico basado en gastos de requerimientos'
-FROM requerimientos r
-INNER JOIN departamentos d ON d.id = r.departamento_id
-WHERE r.fecha IS NOT NULL
-  AND NOT EXISTS (
-    SELECT 1 FROM presupuestos_historicos ph 
-    WHERE ph.departamento_id = r.departamento_id 
-    AND ph.mes = MONTH(r.fecha) 
-    AND ph.anio = YEAR(r.fecha)
-  )
-ON DUPLICATE KEY UPDATE 
-  presupuesto_asignado = VALUES(presupuesto_asignado);
+-- --------------------------------------------------------
 
--- 4.2 Obtener meses con gastos en MOVILIDADES
-INSERT INTO presupuestos_historicos (departamento_id, mes, anio, presupuesto_asignado, registrado_por, nota)
-SELECT DISTINCT
-  pm.departamento_id,
-  MONTH(pm.fecha) as mes,
-  YEAR(pm.fecha) as anio,
-  d.presupuesto as presupuesto_asignado,
-  1 as registrado_por,
-  'Presupuesto histórico basado en gastos de movilidades'
-FROM planilla_movilidad pm
-INNER JOIN departamentos d ON d.id = pm.departamento_id
-WHERE pm.fecha IS NOT NULL
-  AND NOT EXISTS (
-    SELECT 1 FROM presupuestos_historicos ph 
-    WHERE ph.departamento_id = pm.departamento_id 
-    AND ph.mes = MONTH(pm.fecha) 
-    AND ph.anio = YEAR(pm.fecha)
-  )
-ON DUPLICATE KEY UPDATE 
-  presupuesto_asignado = VALUES(presupuesto_asignado);
+--
+-- Estructura de tabla para la tabla `solicitud_gastos`
+--
 
--- ==========================================
--- PASO 5: VERIFICAR MIGRACIÓN
--- ==========================================
+CREATE TABLE `solicitud_gastos` (
+  `id` int(11) NOT NULL,
+  `solicitud_id` int(11) NOT NULL,
+  `fecha` date DEFAULT NULL,
+  `proveedor` varchar(200) DEFAULT NULL,
+  `documento_proveedor` varchar(20) DEFAULT NULL,
+  `tipo_proveedor` enum('EMPRESA','PERSONA','OTROS') DEFAULT 'EMPRESA',
+  `tipo_comprobante` varchar(50) DEFAULT NULL,
+  `numero_comprobante` varchar(100) DEFAULT NULL,
+  `descripcion` text DEFAULT NULL,
+  `monto` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
--- Ver cuántos registros se migraron
-SELECT 
-  'Total registros en presupuestos_historicos' as concepto,
-  COUNT(*) as cantidad 
-FROM presupuestos_historicos;
+--
+-- Volcado de datos para la tabla `solicitud_gastos`
+--
 
--- Ver distribución por mes/año
-SELECT 
-  anio, 
-  mes, 
-  COUNT(*) as cantidad_departamentos,
-  SUM(presupuesto_asignado) as total_presupuesto
-FROM presupuestos_historicos
-GROUP BY anio, mes
-ORDER BY anio DESC, mes DESC;
+INSERT INTO `solicitud_gastos` (`id`, `solicitud_id`, `fecha`, `proveedor`, `documento_proveedor`, `tipo_proveedor`, `tipo_comprobante`, `numero_comprobante`, `descripcion`, `monto`) VALUES
+(36, 84, '2026-06-05', '312312', '', 'OTROS', 'Ticket', 'c221', 'csdcsdcsd', 12.00),
+(37, 85, '2026-06-05', 'cdscsdc', '', 'OTROS', 'Factura', 'c1212', 'csdcsdcsd', 12.00),
+(38, 86, '2026-06-05', 'dwdd', '', 'OTROS', 'Boleta', '23', 'dadasd', 11.00),
+(39, 87, '2026-06-05', 'dqwdqwdwq', '', 'OTROS', 'Factura', '213', 'cccqeeqfeq', 12.00);
 
--- Ver departamentos que NO tienen presupuesto histórico
-SELECT d.id, d.nombre, d.presupuesto
-FROM departamentos d
-LEFT JOIN presupuestos_historicos ph ON ph.departamento_id = d.id
-WHERE ph.id IS NULL
-AND d.presupuesto > 0;
+-- --------------------------------------------------------
 
--- ==========================================
--- PASO 6: CREAR VISTA PARA REPORTE MENSUAL (OPCIONAL)
--- ==========================================
-CREATE OR REPLACE VIEW vista_resumen_mensual AS
-SELECT 
-  d.id as departamento_id,
-  d.nombre as departamento_nombre,
-  ph.mes,
-  ph.anio,
-  ph.presupuesto_asignado,
-  COALESCE((
-    SELECT SUM(i.total) 
-    FROM items i
-    JOIN requerimientos r ON r.id = i.requerimiento_id
-    WHERE r.departamento_id = d.id
-    AND i.estado_pago = 'Pagado'
-    AND MONTH(r.fecha) = ph.mes
-    AND YEAR(r.fecha) = ph.anio
-  ), 0) as gastado_items,
-  COALESCE((
-    SELECT SUM(pm.monto_total)
-    FROM planilla_movilidad pm
-    WHERE pm.departamento_id = d.id
-    AND pm.estado = 'Pagado'
-    AND MONTH(pm.fecha) = ph.mes
-    AND YEAR(pm.fecha) = ph.anio
-  ), 0) as gastado_movilidad,
-  ph.presupuesto_asignado - (
-    COALESCE((
-      SELECT SUM(i.total) 
-      FROM items i
-      JOIN requerimientos r ON r.id = i.requerimiento_id
-      WHERE r.departamento_id = d.id
-      AND i.estado_pago = 'Pagado'
-      AND MONTH(r.fecha) = ph.mes
-      AND YEAR(r.fecha) = ph.anio
-    ), 0) +
-    COALESCE((
-      SELECT SUM(pm.monto_total)
-      FROM planilla_movilidad pm
-      WHERE pm.departamento_id = d.id
-      AND pm.estado = 'Pagado'
-      AND MONTH(pm.fecha) = ph.mes
-      AND YEAR(pm.fecha) = ph.anio
-    ), 0)
-  ) as saldo
-FROM departamentos d
-CROSS JOIN presupuestos_historicos ph
-WHERE ph.departamento_id = d.id;
+--
+-- Estructura de tabla para la tabla `solicitud_historial`
+--
 
--- Mostrar resultados de la vista (verificación)
-SELECT * FROM vista_resumen_mensual ORDER BY anio DESC, mes DESC, departamento_nombre;
+CREATE TABLE `solicitud_historial` (
+  `id` int(11) NOT NULL,
+  `solicitud_id` int(11) NOT NULL,
+  `usuario_id` int(11) DEFAULT NULL,
+  `accion` varchar(100) DEFAULT NULL,
+  `descripcion` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `solicitud_historial`
+--
+
+INSERT INTO `solicitud_historial` (`id`, `solicitud_id`, `usuario_id`, `accion`, `descripcion`, `created_at`) VALUES
+(308, 82, 8, 'CREAR', 'Solicitud creada con código: FND-00009', '2026-06-04 14:09:06'),
+(309, 83, 8, 'CREAR', 'Solicitud creada con código: FND-00010', '2026-06-04 14:16:38'),
+(310, 84, 8, 'CREAR', 'Solicitud creada con código: FND-00011', '2026-06-05 14:53:02'),
+(311, 84, 8, 'FIRMAR', 'Solicitud firmada por el jefe de departamento', '2026-06-05 14:53:09'),
+(312, 84, 8, 'ENVIAR_RENDICION', 'Rendición enviada a tesorería con 1 gastos registrados. Total rendido: S/ 12.00. Rendición cuadrada correctamente.', '2026-06-05 15:10:55'),
+(313, 84, 8, 'APROBAR', 'Solicitud aprobada por administración', '2026-06-05 15:11:14'),
+(314, 83, 8, 'FIRMAR', 'Solicitud firmada por el jefe de departamento', '2026-06-05 15:44:20'),
+(315, 83, 8, 'APROBAR', 'Solicitud aprobada por administración', '2026-06-05 15:44:24'),
+(316, 82, 8, 'FIRMAR', 'Solicitud firmada por el jefe de departamento', '2026-06-05 15:44:30'),
+(317, 82, 8, 'APROBAR', 'Solicitud aprobada por administración', '2026-06-05 15:44:32'),
+(318, 84, 8, 'PAGAR', 'Reembolso realizado por S/ 12.00. Proceso cerrado.', '2026-06-05 15:44:55'),
+(319, 85, 8, 'CREAR', 'Solicitud creada con código: FND-00012', '2026-06-05 15:47:54'),
+(320, 85, 8, 'FIRMAR', 'Solicitud firmada por el jefe de departamento', '2026-06-05 15:47:57'),
+(321, 85, 8, 'ENVIAR_RENDICION', 'Rendición enviada a tesorería con 1 gastos registrados. Total rendido: S/ 12.00. Diferencia de S/ 1.00 a favor del solicitante (tesorería debe reembolsar).', '2026-06-05 15:48:18'),
+(322, 85, 8, 'APROBAR', 'Solicitud aprobada por administración', '2026-06-05 15:48:38'),
+(323, 85, 8, 'PAGAR', 'Reembolso realizado por S/ 12.00. Proceso cerrado.', '2026-06-05 15:49:14'),
+(324, 86, 8, 'CREAR', 'Solicitud creada con código: FND-00013', '2026-06-05 15:49:53'),
+(325, 86, 8, 'FIRMAR', 'Solicitud firmada por el jefe de departamento', '2026-06-05 15:49:59'),
+(326, 86, 8, 'APROBAR', 'Solicitud aprobada por administración', '2026-06-05 15:50:02'),
+(327, 86, 8, 'PAGAR', 'Desembolso realizado por S/ 11.00. Pendiente de rendición.', '2026-06-05 15:50:20'),
+(328, 86, 8, 'ENVIAR_RENDICION', 'Rendición enviada a tesorería con 1 gastos registrados. Total rendido: S/ 11.00. Rendición cuadrada correctamente.', '2026-06-05 15:50:43'),
+(329, 87, 8, 'CREAR', 'Solicitud creada con código: FND-00014', '2026-06-05 16:29:34'),
+(330, 87, 8, 'FIRMAR', 'Solicitud firmada por el jefe de departamento', '2026-06-05 16:29:38'),
+(331, 87, 8, 'ENVIAR_RENDICION', 'Rendición enviada a tesorería con 1 gastos registrados. Total rendido: S/ 12.00. Rendición cuadrada correctamente.', '2026-06-05 16:30:00'),
+(332, 87, 8, 'APROBAR', 'Solicitud aprobada por administración', '2026-06-05 16:30:20'),
+(333, 87, 8, 'PAGAR', 'Reembolso realizado por S/ 12.00. Proceso cerrado.', '2026-06-05 16:32:00');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `trabajadores`
+--
+
+CREATE TABLE `trabajadores` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(150) DEFAULT NULL,
+  `cargo` varchar(150) DEFAULT NULL,
+  `tipoContrato` enum('Planilla','Recibo x Honorarios','Servicios Externos') DEFAULT NULL,
+  `estado` varchar(20) DEFAULT 'Activo',
+  `fecha_registro` timestamp NOT NULL DEFAULT current_timestamp(),
+  `empresa_id` int(11) DEFAULT NULL,
+  `sede_id` int(11) DEFAULT NULL,
+  `tipo_personal` enum('DOCENTE','CHEF','ADMIN') DEFAULT 'ADMIN',
+  `numero_cuenta` varchar(50) DEFAULT NULL,
+  `cci` varchar(50) DEFAULT NULL,
+  `tipo_documento` varchar(20) DEFAULT 'DNI',
+  `numero_documento` varchar(20) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `trabajadores`
+--
+
+INSERT INTO `trabajadores` (`id`, `nombre`, `cargo`, `tipoContrato`, `estado`, `fecha_registro`, `empresa_id`, `sede_id`, `tipo_personal`, `numero_cuenta`, `cci`, `tipo_documento`, `numero_documento`) VALUES
+(10, 'Pablo Cesar Castro Timaná', 'ASISTENTE TIC', 'Planilla', 'Activo', '2026-05-18 14:54:44', 1, 2, 'ADMIN', '25259280525052050505', '', 'DNI', '77777777');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `usuarios`
+--
+
+CREATE TABLE `usuarios` (
+  `id` int(11) NOT NULL,
+  `usuario` varchar(100) DEFAULT NULL,
+  `nombre` varchar(150) DEFAULT NULL,
+  `documento` varchar(20) DEFAULT NULL,
+  `telefono` varchar(20) DEFAULT NULL,
+  `tipo_documento` enum('DNI','CE') DEFAULT 'DNI',
+  `password` varchar(255) DEFAULT NULL,
+  `tipo` enum('admin','jefe','asistente','logistica','tesoreria') DEFAULT 'asistente',
+  `departamento_id` int(11) DEFAULT NULL,
+  `firma` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `usuarios`
+--
+
+INSERT INTO `usuarios` (`id`, `usuario`, `nombre`, `documento`, `telefono`, `tipo_documento`, `password`, `tipo`, `departamento_id`, `firma`) VALUES
+(4, 'asistente.tic@ceturghperu.edu.pe', 'Pablo Castro Timana', '75307827', '939427488', 'DNI', '$2y$10$oj14EIUQ4vb8FHPQq4HcS.houY4ZrczNVhvxzn3KUthfbo77OGBWG', 'jefe', 10, 'firmas/firma_6a0c6b9e71a99.jpeg'),
+(8, 'admin@c.com', 'Perfil Prueba', '76567566', '939427488', 'DNI', '$2y$10$wSCKxZBC8QwbN9PfROtG9.FkvrAiZThSjrAFacTTcZdd7cbTFG9S6', 'jefe', 11, 'firmas/firma_6a0f4e5eeee6e.jpeg'),
+(12, 'juegapablo28@gmail.com', 'LISSETH MADELEINE BRICEÑO MAZA', '71103989', '939427488', 'DNI', '$2y$10$hDJUjGC9bEcc3auRYp71MOzeAgcpHonPSYGMZSPc04fOJfiFQ4NSG', 'jefe', 8, 'firmas/firma_6a0c6b8f87815.jpeg'),
+(13, 'oliver.holguin@ceturghperu.edu.pe', 'OLIVER HOLGUIN LLACSAHUANGA', '70367686', NULL, 'DNI', '$2y$10$5AqHnzrIzxTdLV2QiovsreO9JGng5EHCX2CvSAUVZ0kw28vWr9rXe', 'jefe', 9, NULL),
+(14, 'eliana.takury9@gmail.com', 'ELIANA TAKURY BARRANTES', '73180322', NULL, 'DNI', '$2y$10$9o.QgrHcmIG8AxYf0m869ephCzhJ2RZfBCRWTkGFUjYZlDQmb1E/W', 'asistente', 7, NULL),
+(15, 'paola.barahona@ceturghperu.edu.pe', 'PAOLA MERCEDES BARAHONA CHAU', '73180322', NULL, 'DNI', '$2y$10$Vl9mye3JUVlIx1BrFTVLDepfSG0QQm5uJpKxJM9QxEpwtd05uQdmS', 'jefe', 7, NULL),
+(16, 'auxiliar.academico@ceturghperu.edu.pe', 'KEIKO YAJAIRA CRUZ FLORES', '72104731', NULL, 'DNI', '$2y$10$YnsWz9AZPbjDL2pyRwnVjenyit0XNbOD6joswXPGZJeMDldMCbGnG', 'asistente', 15, NULL),
+(17, 'manuel.marcelo@ceturghperu.edu.pe', 'MANUEL ERNESTO MONTERO MARCELO', '42064694', NULL, 'DNI', '$2y$10$j5jlT4aMv81ttyJRISLeDOnM5SpHSfEHNNYQv94rfnOksySxq2kSe', 'jefe', 15, NULL),
+(18, 'ejecutiva.comercial.piura@ceturghperu.edu.pe', 'LUCIA DEL CARMEN SEMINARIO GUERRERO', '75134345', NULL, 'DNI', '$2y$10$yd8cy3DIg1XMcNt33ColcOQIA8A.GJNISTl/d8Lf8HTrR2bpJUoKq', 'asistente', 9, NULL),
+(19, 'juana.mena@ceturghperu.edu.pe', 'JUANA MENA BENITES', '47577954', NULL, 'DNI', '$2y$10$UoNwoohYZPxqrTavWlNl0uoQ/FnxkemJvqHI9bH9gWYR4ErxqKiAq', 'jefe', 14, NULL),
+(20, 'asistente.marketing@ceturghperu.edu.pe', 'SUSANA QUIROZ MARQUEZ', '72531482', NULL, 'DNI', '$2y$10$ZwcZoEjoLIvXHUSFs/j6Cumy.x3afnW8KAHfW2pI/I/GgPuiXgP5.', 'asistente', 14, NULL),
+(21, 'davie.moscoso@ceturghperu.edu.pe', 'DAVIE MOSCOSO DIAZ', '40285401', NULL, 'DNI', '$2y$10$1NT5rilw2g3rwtseBI0qx.V8Z01e3zTFBGn1g5fDHAmQycr9VN8sO', 'jefe', 13, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `usuarios_departamentos`
+--
+
+CREATE TABLE `usuarios_departamentos` (
+  `id` int(11) NOT NULL,
+  `usuario_id` int(11) NOT NULL,
+  `departamento_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Volcado de datos para la tabla `usuarios_departamentos`
+--
+
+INSERT INTO `usuarios_departamentos` (`id`, `usuario_id`, `departamento_id`) VALUES
+(27, 12, 8),
+(28, 4, 10),
+(111, 8, 11),
+(112, 8, 12),
+(113, 8, 13),
+(114, 8, 10),
+(115, 8, 17),
+(116, 8, 15),
+(117, 8, 7),
+(118, 8, 5),
+(119, 8, 14),
+(120, 8, 6),
+(121, 8, 16),
+(122, 8, 8),
+(123, 8, 3),
+(124, 8, 18),
+(125, 8, 19),
+(126, 8, 9);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura Stand-in para la vista `vista_resumen_mensual`
+-- (Véase abajo para la vista actual)
+--
+CREATE TABLE `vista_resumen_mensual` (
+`departamento_id` int(11)
+,`departamento_nombre` varchar(100)
+,`mes` int(2)
+,`anio` int(4)
+,`presupuesto_asignado` decimal(10,2)
+,`gastado_items` decimal(32,2)
+,`gastado_movilidad` decimal(32,2)
+,`saldo` decimal(34,2)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura para la vista `vista_resumen_mensual`
+--
+DROP TABLE IF EXISTS `vista_resumen_mensual`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vista_resumen_mensual`  AS SELECT `d`.`id` AS `departamento_id`, `d`.`nombre` AS `departamento_nombre`, `ph`.`mes` AS `mes`, `ph`.`anio` AS `anio`, `ph`.`presupuesto_asignado` AS `presupuesto_asignado`, coalesce((select sum(`i`.`total`) from (`items` `i` join `requerimientos` `r` on(`r`.`id` = `i`.`requerimiento_id`)) where `r`.`departamento_id` = `d`.`id` and `i`.`estado_pago` = 'Pagado' and month(`r`.`fecha`) = `ph`.`mes` and year(`r`.`fecha`) = `ph`.`anio`),0) AS `gastado_items`, coalesce((select sum(`pm`.`monto_total`) from `planilla_movilidad` `pm` where `pm`.`departamento_id` = `d`.`id` and `pm`.`estado` = 'Pagado' and month(`pm`.`fecha`) = `ph`.`mes` and year(`pm`.`fecha`) = `ph`.`anio`),0) AS `gastado_movilidad`, `ph`.`presupuesto_asignado`- (coalesce((select sum(`i`.`total`) from (`items` `i` join `requerimientos` `r` on(`r`.`id` = `i`.`requerimiento_id`)) where `r`.`departamento_id` = `d`.`id` and `i`.`estado_pago` = 'Pagado' and month(`r`.`fecha`) = `ph`.`mes` and year(`r`.`fecha`) = `ph`.`anio`),0) + coalesce((select sum(`pm`.`monto_total`) from `planilla_movilidad` `pm` where `pm`.`departamento_id` = `d`.`id` and `pm`.`estado` = 'Pagado' and month(`pm`.`fecha`) = `ph`.`mes` and year(`pm`.`fecha`) = `ph`.`anio`),0)) AS `saldo` FROM (`departamentos` `d` join `presupuestos_historicos` `ph`) WHERE `ph`.`departamento_id` = `d`.`id` ;
+
+--
+-- Índices para tablas volcadas
+--
+
+--
+-- Indices de la tabla `areas_costos`
+--
+ALTER TABLE `areas_costos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `empresa_id` (`empresa_id`),
+  ADD KEY `sede_id` (`sede_id`);
+
+--
+-- Indices de la tabla `area_departamento`
+--
+ALTER TABLE `area_departamento`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `area_id` (`area_id`),
+  ADD KEY `departamento_id` (`departamento_id`);
+
+--
+-- Indices de la tabla `articulos`
+--
+ALTER TABLE `articulos`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `cajas_chicas`
+--
+ALTER TABLE `cajas_chicas`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `carreras`
+--
+ALTER TABLE `carreras`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `centros_costos`
+--
+ALTER TABLE `centros_costos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `parent_id` (`parent_id`),
+  ADD KEY `empresa_id` (`empresa_id`),
+  ADD KEY `sede_id` (`sede_id`);
+
+--
+-- Indices de la tabla `cola_correos`
+--
+ALTER TABLE `cola_correos`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `correlativos`
+--
+ALTER TABLE `correlativos`
+  ADD PRIMARY KEY (`tipo`,`anio`);
+
+--
+-- Indices de la tabla `departamentos`
+--
+ALTER TABLE `departamentos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `empresa_id` (`empresa_id`),
+  ADD KEY `sede_id` (`sede_id`),
+  ADD KEY `parent_id` (`parent_id`);
+
+--
+-- Indices de la tabla `empresas`
+--
+ALTER TABLE `empresas`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `grupos_tesoreria`
+--
+ALTER TABLE `grupos_tesoreria`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `inventario`
+--
+ALTER TABLE `inventario`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `inventario_herramientas`
+--
+ALTER TABLE `inventario_herramientas`
+  ADD KEY `inventario_id` (`inventario_id`);
+
+--
+-- Indices de la tabla `inventario_insumos`
+--
+ALTER TABLE `inventario_insumos`
+  ADD KEY `inventario_id` (`inventario_id`);
+
+--
+-- Indices de la tabla `inventario_lotes`
+--
+ALTER TABLE `inventario_lotes`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `inventario_id` (`inventario_id`);
+
+--
+-- Indices de la tabla `inventario_menaje`
+--
+ALTER TABLE `inventario_menaje`
+  ADD KEY `inventario_id` (`inventario_id`);
+
+--
+-- Indices de la tabla `inventario_moviles`
+--
+ALTER TABLE `inventario_moviles`
+  ADD KEY `inventario_id` (`inventario_id`);
+
+--
+-- Indices de la tabla `inventario_oficina`
+--
+ALTER TABLE `inventario_oficina`
+  ADD KEY `inventario_id` (`inventario_id`);
+
+--
+-- Indices de la tabla `items`
+--
+ALTER TABLE `items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `requerimiento_id` (`requerimiento_id`),
+  ADD KEY `centro_costo_id` (`centro_costo_id`),
+  ADD KEY `area_costo_id` (`area_costo_id`);
+
+--
+-- Indices de la tabla `logs`
+--
+ALTER TABLE `logs`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `movimientos_caja`
+--
+ALTER TABLE `movimientos_caja`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `movimientos_stock`
+--
+ALTER TABLE `movimientos_stock`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `ordenes_compra`
+--
+ALTER TABLE `ordenes_compra`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `orden_compra_items`
+--
+ALTER TABLE `orden_compra_items`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `pagos`
+--
+ALTER TABLE `pagos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_pagos_trabajador` (`trabajador_id`);
+
+--
+-- Indices de la tabla `planilla_docente`
+--
+ALTER TABLE `planilla_docente`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `trabajador_id` (`trabajador_id`),
+  ADD KEY `fk_programa` (`programa_id`);
+
+--
+-- Indices de la tabla `planilla_movilidad`
+--
+ALTER TABLE `planilla_movilidad`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `empresa_id` (`empresa_id`),
+  ADD KEY `sede_id` (`sede_id`),
+  ADD KEY `departamento_id` (`departamento_id`);
+
+--
+-- Indices de la tabla `planilla_movilidad_detalle`
+--
+ALTER TABLE `planilla_movilidad_detalle`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `planilla_id` (`planilla_id`);
+
+--
+-- Indices de la tabla `presupuestos_carreras`
+--
+ALTER TABLE `presupuestos_carreras`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `presupuestos_historicos`
+--
+ALTER TABLE `presupuestos_historicos`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_periodo` (`departamento_id`,`mes`,`anio`),
+  ADD KEY `idx_departamento` (`departamento_id`),
+  ADD KEY `idx_fecha` (`anio`,`mes`);
+
+--
+-- Indices de la tabla `productos_select`
+--
+ALTER TABLE `productos_select`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `nombre` (`nombre`);
+
+--
+-- Indices de la tabla `programas`
+--
+ALTER TABLE `programas`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `propuestas`
+--
+ALTER TABLE `propuestas`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `item_id` (`item_id`);
+
+--
+-- Indices de la tabla `proveedores`
+--
+ALTER TABLE `proveedores`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `rendiciones_caja`
+--
+ALTER TABLE `rendiciones_caja`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `rendicion_items`
+--
+ALTER TABLE `rendicion_items`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `requerimientos`
+--
+ALTER TABLE `requerimientos`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `codigo` (`codigo`),
+  ADD KEY `departamento_id` (`departamento_id`),
+  ADD KEY `empresa_id` (`empresa_id`),
+  ADD KEY `sede_id` (`sede_id`),
+  ADD KEY `fk_requerimientos_usuario` (`creador_id`);
+
+--
+-- Indices de la tabla `sedes`
+--
+ALTER TABLE `sedes`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `empresa_id` (`empresa_id`);
+
+--
+-- Indices de la tabla `solicitudes_caja`
+--
+ALTER TABLE `solicitudes_caja`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `solicitudes_fondo`
+--
+ALTER TABLE `solicitudes_fondo`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `codigo` (`codigo`),
+  ADD KEY `firmado_por` (`firmado_por`);
+
+--
+-- Indices de la tabla `solicitud_archivos`
+--
+ALTER TABLE `solicitud_archivos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `solicitud_id` (`solicitud_id`),
+  ADD KEY `gasto_id` (`gasto_id`);
+
+--
+-- Indices de la tabla `solicitud_gastos`
+--
+ALTER TABLE `solicitud_gastos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `solicitud_id` (`solicitud_id`);
+
+--
+-- Indices de la tabla `solicitud_historial`
+--
+ALTER TABLE `solicitud_historial`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `solicitud_id` (`solicitud_id`);
+
+--
+-- Indices de la tabla `trabajadores`
+--
+ALTER TABLE `trabajadores`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `departamento_id` (`departamento_id`);
+
+--
+-- Indices de la tabla `usuarios_departamentos`
+--
+ALTER TABLE `usuarios_departamentos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `usuario_id` (`usuario_id`),
+  ADD KEY `departamento_id` (`departamento_id`);
+
+--
+-- AUTO_INCREMENT de las tablas volcadas
+--
+
+--
+-- AUTO_INCREMENT de la tabla `areas_costos`
+--
+ALTER TABLE `areas_costos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+
+--
+-- AUTO_INCREMENT de la tabla `area_departamento`
+--
+ALTER TABLE `area_departamento`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT de la tabla `articulos`
+--
+ALTER TABLE `articulos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT de la tabla `cajas_chicas`
+--
+ALTER TABLE `cajas_chicas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de la tabla `carreras`
+--
+ALTER TABLE `carreras`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT de la tabla `centros_costos`
+--
+ALTER TABLE `centros_costos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=391;
+
+--
+-- AUTO_INCREMENT de la tabla `cola_correos`
+--
+ALTER TABLE `cola_correos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=196;
+
+--
+-- AUTO_INCREMENT de la tabla `departamentos`
+--
+ALTER TABLE `departamentos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+
+--
+-- AUTO_INCREMENT de la tabla `empresas`
+--
+ALTER TABLE `empresas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+
+--
+-- AUTO_INCREMENT de la tabla `grupos_tesoreria`
+--
+ALTER TABLE `grupos_tesoreria`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=97;
+
+--
+-- AUTO_INCREMENT de la tabla `inventario`
+--
+ALTER TABLE `inventario`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT de la tabla `inventario_lotes`
+--
+ALTER TABLE `inventario_lotes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `items`
+--
+ALTER TABLE `items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=207;
+
+--
+-- AUTO_INCREMENT de la tabla `logs`
+--
+ALTER TABLE `logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `movimientos_caja`
+--
+ALTER TABLE `movimientos_caja`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT de la tabla `movimientos_stock`
+--
+ALTER TABLE `movimientos_stock`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=228;
+
+--
+-- AUTO_INCREMENT de la tabla `ordenes_compra`
+--
+ALTER TABLE `ordenes_compra`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=150;
+
+--
+-- AUTO_INCREMENT de la tabla `orden_compra_items`
+--
+ALTER TABLE `orden_compra_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=216;
+
+--
+-- AUTO_INCREMENT de la tabla `pagos`
+--
+ALTER TABLE `pagos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT de la tabla `planilla_docente`
+--
+ALTER TABLE `planilla_docente`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT de la tabla `planilla_movilidad`
+--
+ALTER TABLE `planilla_movilidad`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+
+--
+-- AUTO_INCREMENT de la tabla `planilla_movilidad_detalle`
+--
+ALTER TABLE `planilla_movilidad_detalle`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+
+--
+-- AUTO_INCREMENT de la tabla `presupuestos_carreras`
+--
+ALTER TABLE `presupuestos_carreras`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `presupuestos_historicos`
+--
+ALTER TABLE `presupuestos_historicos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+
+--
+-- AUTO_INCREMENT de la tabla `productos_select`
+--
+ALTER TABLE `productos_select`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+
+--
+-- AUTO_INCREMENT de la tabla `programas`
+--
+ALTER TABLE `programas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT de la tabla `propuestas`
+--
+ALTER TABLE `propuestas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+
+--
+-- AUTO_INCREMENT de la tabla `proveedores`
+--
+ALTER TABLE `proveedores`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+
+--
+-- AUTO_INCREMENT de la tabla `rendiciones_caja`
+--
+ALTER TABLE `rendiciones_caja`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT de la tabla `rendicion_items`
+--
+ALTER TABLE `rendicion_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT de la tabla `requerimientos`
+--
+ALTER TABLE `requerimientos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=186;
+
+--
+-- AUTO_INCREMENT de la tabla `sedes`
+--
+ALTER TABLE `sedes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de la tabla `solicitudes_caja`
+--
+ALTER TABLE `solicitudes_caja`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT de la tabla `solicitudes_fondo`
+--
+ALTER TABLE `solicitudes_fondo`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=88;
+
+--
+-- AUTO_INCREMENT de la tabla `solicitud_archivos`
+--
+ALTER TABLE `solicitud_archivos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=161;
+
+--
+-- AUTO_INCREMENT de la tabla `solicitud_gastos`
+--
+ALTER TABLE `solicitud_gastos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+
+--
+-- AUTO_INCREMENT de la tabla `solicitud_historial`
+--
+ALTER TABLE `solicitud_historial`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=334;
+
+--
+-- AUTO_INCREMENT de la tabla `trabajadores`
+--
+ALTER TABLE `trabajadores`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT de la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+
+--
+-- AUTO_INCREMENT de la tabla `usuarios_departamentos`
+--
+ALTER TABLE `usuarios_departamentos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=127;
+
+--
+-- Restricciones para tablas volcadas
+--
+
+--
+-- Filtros para la tabla `areas_costos`
+--
+ALTER TABLE `areas_costos`
+  ADD CONSTRAINT `areas_costos_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`),
+  ADD CONSTRAINT `areas_costos_ibfk_2` FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`);
+
+--
+-- Filtros para la tabla `area_departamento`
+--
+ALTER TABLE `area_departamento`
+  ADD CONSTRAINT `area_departamento_ibfk_1` FOREIGN KEY (`area_id`) REFERENCES `areas_costos` (`id`),
+  ADD CONSTRAINT `area_departamento_ibfk_2` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`);
+
+--
+-- Filtros para la tabla `centros_costos`
+--
+ALTER TABLE `centros_costos`
+  ADD CONSTRAINT `centros_costos_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `centros_costos` (`id`),
+  ADD CONSTRAINT `centros_costos_ibfk_2` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`),
+  ADD CONSTRAINT `centros_costos_ibfk_3` FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`);
+
+--
+-- Filtros para la tabla `departamentos`
+--
+ALTER TABLE `departamentos`
+  ADD CONSTRAINT `departamentos_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`),
+  ADD CONSTRAINT `departamentos_ibfk_2` FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`),
+  ADD CONSTRAINT `departamentos_ibfk_3` FOREIGN KEY (`parent_id`) REFERENCES `departamentos` (`id`);
+
+--
+-- Filtros para la tabla `inventario_herramientas`
+--
+ALTER TABLE `inventario_herramientas`
+  ADD CONSTRAINT `inventario_herramientas_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
+
+--
+-- Filtros para la tabla `inventario_insumos`
+--
+ALTER TABLE `inventario_insumos`
+  ADD CONSTRAINT `inventario_insumos_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
+
+--
+-- Filtros para la tabla `inventario_lotes`
+--
+ALTER TABLE `inventario_lotes`
+  ADD CONSTRAINT `inventario_lotes_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
+
+--
+-- Filtros para la tabla `inventario_menaje`
+--
+ALTER TABLE `inventario_menaje`
+  ADD CONSTRAINT `inventario_menaje_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
+
+--
+-- Filtros para la tabla `inventario_moviles`
+--
+ALTER TABLE `inventario_moviles`
+  ADD CONSTRAINT `inventario_moviles_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
+
+--
+-- Filtros para la tabla `inventario_oficina`
+--
+ALTER TABLE `inventario_oficina`
+  ADD CONSTRAINT `inventario_oficina_ibfk_1` FOREIGN KEY (`inventario_id`) REFERENCES `inventario` (`id`);
+
+--
+-- Filtros para la tabla `items`
+--
+ALTER TABLE `items`
+  ADD CONSTRAINT `items_ibfk_1` FOREIGN KEY (`requerimiento_id`) REFERENCES `requerimientos` (`id`),
+  ADD CONSTRAINT `items_ibfk_2` FOREIGN KEY (`centro_costo_id`) REFERENCES `centros_costos` (`id`),
+  ADD CONSTRAINT `items_ibfk_3` FOREIGN KEY (`area_costo_id`) REFERENCES `areas_costos` (`id`);
+
+--
+-- Filtros para la tabla `pagos`
+--
+ALTER TABLE `pagos`
+  ADD CONSTRAINT `fk_pagos_trabajador` FOREIGN KEY (`trabajador_id`) REFERENCES `trabajadores` (`id`);
+
+--
+-- Filtros para la tabla `planilla_docente`
+--
+ALTER TABLE `planilla_docente`
+  ADD CONSTRAINT `fk_programa` FOREIGN KEY (`programa_id`) REFERENCES `programas` (`id`),
+  ADD CONSTRAINT `planilla_docente_ibfk_1` FOREIGN KEY (`trabajador_id`) REFERENCES `trabajadores` (`id`);
+
+--
+-- Filtros para la tabla `planilla_movilidad`
+--
+ALTER TABLE `planilla_movilidad`
+  ADD CONSTRAINT `planilla_movilidad_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`),
+  ADD CONSTRAINT `planilla_movilidad_ibfk_2` FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`),
+  ADD CONSTRAINT `planilla_movilidad_ibfk_3` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`);
+
+--
+-- Filtros para la tabla `planilla_movilidad_detalle`
+--
+ALTER TABLE `planilla_movilidad_detalle`
+  ADD CONSTRAINT `planilla_movilidad_detalle_ibfk_1` FOREIGN KEY (`planilla_id`) REFERENCES `planilla_movilidad` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `presupuestos_historicos`
+--
+ALTER TABLE `presupuestos_historicos`
+  ADD CONSTRAINT `presupuestos_historicos_ibfk_1` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `propuestas`
+--
+ALTER TABLE `propuestas`
+  ADD CONSTRAINT `propuestas_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`);
+
+--
+-- Filtros para la tabla `requerimientos`
+--
+ALTER TABLE `requerimientos`
+  ADD CONSTRAINT `fk_requerimientos_usuario` FOREIGN KEY (`creador_id`) REFERENCES `usuarios` (`id`),
+  ADD CONSTRAINT `requerimientos_ibfk_1` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`),
+  ADD CONSTRAINT `requerimientos_ibfk_2` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`),
+  ADD CONSTRAINT `requerimientos_ibfk_3` FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`);
+
+--
+-- Filtros para la tabla `sedes`
+--
+ALTER TABLE `sedes`
+  ADD CONSTRAINT `sedes_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`);
+
+--
+-- Filtros para la tabla `solicitudes_fondo`
+--
+ALTER TABLE `solicitudes_fondo`
+  ADD CONSTRAINT `solicitudes_fondo_ibfk_1` FOREIGN KEY (`firmado_por`) REFERENCES `usuarios` (`id`);
+
+--
+-- Filtros para la tabla `solicitud_archivos`
+--
+ALTER TABLE `solicitud_archivos`
+  ADD CONSTRAINT `solicitud_archivos_ibfk_1` FOREIGN KEY (`solicitud_id`) REFERENCES `solicitudes_fondo` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `solicitud_archivos_ibfk_2` FOREIGN KEY (`gasto_id`) REFERENCES `solicitud_gastos` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `solicitud_gastos`
+--
+ALTER TABLE `solicitud_gastos`
+  ADD CONSTRAINT `solicitud_gastos_ibfk_1` FOREIGN KEY (`solicitud_id`) REFERENCES `solicitudes_fondo` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `solicitud_historial`
+--
+ALTER TABLE `solicitud_historial`
+  ADD CONSTRAINT `solicitud_historial_ibfk_1` FOREIGN KEY (`solicitud_id`) REFERENCES `solicitudes_fondo` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  ADD CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`);
+
+--
+-- Filtros para la tabla `usuarios_departamentos`
+--
+ALTER TABLE `usuarios_departamentos`
+  ADD CONSTRAINT `usuarios_departamentos_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`),
+  ADD CONSTRAINT `usuarios_departamentos_ibfk_2` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`);
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

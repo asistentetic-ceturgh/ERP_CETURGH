@@ -423,7 +423,7 @@ const App = ({ user, onLogout }) => {
           { id: 'Movilidad', label: 'MOVILIDAD', icon: <Car /> }
         ];
         if (HABILITAR_FONDOS) {
-          opcionesOperaciones.push({ id: 'Fondos', label: 'FONDOS', icon: <NotepadText /> });
+          opcionesOperaciones.push({ id: 'Fondos', label: 'REEMBOLSOS', icon: <NotepadText /> });
         }
 
         return (
