@@ -53,26 +53,29 @@ $monto_solicitado = floatval($sol["monto_solicitado"]);
 $monto_rendido_real = floatval($sol["monto_rendido_real"]);
 $diferencia = $monto_solicitado - $monto_rendido_real;
 
-// Validar estado según tipo
+// Validar estado según tipo (NUEVA LÓGICA)
 $permitido = false;
+$nuevoEstado = "";
 
-// ANTICIPO: pagar cuando está APROBADO
-if ($tipo === "ADELANTO" && $estado === "APROBADO") {
-    $permitido = true;
+if ($tipo === "ADELANTO" || $tipo === "VIATICOS") {
+    // Anticipo y Viáticos: se pagan cuando están APROBADO
+    if ($estado === "APROBADO") {
+        $permitido = true;
+        $nuevoEstado = "PAGADO";
+    }
 } 
-// REEMBOLSO: pagar después de la rendición (POR_REEMBOLSAR o EN_RENDICION)
-else if ($tipo === "REEMBOLSO" && ($estado === "POR_REEMBOLSAR" || $estado === "EN_RENDICION")) {
-    $permitido = true;
-}
-// VIATICOS: pagar cuando está APROBADO (igual que ANTICIPO) O después de rendición
-else if ($tipo === "VIATICOS" && ($estado === "APROBADO" || $estado === "POR_REEMBOLSAR" || $estado === "EN_RENDICION")) {
-    $permitido = true;
+else if ($tipo === "REEMBOLSO") {
+    // Reembolso: se paga después de que ADMIN aprueba la rendición (APROBADO)
+    if ($estado === "APROBADO") {
+        $permitido = true;
+        $nuevoEstado = "CERRADO";
+    }
 }
 
 if (!$permitido) {
     echo json_encode([
         "success" => false, 
-        "message" => "Estado no válido para pago. Estado actual: $estado, Tipo: $tipo"
+        "message" => "Estado no válido para pago. Estado actual: $estado, Tipo: $tipo. Debe estar APROBADO."
     ]);
     exit;
 }
@@ -100,33 +103,13 @@ if (!move_uploaded_file($file["tmp_name"], $ruta)) {
     exit;
 }
 
-// Insertar archivo
+// Insertar archivo (tipo siempre PAGO_TESORERIA en este flujo)
 $tipoArchivo = "PAGO_TESORERIA";
-if ($tipo === "REEMBOLSO" || $tipo === "VIATICOS") {
-    if ($diferencia < 0) {
-        $tipoArchivo = "REEMBOLSO";
-    } else if ($diferencia > 0) {
-        $tipoArchivo = "DEVOLUCION";
-    }
-}
-
 $stmtArch = $conn->prepare("INSERT INTO solicitud_archivos (solicitud_id, tipo, nombre_original, nombre_guardado, ruta, subido_por) VALUES (?, ?, ?, ?, ?, ?)");
 $stmtArch->bind_param("issssi", $solicitud_id, $tipoArchivo, $file["name"], $nombre, $ruta, $usuario_id);
 $stmtArch->execute();
 
-// Definir nuevo estado según tipo
-if ($tipo === "ADELANTO") {
-    // Anticipo: después del pago, queda pendiente de rendición
-    $nuevoEstado = "PAGADO";
-} else if ($tipo === "VIATICOS") {
-    // Viáticos: después del pago, queda pendiente de rendición (igual que anticipo)
-    $nuevoEstado = "PAGADO";
-} else {
-    // Reembolso: después del pago se cierra
-    $nuevoEstado = "CERRADO";
-}
-
-// Actualizar solicitud con el monto_rendido real
+// Actualizar solicitud con el monto_rendido real y diferencia
 $update = $conn->prepare("UPDATE solicitudes_fondo SET estado = ?, pagado_por = ?, fecha_pago = NOW(), monto_rendido = ?, diferencia = ? WHERE id = ?");
 $update->bind_param("siidi", $nuevoEstado, $usuario_id, $monto_rendido_real, $diferencia, $solicitud_id);
 $update->execute();
@@ -134,21 +117,11 @@ $update->execute();
 // Historial
 $hist = $conn->prepare("INSERT INTO solicitud_historial (solicitud_id, usuario_id, accion, descripcion) VALUES (?, ?, ?, ?)");
 $accion = "PAGAR";
-$desc = "Pago registrado por tesorería por S/ " . number_format($monto_pagado > 0 ? $monto_pagado : $monto_solicitado, 2);
-
 if ($tipo === "ADELANTO" || $tipo === "VIATICOS") {
-    $accion = "PAGAR";
-    $desc = "Desembolso realizado por S/ " . number_format($monto_solicitado, 2);
-} else if ($tipo === "REEMBOLSO") {
-    if ($diferencia < 0) {
-        $accion = "REEMBOLSAR";
-        $desc = "Reembolso realizado por S/ " . number_format(abs($diferencia), 2);
-    } else {
-        $accion = "CERRAR";
-        $desc = "Rendición cerrada correctamente";
-    }
+    $desc = "Desembolso realizado por S/ " . number_format($monto_solicitado, 2) . ". Pendiente de rendición.";
+} else {
+    $desc = "Reembolso realizado por S/ " . number_format($monto_rendido_real, 2) . ". Proceso cerrado.";
 }
-
 $hist->bind_param("iiss", $solicitud_id, $usuario_id, $accion, $desc);
 $hist->execute();
 

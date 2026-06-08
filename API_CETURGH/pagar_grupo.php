@@ -11,6 +11,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+// =====================================================
+// FUNCIÓN AUXILIAR: Obtiene el departamento raíz (padre final)
+// =====================================================
+function getRootDepartment($conn, $dept_id) {
+    $current = $dept_id;
+    while (true) {
+        $sql = "SELECT parent_id FROM departamentos WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $current);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res->fetch_assoc();
+        if (!$row || $row['parent_id'] === null) {
+            return $current;
+        }
+        $current = $row['parent_id'];
+    }
+}
+
 $data = json_decode(file_get_contents("php://input"), true);
 $grupo_id = $data['grupo_id'] ?? null;
 
@@ -48,96 +67,99 @@ try {
         throw new Exception("No hay items pendientes en este grupo");
     }
 
-    // 2️⃣ VALIDAR Y DESCONTAR PRESUPUESTO
+    // 2️⃣ VALIDAR Y DESCONTAR PRESUPUESTO (sobre el departamento raíz)
     while ($row = $result->fetch_assoc()) {
 
         $departamento_id = $row['departamento_id'];
         $total = floatval($row['total_consumido']);
 
-        // 🔍 Obtener presupuesto actual
+        // 🔥 Obtener el departamento raíz (padre final)
+        $rootDept = getRootDepartment($conn, $departamento_id);
+
+        // 🔍 Obtener presupuesto actual del departamento raíz
         $pres = $conn->prepare("
             SELECT presupuesto 
             FROM departamentos 
             WHERE id = ?
             FOR UPDATE
         ");
-        $pres->bind_param("i", $departamento_id);
+        $pres->bind_param("i", $rootDept);
         $pres->execute();
         $resPres = $pres->get_result()->fetch_assoc();
 
         if (!$resPres) {
-            throw new Exception("Departamento no encontrado ID: $departamento_id");
+            throw new Exception("Departamento principal no encontrado para ID: $departamento_id (raíz: $rootDept)");
         }
 
         $presupuesto_actual = floatval($resPres['presupuesto']);
 
         // 🚨 VALIDACIÓN
         if ($presupuesto_actual < $total) {
-            throw new Exception("Presupuesto insuficiente en departamento ID $departamento_id");
+            throw new Exception("Presupuesto insuficiente en el departamento principal (ID $rootDept)");
         }
 
-        // 💸 DESCONTAR
+        // 💸 DESCONTAR del departamento raíz
         $update = $conn->prepare("
             UPDATE departamentos
             SET presupuesto = presupuesto - ?
             WHERE id = ?
         ");
-        $update->bind_param("di", $total, $departamento_id);
+        $update->bind_param("di", $total, $rootDept);
         $update->execute();
     }
 
-    // 2.5️⃣ ACTUALIZAR GASTO POR CENTRO DE COSTO
-$sqlCC = "
-    SELECT 
-        centro_costo_id,
-        SUM(total) as total_gasto
-    FROM items
-    WHERE grupo_id = ?
-    AND estado_pago = 'Pendiente'
-    AND centro_costo_id IS NOT NULL
-    GROUP BY centro_costo_id
-";
+    // 2.5️⃣ ACTUALIZAR GASTO POR CENTRO DE COSTO (sin cambios)
+    $sqlCC = "
+        SELECT 
+            centro_costo_id,
+            SUM(total) as total_gasto
+        FROM items
+        WHERE grupo_id = ?
+        AND estado_pago = 'Pendiente'
+        AND centro_costo_id IS NOT NULL
+        GROUP BY centro_costo_id
+    ";
 
-$stmtCC = $conn->prepare($sqlCC);
-$stmtCC->bind_param("i", $grupo_id);
-$stmtCC->execute();
-$resCC = $stmtCC->get_result();
+    $stmtCC = $conn->prepare($sqlCC);
+    $stmtCC->bind_param("i", $grupo_id);
+    $stmtCC->execute();
+    $resCC = $stmtCC->get_result();
 
-while ($row = $resCC->fetch_assoc()) {
+    while ($row = $resCC->fetch_assoc()) {
 
-    $cc_id = intval($row['centro_costo_id']);
-    $total = floatval($row['total_gasto']);
+        $cc_id = intval($row['centro_costo_id']);
+        $total = floatval($row['total_gasto']);
 
-    // 🔒 Bloquear fila
-    $lock = $conn->prepare("
-        SELECT gastado FROM centros_costos 
-        WHERE id = ?
-        FOR UPDATE
-    ");
-    $lock->bind_param("i", $cc_id);
-    $lock->execute();
-    $lock->get_result();
+        // 🔒 Bloquear fila
+        $lock = $conn->prepare("
+            SELECT gastado FROM centros_costos 
+            WHERE id = ?
+            FOR UPDATE
+        ");
+        $lock->bind_param("i", $cc_id);
+        $lock->execute();
+        $lock->get_result();
 
-    // ➕ SUMAR gasto
-    $updateCC = $conn->prepare("
-        UPDATE centros_costos
-        SET gastado = gastado + ?
-        WHERE id = ?
-    ");
-    $updateCC->bind_param("di", $total, $cc_id);
-    $updateCC->execute();
-}
+        // ➕ SUMAR gasto
+        $updateCC = $conn->prepare("
+            UPDATE centros_costos
+            SET gastado = gastado + ?
+            WHERE id = ?
+        ");
+        $updateCC->bind_param("di", $total, $cc_id);
+        $updateCC->execute();
+    }
 
     // 3️⃣ MARCAR ITEMS COMO PAGADOS
-$updateItems = $conn->prepare("
-    UPDATE items 
-    SET 
-        estado_pago = 'Pagado',
-        estado_tesoreria = 'PAGADO',
-        flujo_estado = 'FINALIZADO'
-    WHERE grupo_id = ?
-    AND estado_pago = 'Pendiente'
-");
+    $updateItems = $conn->prepare("
+        UPDATE items 
+        SET 
+            estado_pago = 'Pagado',
+            estado_tesoreria = 'PAGADO',
+            flujo_estado = 'FINALIZADO'
+        WHERE grupo_id = ?
+        AND estado_pago = 'Pendiente'
+    ");
     $updateItems->bind_param("i", $grupo_id);
     $updateItems->execute();
 
@@ -161,3 +183,4 @@ $updateItems = $conn->prepare("
         "message" => $e->getMessage()
     ]);
 }
+?>

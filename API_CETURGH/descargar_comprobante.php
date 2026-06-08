@@ -1,20 +1,16 @@
 <?php
+// descargar_comprobante.php
+header('Content-Type: application/pdf');
+header('Content-Disposition: inline; filename="' . basename($_GET['file']) . '"');
+header('Access-Control-Allow-Origin: *'); // Permitir CORS
 
-$file = $_GET['file'] ?? '';
+$filePath = $_GET['file'];
+$fullPath = 'uploads/comprobantes/' . basename($filePath);
 
-$ruta = __DIR__ . '/' . $file;
-
-if (!file_exists($ruta)) {
+if (file_exists($fullPath)) {
+    readfile($fullPath);
+} else {
     http_response_code(404);
     echo "Archivo no encontrado";
-    exit;
 }
-
-// Forzar descarga
-header('Content-Description: File Transfer');
-header('Content-Type: application/octet-stream');
-header('Content-Disposition: attachment; filename="' . basename($ruta) . '"');
-header('Content-Length: ' . filesize($ruta));
-
-readfile($ruta);
-exit;
+?>

@@ -178,8 +178,8 @@ if ($accion === "ENVIAR_RENDICION") {
             $nuevoEstado = "CERRADO"; // Cuadrada perfecta
         }
     } else if ($tipoSolicitud === "REEMBOLSO") {
-        // Reembolso: después de enviar sustento, queda pendiente de pago
-        $nuevoEstado = "POR_REEMBOLSAR";
+        // Reembolso: después de enviar sustento, pasa a rendición pendiente de aprobación
+        $nuevoEstado = "EN_RENDICION";
     } else {
         echo json_encode([
             "success" => false,
@@ -255,6 +255,8 @@ if ($accion === "FIRMAR") {
 
 /* =========================================
    ACCIÓN: APROBAR
+   - Para ANTICIPO/VIATICOS: desde PENDIENTE
+   - Para REEMBOLSO: desde EN_RENDICION
 ========================================= */
 
 if ($accion === "APROBAR") {
@@ -262,10 +264,25 @@ if ($accion === "APROBAR") {
         echo json_encode(["success" => false, "message" => "No autorizado para aprobar"]); 
         exit;
     }
-    if ($estado_actual !== "PENDIENTE") {
-        echo json_encode(["success" => false, "message" => "La solicitud debe estar PENDIENTE para aprobarse"]); 
+    
+    $permitido = false;
+    if ($tipoSolicitud === "REEMBOLSO") {
+        // Reembolso: se aprueba después de que el solicitante envía la rendición
+        if ($estado_actual === "EN_RENDICION") {
+            $permitido = true;
+        }
+    } else {
+        // Anticipo y Viáticos: se aprueba después de la firma
+        if ($estado_actual === "PENDIENTE") {
+            $permitido = true;
+        }
+    }
+    
+    if (!$permitido) {
+        echo json_encode(["success" => false, "message" => "La solicitud no está en estado válido para aprobar. Estado actual: $estado_actual, Tipo: $tipoSolicitud"]); 
         exit;
     }
+    
     $nuevoEstado = "APROBADO";
     $sql = "UPDATE solicitudes_fondo SET estado=?, aprobado_por=?, fecha_aprobacion=NOW() WHERE id=?";
     $stmt = $conn->prepare($sql);
@@ -285,6 +302,7 @@ if ($accion === "APROBAR") {
 
 /* =========================================
    ACCIÓN: RECHAZAR
+   - Ahora también permite rechazar desde EN_RENDICION (para reembolsos)
 ========================================= */
 
 if ($accion === "RECHAZAR") {
@@ -292,10 +310,18 @@ if ($accion === "RECHAZAR") {
         echo json_encode(["success" => false, "message" => "No autorizado para rechazar"]); 
         exit;
     }
-    if ($estado_actual !== "PENDIENTE") {
-        echo json_encode(["success" => false, "message" => "Solo se pueden rechazar solicitudes en estado PENDIENTE"]); 
+    
+    // Permitir rechazar desde PENDIENTE (anticipo/viáticos) o desde EN_RENDICION (reembolso)
+    $estadosPermitidos = ["PENDIENTE"];
+    if ($tipoSolicitud === "REEMBOLSO") {
+        $estadosPermitidos[] = "EN_RENDICION";
+    }
+    
+    if (!in_array($estado_actual, $estadosPermitidos)) {
+        echo json_encode(["success" => false, "message" => "Solo se pueden rechazar solicitudes en estado " . implode(" o ", $estadosPermitidos)]); 
         exit;
     }
+    
     $nuevoEstado = "RECHAZADO";
     $sql = "UPDATE solicitudes_fondo SET estado=?, observaciones=? WHERE id=?";
     $stmt = $conn->prepare($sql);
@@ -315,6 +341,7 @@ if ($accion === "RECHAZAR") {
 
 /* =========================================
    ACCIÓN: PAGAR (para ANTICIPO, REEMBOLSO y VIATICOS)
+   - Para REEMBOLSO: ahora se paga desde APROBADO (no desde POR_REEMBOLSAR)
 ========================================= */
 
 if ($accion === "PAGAR") {
@@ -332,33 +359,23 @@ if ($accion === "PAGAR") {
     $nuevoEstado = "";
     $permitido = false;
     
-    if ($tipoSolicitud === "ADELANTO") {
-        // Anticipo: se paga cuando está APROBADO
+    if ($tipoSolicitud === "ADELANTO" || $tipoSolicitud === "VIATICOS") {
+        // Anticipo y Viáticos: se paga cuando está APROBADO
         if ($estado_actual === "APROBADO") {
             $permitido = true;
             $nuevoEstado = "PAGADO";
         } else {
-            echo json_encode(["success" => false, "message" => "El anticipo debe estar APROBADO para pagar. Estado actual: $estado_actual"]); 
+            echo json_encode(["success" => false, "message" => "El anticipo/viáticos debe estar APROBADO para pagar. Estado actual: $estado_actual"]); 
             exit;
         }
     } 
-    else if ($tipoSolicitud === "VIATICOS") {
-        // Viáticos: se paga cuando está APROBADO (igual que anticipo)
-        if ($estado_actual === "APROBADO") {
-            $permitido = true;
-            $nuevoEstado = "PAGADO";
-        } else {
-            echo json_encode(["success" => false, "message" => "Los viáticos deben estar APROBADOS para pagar. Estado actual: $estado_actual"]); 
-            exit;
-        }
-    }
     else if ($tipoSolicitud === "REEMBOLSO") {
-        // Reembolso: se paga después de la rendición (POR_REEMBOLSAR)
-        if ($estado_actual === "POR_REEMBOLSAR" || $estado_actual === "EN_RENDICION") {
+        // Reembolso: se paga después de que administración aprueba la rendición (APROBADO)
+        if ($estado_actual === "APROBADO") {
             $permitido = true;
             $nuevoEstado = "CERRADO";
         } else {
-            echo json_encode(["success" => false, "message" => "El reembolso debe tener la rendición enviada para pagar. Estado actual: $estado_actual"]); 
+            echo json_encode(["success" => false, "message" => "El reembolso debe estar APROBADO para pagar. Estado actual: $estado_actual"]); 
             exit;
         }
     }
@@ -447,6 +464,7 @@ if ($accion === "DEVOLVER") {
 
 /* =========================================
    ACCIÓN: REEMBOLSAR (cuando tesorería paga la diferencia que faltó)
+   - Este endpoint se usa solo para el flujo antiguo (anticipo/viáticos con diferencia negativa)
 ========================================= */
 
 if ($accion === "REEMBOLSAR") {

@@ -17,6 +17,7 @@ SELECT
     sf.codigo,
     sf.solicitante_id,
     sf.departamento_solicitante,
+    sf.departamento_id,  /* ← ESTE ES EL CAMPO IMPORTANTE */
     sf.empresa,
     sf.sede,
     sf.tipo,
@@ -36,6 +37,8 @@ SELECT
     u.nombre AS solicitante,
     u.documento AS solicitante_documento,
     u.firma AS solicitante_firma,
+    u.departamento_id AS solicitante_departamento_id,
+    d.nombre AS solicitante_departamento_nombre,
     
     /* QUIEN FIRMÓ (JEFE) */
     f.nombre AS firmador_nombre,
@@ -55,6 +58,7 @@ SELECT
 FROM solicitudes_fondo sf
 
 LEFT JOIN usuarios u ON u.id = sf.solicitante_id
+LEFT JOIN departamentos d ON d.id = u.departamento_id
 LEFT JOIN usuarios f ON f.id = sf.firmado_por
 LEFT JOIN usuarios a ON a.id = sf.aprobado_por
 LEFT JOIN usuarios p ON p.id = sf.pagado_por
